@@ -11,7 +11,7 @@ interface HistoryContentProps {
   viewingScenes: any[];
   sceneImages: Record<string, string>;
   generatingImages: Record<string, boolean>;
-  handleExportPlan: () => void;
+  
   handleGenerateImage: (sceneTitle: string, promptText: string, sceneIdx: number, allScenes: any[], fullPlanText?: string) => void;
 }
 
@@ -21,7 +21,6 @@ export function HistoryContent({
   viewingScenes,
   sceneImages,
   generatingImages,
-  handleExportPlan,
   handleGenerateImage
 }: HistoryContentProps) {
   const [showRawPrompt, setShowRawPrompt] = useState(false);
@@ -74,18 +73,6 @@ export function HistoryContent({
 
   return (
     <div className="flex-1 flex flex-col gap-6 pb-8">
-      <div className="flex items-center justify-between gap-4 shrink-0">
-        <div className="px-3 py-1 bg-[#ffcd4a] text-[#552c24] font-bold text-xs md:text-sm rounded shadow-sm self-start">
-          HISTORY LOG
-        </div>
-        <button 
-          onClick={handleExportPlan}
-          className="px-4 py-1.5 bg-[#552c24] text-[#ffcd4a] text-xs font-bold uppercase hover:bg-[#552c24]/90"
-        >
-          Export Plan
-        </button>
-      </div>
-      
       {renderTabs()}
 
       {/* Top: Scenario Overview */}
@@ -119,7 +106,11 @@ export function HistoryContent({
 
       {activeTab === 'scenario' && showRawPrompt && (
         <div className="mt-4 pt-4 border-t border-[#552c24]/10 prose prose-sm max-w-none prose-headings:text-[#552c24] prose-headings:font-bold prose-headings:uppercase prose-headings:text-sm prose-headings:tracking-wider prose-headings:border-b-2 prose-headings:border-[#ffcd4a] prose-headings:pb-1 prose-headings:mb-3 prose-strong:text-[#552c24] prose-p:leading-relaxed prose-li:leading-relaxed text-[#552c24]">
-          <ReactMarkdown>{result}</ReactMarkdown>
+          {result.trim().startsWith('{') ? (
+            <pre className="whitespace-pre-wrap font-mono text-xs">{JSON.stringify(JSON.parse(result), null, 2)}</pre>
+          ) : (
+            <ReactMarkdown>{result}</ReactMarkdown>
+          )}
         </div>
       )}
 

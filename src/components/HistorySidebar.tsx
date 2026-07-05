@@ -1,4 +1,5 @@
 import { Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { HistoryItem } from '../types';
 
 interface HistorySidebarProps {
@@ -10,6 +11,7 @@ interface HistorySidebarProps {
 }
 
 export function HistorySidebar({ history, viewingHistoryId, setViewingHistoryId, handleDeleteHistory, handleClearHistory }: HistorySidebarProps) {
+  const [showConfirm, setShowConfirm] = useState(false);
   return (
     <aside className="w-full md:w-72 bg-[#ffffff] border-b md:border-b-0 md:border-r border-[#552c24]/10 p-4 md:p-5 flex flex-col shrink-0 overflow-y-auto max-h-[30vh] md:max-h-none">
       <div className="mb-6 space-y-6 flex-1">
@@ -17,16 +19,20 @@ export function HistorySidebar({ history, viewingHistoryId, setViewingHistoryId,
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-bold uppercase tracking-widest text-[#552c24]/50">Generation History</h2>
             {history.length > 0 && (
-              <button 
-                onClick={() => {
-                  if(window.confirm('기록을 모두 삭제하시겠습니까?')) {
-                    handleClearHistory();
-                  }
-                }}
-                className="text-xs text-[#552c24]/50 hover:text-red-500 font-bold transition-colors uppercase"
-              >
-                Clear All
-              </button>
+              showConfirm ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-red-500 font-bold">정말 삭제할까요?</span>
+                  <button onClick={() => { handleClearHistory(); setShowConfirm(false); }} className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded font-bold uppercase hover:bg-red-600">Yes</button>
+                  <button onClick={() => setShowConfirm(false)} className="text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded font-bold uppercase hover:bg-gray-300">No</button>
+                </div>
+              ) : (
+                <button 
+                  onClick={() => setShowConfirm(true)}
+                  className="text-xs text-[#552c24]/50 hover:text-red-500 font-bold transition-colors uppercase"
+                >
+                  Clear All
+                </button>
+              )
             )}
           </div>
           {history.length === 0 ? (

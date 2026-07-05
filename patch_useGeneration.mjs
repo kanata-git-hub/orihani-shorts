@@ -1,4 +1,6 @@
+import fs from 'fs';
 
+const content = `
 import { useState } from 'react';
 import { getAiInstance } from "./useSettings";
 import { CHARACTERS, getStep1Prompt, getStep2Prompt } from "../constants";
@@ -20,7 +22,7 @@ export function useGeneration(duration: '15s' | '5s', selectedCharacter: string)
     try {
       const ai = await getAiInstance();
       const character = CHARACTERS.find(c => c.id === selectedCharacter);
-      const charDetails = character ? `${character.name} (${character.desc})` : '';
+      const charDetails = character ? \`\${character.name} (\${character.desc})\` : '';
       
       const newId = Date.now().toString();
       setCurrentWorkboardId(newId);
@@ -42,7 +44,7 @@ export function useGeneration(duration: '15s' | '5s', selectedCharacter: string)
       
       const step2Response = await ai.models.generateContent({
         model: "gemini-3.1-pro-preview",
-        contents: `${step2Prompt}\n\n[시나리오 초안]\n${draftScenario}`,
+        contents: \`\${step2Prompt}\\n\\n[시나리오 초안]\\n\${draftScenario}\`,
         config: {
           responseMimeType: "application/json"
         }
@@ -72,3 +74,6 @@ export function useGeneration(duration: '15s' | '5s', selectedCharacter: string)
 
   return { isGenerating, result, setResult, error, currentWorkboardId, handleGenerate };
 }
+`;
+
+fs.writeFileSync('src/hooks/useGeneration.ts', content);

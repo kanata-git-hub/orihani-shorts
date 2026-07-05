@@ -66,7 +66,9 @@ export default function App() {
     
     if (!contentToExport) return;
 
-    const blob = new Blob([contentToExport], { type: 'text/markdown' });
+    const isJson = contentToExport.trim().startsWith('{');
+    const type = isJson ? 'application/json' : 'text/markdown';
+    const blob = new Blob([contentToExport], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -135,7 +137,7 @@ export default function App() {
                 sceneImages={sceneImages}
                 generatingImages={generatingImages}
                 handleSaveDraft={handleSaveDraft}
-                handleExportPlan={handleExportPlan}
+                
                 handleGenerateImage={handleGenerateImage}
               />
             </div>

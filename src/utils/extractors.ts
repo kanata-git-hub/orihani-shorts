@@ -1,23 +1,43 @@
+
 import { MemeCaption } from '../types';
 
+const tryParseJson = (text: string) => {
+  if (text.trim().startsWith('{')) {
+    try {
+      return JSON.parse(text);
+    } catch(e) {
+      return null;
+    }
+  }
+  return null;
+};
+
 export const extractOverview = (text: string) => {
+  const json = tryParseJson(text);
+  if (json) {
+    return { title: json.title || '', location: json.location || '', scenario: json.scenario || '' };
+  }
+
+  // Fallback to markdown
   const overviewMatch = text.match(/(?:###\s*)?0\.\s*Planning\s*&\s*Narrative\s*\(Korean\)[\s\S]*?(?=(?:###\s*)?1\.|$)/i);
   let section0 = overviewMatch ? overviewMatch[0] : text;
-
   const getMatch = (regex: RegExp) => {
     const m = section0.match(regex);
     return m ? m[1].trim() : '';
   };
-
   const title = getMatch(/(?:\*\*)?영상 제목:?(?:\*\*)?\s*([^\n]+)/);
   const location = getMatch(/(?:\*\*)?공간적 배경\s*(?:\(Location\))?:?(?:\*\*)?\s*([^\n]+)/);
   const scenarioMatch = section0.match(/(?:\*\*)?시나리오:?(?:\*\*)?\s*([\s\S]*?)(?=(?:\n\s*[-*]\s*(?:\*\*)?자막)|(?:###)|$)/);
   const scenario = scenarioMatch ? scenarioMatch[1].trim() : '';
-
   return { title, location, scenario };
 };
 
 export const extractClips = (text: string) => {
+  const json = tryParseJson(text);
+  if (json && json.clips) {
+    return json.clips;
+  }
+
   const clips: { title: string, imageTitle: string, imagePrompt: string, videoTitle: string, videoPrompt: string }[] = [];
   
   // Extract image prompts
@@ -51,7 +71,6 @@ export const extractClips = (text: string) => {
   const count = Math.max(imagePrompts.length, videoPrompts.length);
   for (let i = 0; i < count; i++) {
     const vTitle = videoPrompts[i]?.title || `CLIP ${i+1}`;
-    // Extract a shorter title like "CLIP 1: 0~5초 (극도의 피로)"
     const shortTitle = vTitle.replace(/\[([^\]]+)\]\s*(.*)/, '$1 $2');
     
     clips.push({
@@ -71,6 +90,11 @@ export const extractScenes = (text: string) => {
 };
 
 export const extractVideoPrompt = (text: string) => {
+  const json = tryParseJson(text);
+  if (json && json.clips) {
+    return json.clips.map((c: any) => `${c.videoTitle}\n${c.videoPrompt}`).join('\n\n');
+  }
+
   const sectionRegex = /(?:(?:###\s*)?2\.\s+Video\s+Generation|🎥?\s*영상\s*프롬프트\s*마스터\s*세트|비디오\s*프롬프트)[\s\S]*?(?=\n(?:###\s*)?3|$)/i;
   const match = sectionRegex.exec(text);
   
@@ -81,6 +105,11 @@ export const extractVideoPrompt = (text: string) => {
 };
 
 export const extractCaptions = (text: string): MemeCaption[] => {
+  const json = tryParseJson(text);
+  if (json && json.captions) {
+    return json.captions;
+  }
+
   const sectionRegex = /(?:###\s*)?3\./i;
   const matchSection = text.match(sectionRegex);
   if (!matchSection || matchSection.index === undefined) return [];
