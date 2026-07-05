@@ -106,11 +106,7 @@ export function HistoryContent({
 
       {activeTab === 'scenario' && showRawPrompt && (
         <div className="mt-4 pt-4 border-t border-[#552c24]/10 prose prose-sm max-w-none prose-headings:text-[#552c24] prose-headings:font-bold prose-headings:uppercase prose-headings:text-sm prose-headings:tracking-wider prose-headings:border-b-2 prose-headings:border-[#ffcd4a] prose-headings:pb-1 prose-headings:mb-3 prose-strong:text-[#552c24] prose-p:leading-relaxed prose-li:leading-relaxed text-[#552c24]">
-          {result.trim().startsWith('{') ? (
-            <pre className="whitespace-pre-wrap font-mono text-xs">{JSON.stringify(JSON.parse(result), null, 2)}</pre>
-          ) : (
-            <ReactMarkdown>{result}</ReactMarkdown>
-          )}
+          <pre className="whitespace-pre-wrap font-mono text-xs overflow-x-auto p-4 bg-gray-100 rounded">{result}</pre>
         </div>
       )}
 

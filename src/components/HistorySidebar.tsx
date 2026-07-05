@@ -40,8 +40,14 @@ export function HistorySidebar({ history, viewingHistoryId, setViewingHistoryId,
           ) : (
             <div className="space-y-2">
               {history.map(item => {
-                const titleMatch = item.result.match(/\*\*(.*?제목.*?)\*\*\s*(.*)/);
-                const displayTitle = titleMatch ? titleMatch[2].replace(/[\[\]*]/g, '').trim() : 'Video Plan';
+                let displayTitle = 'Video Plan';
+                try {
+                  const data = JSON.parse(item.result);
+                  if (data.title) displayTitle = data.title;
+                } catch(e) {
+                  const titleMatch = item.result.match(/\*\*(.*?제목.*?)\*\*\s*(.*)/);
+                  if (titleMatch) displayTitle = titleMatch[2].replace(/[\[\]*]/g, '').trim();
+                }
                 return (
                   <div 
                     key={item.id} 

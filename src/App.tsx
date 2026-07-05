@@ -66,9 +66,7 @@ export default function App() {
     
     if (!contentToExport) return;
 
-    const isJson = contentToExport.trim().startsWith('{');
-    const type = isJson ? 'application/json' : 'text/markdown';
-    const blob = new Blob([contentToExport], { type });
+    const blob = new Blob([contentToExport], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

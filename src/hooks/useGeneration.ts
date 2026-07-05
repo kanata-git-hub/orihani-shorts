@@ -1,74 +1,125 @@
-
-import { useState } from 'react';
+import { useState } from "react";
+import { CHARACTERS, getSystemPrompt } from "../constants";
 import { getAiInstance } from "./useSettings";
-import { CHARACTERS, getStep1Prompt, getStep2Prompt } from "../constants";
-import { useHistory } from './useHistory';
 
-export function useGeneration(duration: '15s' | '5s', selectedCharacter: string) {
+export function useGeneration(
+  showToast: (msg: string, type?: "success" | "error") => void,
+  saveHistory: (item: any) => void,
+  apiKeys: { gemini: string; kling: string },
+) {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [result, setResult] = useState('');
+  const [result, setResult] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [currentWorkboardId, setCurrentWorkboardId] = useState<string | null>(null);
-  const { saveHistory } = useHistory();
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (
+    selectedCharacter: string,
+    customPrompt: string,
+    duration: '15s' | '5s' = '15s',
+  ) => {
     setIsGenerating(true);
+    setResult("");
     setError(null);
-    setResult('');
-    setCurrentWorkboardId(null);
-    
-    try {
-      const ai = await getAiInstance();
-      const character = CHARACTERS.find(c => c.id === selectedCharacter);
-      const charDetails = character ? `${character.name} (${character.desc})` : '';
-      
-      const newId = Date.now().toString();
-      setCurrentWorkboardId(newId);
+    const newId = Date.now().toString();
+    setCurrentWorkboardId(newId);
 
-      // STEP 1: 기획안 생성 (Markdown)
-      setResult("1/2 뇌 활성화 중: 창의적 시나리오 기획 중... ✍️");
-      const step1Prompt = getStep1Prompt(duration, charDetails);
+    try {
+      const character = CHARACTERS.find((c) => c.id === selectedCharacter);
+      const ai = getAiInstance();
+
+      // Step 1: 기획자 (Planner)
+      showToast("기획 중입니다... (1/2)", "success");
       
-      const step1Response = await ai.models.generateContent({
+      const plannerPrompt = `Please generate a creative Viral POV short-form video plan in Korean.
+Focus Character: ${character?.name} (Reference file: ${character?.file})
+Instructions: Look at the reference formulas. Focus on relatable, cute everyday moments without forcing unnecessary twists. Ensure you strictly follow constraints and never repeat the same physical ailment or setup as the previous outputs. Make it highly engaging and creative.
+User Idea/Twist: ${customPrompt || "Impress me with a fun, VERY diverse, and creative idea without relying on the 'forward head posture' (turtle neck) or 'staring at a monitor' trope."}
+Duration: ${duration}`;
+
+      const plannerResponse = await ai.models.generateContent({
         model: "gemini-3.5-flash",
-        contents: step1Prompt,
+        contents: plannerPrompt,
+        config: { 
+          systemInstruction: getSystemPrompt(duration),
+          temperature: 1.0,
+        },
       });
+
+      const plannerText = plannerResponse.text || "";
+
+      // Step 2: 변환기 (Converter)
+      showToast("영문 프롬프트로 변환 중입니다... (2/2)", "success");
       
-      const draftScenario = step1Response.text || '';
-      
-      // STEP 2: 포맷팅 및 프롬프트 변환 (JSON)
-      setResult("2/2 뇌 활성화 중: 비디오 프롬프트 & JSON 변환 중... 🎥");
-      const step2Prompt = getStep2Prompt(duration);
-      
-      const step2Response = await ai.models.generateContent({
+      const converterPrompt = `You are an expert prompt converter. Based on the following Korean video plan, convert it into a structured JSON format containing the title, location, full scenario (Korean), and English prompts for both images (initial frames) and video generation for each clip.
+
+Korean Plan:
+${plannerText}
+
+Ensure the image prompts strictly follow the character reference instructions and environment details.
+Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OUTPUT SPECS, CINEMATOGRAPHY, ENVIRONMENT, CHARACTER DESIGN, ACTION, STRICT RULES.
+`;
+
+      const converterResponse = await ai.models.generateContent({
         model: "gemini-3.5-flash",
-        contents: `${step2Prompt}\n\n[시나리오 초안]\n${draftScenario}`,
+        contents: converterPrompt,
         config: {
-          responseMimeType: "application/json"
+          temperature: 0.7,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              title: { type: "STRING", description: "Catchy YouTube Shorts style title in Korean" },
+              location: { type: "STRING", description: "Background location in Korean" },
+              scenario: { type: "STRING", description: "The full step-by-step storyboard in Korean" },
+              clips: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    title: { type: "STRING", description: "Clip title, e.g., 'CLIP 1 0~5초 (극도의 피로)'" },
+                    imageTitle: { type: "STRING", description: "Image scene title, e.g., 'Scene 1'" },
+                    imagePrompt: { type: "STRING", description: "Highly detailed English prompt for generating the first frame image" },
+                    videoTitle: { type: "STRING", description: "Video clip title in English/Korean" },
+                    videoPrompt: { type: "STRING", description: "The full English prompt for the video generation with all required sections" }
+                  },
+                  required: ["title", "imageTitle", "imagePrompt", "videoTitle", "videoPrompt"]
+                }
+              }
+            },
+            required: ["title", "location", "scenario", "clips"]
+          }
         }
       });
+
+      const finalJson = converterResponse.text || "{}";
       
-      const finalJsonStr = step2Response.text || '';
+      // Try to parse to ensure it's valid, if not it will throw
+      JSON.parse(finalJson);
       
-      // 렌더링을 위해 result에 JSON 문자열 저장
-      setResult(finalJsonStr);
-      
-      // 히스토리 저장
+      setResult(finalJson);
+
       saveHistory({
         id: newId,
         timestamp: Date.now(),
-        characterId: character?.id || 'unknown',
-        result: finalJsonStr
+        characterId: character?.id || "unknown",
+        result: finalJson,
       });
-
+      
+      showToast("Plan generated successfully!", "success");
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'An error occurred while generating the plan.');
-      setResult('');
+      setError(err.message || "An error occurred while generating the plan.");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  return { isGenerating, result, setResult, error, currentWorkboardId, handleGenerate };
+  return {
+    isGenerating,
+    result,
+    setResult,
+    error,
+    currentWorkboardId,
+    handleGenerate,
+  };
 }
