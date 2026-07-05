@@ -1,4 +1,0 @@
-Key len: 17
-Key len: 17
-Key is: MY_GEMINI_API_KEY
-Key is: MY_GEMINI_API_KEY
