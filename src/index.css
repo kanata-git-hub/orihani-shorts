@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'KyoboHandwriting2024_ParkSeoWoo';
+  src: url('./KyoboHandwriting2024psw.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@theme {
+  --color-brand-brown: #552c24;
+  --color-brand-yellow: #ffcd4a;
+  --font-sans: 'KyoboHandwriting2024_ParkSeoWoo', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    font-size: 22px; /* Base 16px -> 22px */
+  }
+  body {
+    background-color: #fcf9f2;
+    color: var(--color-brand-brown);
+    font-family: var(--font-sans);
+  }
+}
+
+/* Markdown Styles */
+.prose h3 {
+  color: var(--color-brand-brown);
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 2px solid var(--color-brand-yellow);
+  font-size: 1.25rem;
+}
+.prose p, .prose ul, .prose li {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+.prose ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+}
+.prose strong {
+  color: var(--color-brand-brown);
+  font-weight: 600;
+}
