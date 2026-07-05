@@ -1,4 +1,5 @@
-import { Settings } from 'lucide-react';
+import { Settings, Shield } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
 interface HeaderProps {
   view: '15s-plan' | '5s-plan' | 'scenario' | 'prompts' | 'history';
@@ -7,6 +8,8 @@ interface HeaderProps {
 }
 
 export function Header({ view, setView, setViewingHistoryId }: HeaderProps) {
+  const { isAdmin, logout } = useAuth();
+  
   return (
     <header className="h-14 md:h-16 bg-white text-[#552c24] flex items-center justify-between px-4 md:px-6 shrink-0 shadow-sm z-10 border-b-2 border-[#552c24]">
       <div className="flex items-center gap-2 md:gap-3">
@@ -16,7 +19,7 @@ export function Header({ view, setView, setViewingHistoryId }: HeaderProps) {
         </h1>
       </div>
       <div className="flex items-center gap-6">
-        <div className="hidden md:flex gap-6 text-base font-bold">
+        <div className="hidden md:flex items-center gap-6 text-base font-bold">
           <button 
             onClick={() => setView('15s-plan')}
             className={`${view === '15s-plan' ? 'border-b-2 border-[#552c24] pb-1 cursor-default opacity-100' : 'opacity-60 hover:opacity-100 cursor-pointer'} uppercase`}
@@ -46,6 +49,14 @@ export function Header({ view, setView, setViewingHistoryId }: HeaderProps) {
             className={`${view === 'history' ? 'border-b-2 border-[#552c24] pb-1 cursor-default opacity-100' : 'opacity-60 hover:opacity-100 cursor-pointer'} uppercase`}
           >
             기록
+          </button>
+          {isAdmin && (
+            <a href="/admin" className="flex items-center gap-1 opacity-60 hover:opacity-100 cursor-pointer text-[#ffcd4a] uppercase bg-[#552c24] px-2 py-1 rounded-md text-xs">
+              <Shield size={14} /> 관리자
+            </a>
+          )}
+          <button onClick={logout} className="opacity-60 hover:opacity-100 cursor-pointer text-xs underline">
+            로그아웃
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { CHARACTERS } from "../constants";
-import { getAiInstance } from "./useSettings";
+
 
 export function useMediaGeneration(
   showToast: (msg: string, type?: "success" | "error") => void,
@@ -135,27 +135,21 @@ ${promptText}`;
       }
       parts.push({ text: finalPrompt });
 
-      const ai = getAiInstance();
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-image",
-        contents: { parts },
-        config: {
-          imageConfig: {
-            aspectRatio: "9:16",
-            imageSize: "1K",
-            // @ts-ignore: addWatermark might not be in the types for genai SDK yet
-            addWatermark: false,
-          },
+      const response = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         },
+        body: JSON.stringify({ parts })
       });
 
-      let imageUrl = "";
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) {
-          imageUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-          break;
-        }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate image');
       }
+
+      const data = await response.json();
+      const imageUrl = data.result;
 
       if (imageUrl) {
         setSceneImages((prev) => {
