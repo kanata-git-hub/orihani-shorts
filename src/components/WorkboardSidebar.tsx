@@ -72,7 +72,7 @@ export function WorkboardSidebar({
           ) : (
             <>
               <Sparkles size={16} />
-              <span>비디오 생성</span>
+              <span>영상 기획 생성</span>
             </>
           )}
         </button>

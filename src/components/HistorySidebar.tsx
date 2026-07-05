@@ -17,30 +17,30 @@ export function HistorySidebar({ history, viewingHistoryId, setViewingHistoryId,
       <div className="mb-6 space-y-6 flex-1">
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[#552c24]/50">Generation History</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-[#552c24]/50">기록</h2>
             {history.length > 0 && (
               showConfirm ? (
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-red-500 font-bold">정말 삭제할까요?</span>
-                  <button onClick={() => { handleClearHistory(); setShowConfirm(false); }} className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded font-bold uppercase hover:bg-red-600">Yes</button>
-                  <button onClick={() => setShowConfirm(false)} className="text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded font-bold uppercase hover:bg-gray-300">No</button>
+                  <button onClick={() => { handleClearHistory(); setShowConfirm(false); }} className="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded font-bold uppercase hover:bg-red-600">네</button>
+                  <button onClick={() => setShowConfirm(false)} className="text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded font-bold uppercase hover:bg-gray-300">아니오</button>
                 </div>
               ) : (
                 <button 
                   onClick={() => setShowConfirm(true)}
                   className="text-xs text-[#552c24]/50 hover:text-red-500 font-bold transition-colors uppercase"
                 >
-                  Clear All
+                  전체 삭제
                 </button>
               )
             )}
           </div>
           {history.length === 0 ? (
-            <p className="text-xs opacity-60">No history yet.</p>
+            <p className="text-xs opacity-60">기록이 없습니다.</p>
           ) : (
             <div className="space-y-2">
               {history.map(item => {
-                let displayTitle = 'Video Plan';
+                let displayTitle = '기획 내용';
                 try {
                   const data = JSON.parse(item.result);
                   if (data.title) displayTitle = data.title;
@@ -59,7 +59,7 @@ export function HistorySidebar({ history, viewingHistoryId, setViewingHistoryId,
                     <button
                       onClick={(e) => handleDeleteHistory(item.id, e)}
                       className="absolute right-2 top-2 p-1 text-[#552c24]/40 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                      title="Delete Plan"
+                      title="기획 삭제"
                     >
                       <Trash2 size={14} />
                     </button>

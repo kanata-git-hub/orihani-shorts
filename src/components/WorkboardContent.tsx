@@ -33,7 +33,7 @@ export function WorkboardContent({
   handleGenerateImage
 }: WorkboardContentProps) {
   const [showRawPrompt, setShowRawPrompt] = useState(false);
-  const [copiedClipIndex, setCopiedClipIndex] = useState<number | null>(null);
+  const [copiedAllPrompts, setCopiedAllPrompts] = useState(false);
   const [activeClipIndex, setActiveClipIndex] = useState(0);
   const { showToast } = useToast();
 
@@ -41,11 +41,12 @@ export function WorkboardContent({
   const clips = extractClips(result);
 
 
-  const handleCopyVideoPrompt = (prompt: string, index: number) => {
-    navigator.clipboard.writeText(prompt);
-    setCopiedClipIndex(index);
-    showToast("Video prompt copied!");
-    setTimeout(() => setCopiedClipIndex(null), 2000);
+  const handleCopyAllVideoPrompts = () => {
+    const allPrompts = clips.map((c, idx) => `[CLIP ${idx + 1}: ${c.title}]\n${c.videoPrompt}`).join('\n\n');
+    navigator.clipboard.writeText(allPrompts);
+    setCopiedAllPrompts(true);
+    showToast("비디오 프롬프트 전체 복사 완료!");
+    setTimeout(() => setCopiedAllPrompts(false), 2000);
   };
 
   return (
@@ -59,8 +60,8 @@ export function WorkboardContent({
       {!result && !isGenerating && !error && (
         <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40">
           <Clapperboard size={48} className="mb-4" />
-          <p className="font-bold uppercase tracking-widest text-sm">Workboard Empty</p>
-          <p className="text-xs mt-2">Configure parameters in the sidebar to generate a new short-form plan.</p>
+          <p className="font-bold uppercase tracking-widest text-sm">기획이 없습니다</p>
+          <p className="text-xs mt-2">사이드바에서 설정을 완료하고 새로운 숏폼 기획을 생성하세요.</p>
         </div>
       )}
 
@@ -72,7 +73,7 @@ export function WorkboardContent({
             <div className="flex flex-col gap-4">
               <div>
                 <h3 className="text-[#552c24] font-bold text-lg md:text-xl tracking-tight">
-                  🎬 {overview.title || (isGenerating ? 'Directing...' : 'Untitled Plan')}
+                  🎬 {overview.title || (isGenerating ? '기획 중...' : '제목 없는 기획')}
                 </h3>
                 {overview.location && (
                   <p className="text-sm text-[#552c24]/70 font-medium mt-1">📍 {overview.location}</p>
@@ -90,7 +91,7 @@ export function WorkboardContent({
                   onClick={() => setShowRawPrompt(!showRawPrompt)}
                   className="text-xs uppercase font-bold text-[#552c24]/60 hover:text-[#552c24] underline underline-offset-2 flex items-center gap-1 self-start mt-2"
                 >
-                  {showRawPrompt ? "Hide Raw Output" : "View Raw Output"}
+                  {showRawPrompt ? "전체 결과 숨기기" : "전체 결과 보기"}
                 </button>
               )}
             </div>
@@ -106,7 +107,7 @@ export function WorkboardContent({
             )}
             {!showRawPrompt && isGenerating && (
               <div className="mt-4 text-xs font-bold text-[#552c24] flex items-center gap-2">
-                <Loader2 size={12} className="animate-spin" /> Generating Plan...
+                <Loader2 size={12} className="animate-spin" /> 기획 생성 중...
               </div>
             )}
 
@@ -125,6 +126,18 @@ export function WorkboardContent({
                  ))}
                </div>
                
+               <button
+                 onClick={handleCopyAllVideoPrompts}
+                 disabled={clips.some(c => !c.videoPrompt)}
+                 className="w-full max-w-md self-center bg-[#552c24] hover:bg-[#552c24]/90 text-[#ffcd4a] py-3 px-4 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[4px_4px_0px_#ffcd4a] active:translate-y-[2px] active:translate-x-[2px] active:shadow-[2px_2px_0px_#ffcd4a] disabled:opacity-50 disabled:cursor-not-allowed border-2 border-[#552c24] rounded-sm"
+               >
+                 {copiedAllPrompts ? (
+                   <><CheckCircle2 size={16} className="text-green-400" /> 전체 복사 완료!</>
+                 ) : (
+                   <><Copy size={16} /> 비디오 프롬프트 전체 복사</>
+                 )}
+               </button>
+
                {clips[activeClipIndex] && (() => {
                   const clip = clips[activeClipIndex];
                   const idx = activeClipIndex;
@@ -142,37 +155,24 @@ export function WorkboardContent({
                         className="w-full bg-[#f9f7f4] border-2 border-dashed border-[#552c24]/20 text-[#552c24] hover:border-[#552c24] hover:bg-[#ffcd4a]/20 transition-all py-8 flex flex-col items-center justify-center gap-2 text-xs font-bold uppercase disabled:opacity-50 min-h-[160px] rounded"
                       >
                         {generatingImages[clip.imageTitle] ? (
-                          <><Loader2 size={24} className="animate-spin" /> Generating Image...</>
+                          <><Loader2 size={24} className="animate-spin" /> 이미지 생성 중...</>
                         ) : (
-                          <><ImageIcon size={24} className="opacity-50" /> Generate Start Frame</>
+                          <><ImageIcon size={24} className="opacity-50" /> 시작 이미지 생성</>
                         )}
                       </button>
                     ) : (
-                      <div className="relative group">
+                      <div className="flex flex-col gap-2">
                         <img src={sceneImages[clip.imageTitle]} alt={clip.imageTitle} className="w-full object-cover rounded aspect-[9/16] bg-gray-100 border-2 border-[#552c24]" referrerPolicy="no-referrer" />
-                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <a href={sceneImages[clip.imageTitle]} download={`${clip.imageTitle}.png`} className="p-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a]">
-                            <Download size={14} />
+                        <div className="flex justify-end gap-2">
+                          <a href={sceneImages[clip.imageTitle]} download={`${clip.imageTitle}.png`} className="flex items-center gap-1 px-3 py-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a] text-xs font-bold uppercase transition-colors">
+                            <Download size={14} /> 다운로드
                           </a>
-                          <button onClick={() => handleGenerateImage(clip.imageTitle, clip.imagePrompt, idx, currentScenes, result)} className="p-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a]">
-                            <RefreshCw size={14} />
+                          <button onClick={() => handleGenerateImage(clip.imageTitle, clip.imagePrompt, idx, currentScenes, result)} className="flex items-center gap-1 px-3 py-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a] text-xs font-bold uppercase transition-colors">
+                            <RefreshCw size={14} /> 재시도
                           </button>
                         </div>
                       </div>
                     )}
-
-                    {/* Video Prompt Area */}
-                    <button
-                       onClick={() => handleCopyVideoPrompt(clip.videoPrompt, idx)}
-                       disabled={!clip.videoPrompt}
-                       className="mt-auto w-full bg-[#552c24] hover:bg-[#552c24]/90 text-[#ffcd4a] py-3 px-4 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-[2px_2px_0px_#ffcd4a] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {copiedClipIndex === idx ? (
-                        <><CheckCircle2 size={14} className="text-green-400" /> Copied!</>
-                      ) : (
-                        <><Copy size={14} /> Copy Video Prompt</>
-                      )}
-                    </button>
                   </div>
                   );
                })()}
