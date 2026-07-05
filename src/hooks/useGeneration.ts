@@ -30,7 +30,7 @@ export function useGeneration(duration: '15s' | '5s', selectedCharacter: string)
       const step1Prompt = getStep1Prompt(duration, charDetails);
       
       const step1Response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3.5-flash",
         contents: step1Prompt,
       });
       
@@ -41,7 +41,7 @@ export function useGeneration(duration: '15s' | '5s', selectedCharacter: string)
       const step2Prompt = getStep2Prompt(duration);
       
       const step2Response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-3.5-flash",
         contents: `${step2Prompt}\n\n[시나리오 초안]\n${draftScenario}`,
         config: {
           responseMimeType: "application/json"

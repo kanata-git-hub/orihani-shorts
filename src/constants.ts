@@ -1,4 +1,4 @@
-
+import { FEW_SHOT_EXAMPLES } from './examples';
 import oduckImg from './오원장 3d.png';
 import oduckImg2 from './오원장 3D-02.png';
 import oduckImg3 from './오원장 3D-03.png';
@@ -36,7 +36,10 @@ export const getStep1Prompt = (duration: '15s' | '5s', charDetails: string) => {
 - 영상 제목
 - 공간적 배경
 - 시나리오 (초 단위로 컷 분할, 각 컷의 상황과 캐릭터의 감정/행동 상세 묘사)
-- 화면에 들어갈 자막 (짧고 재미있는 문구)`;
+- 화면에 들어갈 자막 (짧고 재미있는 문구)
+
+[필수 참고 예시 (FEW-SHOT EXAMPLES)]
+${FEW_SHOT_EXAMPLES}`;
 };
 
 export const getStep2Prompt = (duration: '15s' | '5s') => {
@@ -86,5 +89,8 @@ STRICT RULES: 신체 부위가 사물을 통과하지 않도록 하는 등의 �
 [주의사항]
 - AI는 팔다리가 짧은 제약을 이해하지 못합니다. "팔이 닿지 않는다" 대신 "팔을 허공에 허우적거린다"고 묘사하세요.
 - AI는 복잡한 연속 동작을 한 번에 그리지 못합니다. 각 컷마다 단 하나의 감정/상태만 묘사하고, 변화는 컷과 컷 사이에서 일어나게 하세요.
-- 출력은 오직 JSON 형식이어야 합니다.`;
+- 출력은 오직 JSON 형식이어야 합니다.
+
+[필수 참고 예시 (FEW-SHOT EXAMPLES)]
+${FEW_SHOT_EXAMPLES}`;
 };
