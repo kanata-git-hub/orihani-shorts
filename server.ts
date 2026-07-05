@@ -7,7 +7,7 @@ dotenv.config({ override: true });
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   app.use(express.json({ limit: '50mb' }));
 
