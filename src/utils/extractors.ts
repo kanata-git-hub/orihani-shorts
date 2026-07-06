@@ -6,7 +6,9 @@ export const extractOverview = (text: string) => {
     return {
       title: data.title || '',
       location: data.location || '',
-      scenario: data.scenario || ''
+      scenario: data.scenario || '',
+      instagramCaption: data.instagramCaption || '',
+      hashtags: data.hashtags || []
     };
   } catch (e) {
     // Fallback for old history items
@@ -20,7 +22,7 @@ export const extractOverview = (text: string) => {
     const location = getMatch(/(?:\*\*)?공간적 배경\s*(?:\(Location\))?:?(?:\*\*)?\s*([^\n]+)/);
     const scenarioMatch = section0.match(/(?:\*\*)?시나리오:?(?:\*\*)?\s*([\s\S]*?)(?=(?:\n\s*[-*]\s*(?:\*\*)?자막)|(?:###)|$)/);
     const scenario = scenarioMatch ? scenarioMatch[1].trim() : '';
-    return { title, location, scenario };
+    return { title, location, scenario, instagramCaption: '', hashtags: [] };
   }
 };
 

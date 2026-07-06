@@ -2,5 +2,5 @@
   "name": "오리쇼츠",
   "description": "",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -48,13 +48,14 @@ Duration: ${duration}`;
 
         const plannerText = plannerResponse.text || "";
 
-        const converterPrompt = `You are an expert prompt converter. Based on the following Korean video plan, convert it into a structured JSON format containing the title, location, full scenario (Korean), and English prompts for both images (initial frames) and video generation for each clip.
+        const converterPrompt = `You are an expert prompt converter. Based on the following Korean video plan, convert it into a structured JSON format containing the title, location, full scenario (Korean), Instagram Reels caption (Korean), exactly 5 hashtags, and English prompts for both images (initial frames) and video generation for each clip.
 
 Korean Plan:
 ${plannerText}
 
 Ensure the image prompts strictly follow the character reference instructions and environment details.
-Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OUTPUT SPECS, CINEMATOGRAPHY, ENVIRONMENT, CHARACTER DESIGN, ACTION, STRICT RULES.`;
+Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OUTPUT SPECS, CINEMATOGRAPHY, ENVIRONMENT, CHARACTER DESIGN, ACTION, STRICT RULES.
+If any character needs to speak, explicitly include 'DIALOGUE: [Korean dialogue]' inside the video prompt.`;
 
         const converterResponse = await ai.models.generateContent({
           model: "gemini-3.5-flash",
@@ -68,6 +69,12 @@ Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OU
                 title: { type: "STRING", description: "Catchy YouTube Shorts style title in Korean" },
                 location: { type: "STRING", description: "Background location in Korean" },
                 scenario: { type: "STRING", description: "The full step-by-step storyboard in Korean" },
+                instagramCaption: { type: "STRING", description: "Instagram Reels post content/caption in Korean" },
+                hashtags: { 
+                  type: "ARRAY", 
+                  items: { type: "STRING" },
+                  description: "Exactly 5 hashtags (without # symbol)" 
+                },
                 clips: {
                   type: "ARRAY",
                   items: {
@@ -83,7 +90,7 @@ Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OU
                   }
                 }
               },
-              required: ["title", "location", "scenario", "clips"]
+              required: ["title", "location", "scenario", "instagramCaption", "hashtags", "clips"]
             }
           }
         });

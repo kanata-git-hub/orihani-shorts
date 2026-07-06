@@ -34,6 +34,7 @@ export function WorkboardContent({
 }: WorkboardContentProps) {
   const [showRawPrompt, setShowRawPrompt] = useState(false);
   const [copiedAllPrompts, setCopiedAllPrompts] = useState(false);
+  const [copiedInstagram, setCopiedInstagram] = useState(false);
   const [activeClipIndex, setActiveClipIndex] = useState(0);
   const { showToast } = useToast();
 
@@ -47,6 +48,14 @@ export function WorkboardContent({
     setCopiedAllPrompts(true);
     showToast("비디오 프롬프트 전체 복사 완료!");
     setTimeout(() => setCopiedAllPrompts(false), 2000);
+  };
+
+  const handleCopyInstagram = () => {
+    const text = `${overview.instagramCaption}\n\n${overview.hashtags.map((h: string) => `#${h}`).join(' ')}`;
+    navigator.clipboard.writeText(text);
+    setCopiedInstagram(true);
+    showToast("인스타그램 내용 복사 완료!");
+    setTimeout(() => setCopiedInstagram(false), 2000);
   };
 
   return (
@@ -83,6 +92,29 @@ export function WorkboardContent({
               {overview.scenario && (
                 <div className="text-sm leading-relaxed text-[#552c24] whitespace-pre-wrap">
                   {overview.scenario}
+                </div>
+              )}
+
+              {overview.instagramCaption && (
+                <div className="mt-4 p-4 bg-[#ffcd4a]/10 border-2 border-[#552c24]/20 rounded-md">
+                  <h4 className="text-sm font-bold text-[#552c24] mb-2 flex items-center justify-between">
+                    📱 인스타그램 릴스 본문
+                    <button
+                      onClick={handleCopyInstagram}
+                      className="text-xs flex items-center gap-1 bg-[#552c24] text-white px-2 py-1 rounded hover:bg-[#552c24]/80 transition-colors"
+                    >
+                      {copiedInstagram ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                      {copiedInstagram ? "복사됨" : "복사하기"}
+                    </button>
+                  </h4>
+                  <div className="text-sm text-[#552c24] whitespace-pre-wrap mb-3">
+                    {overview.instagramCaption}
+                  </div>
+                  <div className="text-sm font-medium text-blue-600 flex flex-wrap gap-1">
+                    {overview.hashtags?.map((tag: string, i: number) => (
+                      <span key={i}>#{tag}</span>
+                    ))}
+                  </div>
                 </div>
               )}
 
