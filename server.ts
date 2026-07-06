@@ -55,7 +55,11 @@ ${plannerText}
 
 Ensure the image prompts strictly follow the character reference instructions and environment details.
 Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OUTPUT SPECS, CINEMATOGRAPHY, ENVIRONMENT, CHARACTER DESIGN, ACTION, STRICT RULES.
-If any character needs to speak, explicitly include 'DIALOGUE: [Korean dialogue]' inside the video prompt.`;
+If any character needs to speak, explicitly include 'DIALOGUE: [Korean dialogue]' inside the video prompt.
+
+CRITICAL INSTAGRAM GUIDELINES:
+1. Caption: Write it in a casual, highly relatable, conversational tone (like texting a friend). Avoid TV narration or overly descriptive/literary language (e.g. no "극명한 온도 차이!"). Keep it short and witty.
+2. Hashtags: Provide EXACTLY 5 hashtags. The last two MUST always be '대구한의원' and '오리한의원'. The first three should be hyper-specific relatable keywords based on the scenario (e.g. #아아수혈, #생명수직관, #직장인생존템). DO NOT use broad generic tags like #일상유머 or #쇼츠.`;
 
         const converterResponse = await ai.models.generateContent({
           model: "gemini-3.5-flash",
