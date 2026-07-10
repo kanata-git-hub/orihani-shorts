@@ -7,7 +7,7 @@ export const extractOverview = (text: string) => {
       title: data.title || '',
       location: data.location || '',
       scenario: data.scenario || '',
-      instagramCaption: data.instagramCaption || '',
+      instagramCaption: (data.instagramCaption || '').replace(/\\n/g, '\n'),
       hashtags: data.hashtags || []
     };
   } catch (e) {
