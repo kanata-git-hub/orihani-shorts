@@ -48,7 +48,7 @@ Duration: ${duration}`;
 
         const plannerText = plannerResponse.text || "";
 
-        const converterPrompt = `You are an expert prompt converter. Based on the following Korean video plan, convert it into a structured JSON format containing the title, location, full scenario (Korean), Instagram Reels caption (Korean), exactly 5 hashtags, and English prompts for both images (initial frames) and video generation for each clip.
+        const converterPrompt = `You are an expert prompt converter. Based on the following Korean video plan, convert it into a structured JSON format containing the title, location, full scenario (Korean), Instagram Reels caption (Korean & English), exactly 5 hashtags, and English prompts for both images (initial frames) and video generation for each clip.
 
 Korean Plan:
 ${plannerText}
@@ -58,8 +58,8 @@ Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OU
 If any character needs to speak, explicitly include 'DIALOGUE: [Korean dialogue]' inside the video prompt.
 
 CRITICAL INSTAGRAM GUIDELINES:
-1. Caption: Write it in a casual, highly relatable, conversational tone (like texting a friend). Avoid TV narration or overly descriptive/literary language (e.g. no "극명한 온도 차이!"). Keep it short and witty.
-2. Hashtags: Provide EXACTLY 5 hashtags. The last two MUST always be '대구한의원' and '오리한의원'. The first three should be hyper-specific relatable keywords based on the scenario (e.g. #아아수혈, #생명수직관, #직장인생존템). DO NOT use broad generic tags like #일상유머 or #쇼츠.`;
+1. Caption: Create a bilingual (Korean & English) caption. First, write the Korean caption in a casual, highly relatable, conversational tone (like texting a friend). Keep it witty and short. Avoid TV narration. Second, provide the English translation right below it (e.g., separate with empty lines or an emoji). The English translation MUST capture the same witty, relatable meme-like nuance and cultural context, tailored for an English-speaking audience to maximize engagement. Do not use stiff literal translation.
+2. Hashtags: Provide EXACTLY 5 hashtags. Two of them MUST always be '대구한의원' and '오리한의원'. The remaining three should be hyper-specific, trending relatable keywords curated based on the video content and current Instagram algorithm trends (e.g., #3danimation, #직장인공감, #relatable) to maximize both domestic and global reach. DO NOT use broad generic tags like #일상유머 or #쇼츠.`;
 
         const converterResponse = await ai.models.generateContent({
           model: "gemini-3.5-flash",
@@ -73,11 +73,11 @@ CRITICAL INSTAGRAM GUIDELINES:
                 title: { type: "STRING", description: "Catchy YouTube Shorts style title in Korean" },
                 location: { type: "STRING", description: "Background location in Korean" },
                 scenario: { type: "STRING", description: "The full step-by-step storyboard in Korean" },
-                instagramCaption: { type: "STRING", description: "Instagram Reels post content/caption in Korean" },
+                instagramCaption: { type: "STRING", description: "Bilingual (Korean & English) Instagram Reels post content/caption" },
                 hashtags: { 
                   type: "ARRAY", 
                   items: { type: "STRING" },
-                  description: "Exactly 5 hashtags (without # symbol)" 
+                  description: "Exactly 5 hashtags (without # symbol). Must include 대구한의원 and 오리한의원." 
                 },
                 clips: {
                   type: "ARRAY",
