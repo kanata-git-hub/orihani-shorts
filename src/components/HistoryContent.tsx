@@ -170,6 +170,24 @@ export function HistoryContent({
              )}
            </button>
 
+           {clips.length > 0 && (
+             <div className="w-full max-w-md self-center grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+               {clips.map((c, idx) => (
+                 <button
+                   key={idx}
+                   onClick={() => {
+                     navigator.clipboard.writeText(`[CLIP ${idx + 1}: ${c.title}]\n${c.videoPrompt}`);
+                     showToast(`클립 ${idx + 1} 프롬프트 복사 완료!`);
+                   }}
+                   disabled={!c.videoPrompt}
+                   className="bg-[#f9f7f4] border-2 border-[#552c24] text-[#552c24] py-2 px-3 font-bold text-xs uppercase hover:bg-[#ffcd4a]/20 transition-all rounded disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                 >
+                   <Copy size={12} /> CLIP {idx + 1}
+                 </button>
+               ))}
+             </div>
+           )}
+
            {clips[activeClipIndex] && (() => {
               const clip = clips[activeClipIndex];
               const idx = activeClipIndex;
