@@ -38,7 +38,7 @@ User Idea/Twist: ${customPrompt || "Impress me with a fun, VERY diverse, and cre
 Duration: ${duration}`;
 
         const plannerResponse = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
+          model: "gemini-3.6-flash",
           contents: plannerPrompt,
           config: { 
             systemInstruction: agentPrompt,
@@ -62,7 +62,7 @@ CRITICAL INSTAGRAM GUIDELINES:
 2. Hashtags: Provide EXACTLY 5 hashtags. Two of them MUST always be '대구한의원' and '오리한의원'. The remaining three should be a mix of Korean and English (e.g., 2 Korean and 1 English) hyper-specific, trending relatable keywords curated based on the video content and current Instagram algorithm trends (e.g., #3danimation, #직장인공감, #relatable) to maximize both domestic and global reach. Do not fill all three with only English tags. DO NOT use broad generic tags like #일상유머 or #쇼츠.`;
 
         const converterResponse = await ai.models.generateContent({
-          model: "gemini-3.5-flash",
+          model: "gemini-3.6-flash",
           contents: converterPrompt,
           config: {
             temperature: 0.7,
