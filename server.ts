@@ -62,7 +62,7 @@ Create a catchy, extremely short YouTube Shorts style title combining Korean and
 
 CRITICAL INSTAGRAM GUIDELINES:
 1. Caption: Create a bilingual (Korean & English) caption. First, write the Korean caption in a casual, highly relatable, conversational tone (like texting a friend). Keep it witty and short. Avoid TV narration. Second, provide the English translation right below it (e.g., separate with empty lines or an emoji). The English translation MUST capture the same witty, relatable meme-like nuance and cultural context, tailored for an English-speaking audience to maximize engagement. Do not use stiff literal translation.
-2. Hashtags: Provide EXACTLY 5 hashtags in this exact order: 'Relatable', '공감', '오리한의원', 'Humor', and '대구'.`;
+2. Hashtags: Provide EXACTLY 5 hashtags in this exact order: '#[Core Topic 1 in Korean]', '#[Core Topic 1 in English]', '#Relatable', '#공감', and '#오리한의원'.`;
 
         const converterResponse = await ai.models.generateContent({
           model: "gemini-3.6-flash",
@@ -80,7 +80,7 @@ CRITICAL INSTAGRAM GUIDELINES:
                 hashtags: { 
                   type: "ARRAY", 
                   items: { type: "STRING" },
-                  description: "Exactly 5 hashtags (without # symbol). Must include 대구한의원 and 오리한의원." 
+                  description: "Exactly 5 hashtags (without # symbol) in this exact order: [Core Topic 1 in Korean], [Core Topic 1 in English], Relatable, 공감, 오리한의원." 
                 },
                 clips: {
                   type: "ARRAY",
