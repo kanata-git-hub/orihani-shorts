@@ -61,7 +61,7 @@ CRITICAL TITLE GUIDELINES:
 Create a catchy, extremely short YouTube Shorts style title combining Korean and English in a single line. Example format: "선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)". Keep it punchy and very short.
 
 CRITICAL INSTAGRAM GUIDELINES:
-1. Caption: Create a bilingual (Korean & English) caption. First, write the Korean caption in a casual, highly relatable, conversational tone (like texting a friend). Keep it witty and short. Avoid TV narration. Second, provide the English translation right below it (e.g., separate with empty lines or an emoji). The English translation MUST capture the same witty, relatable meme-like nuance and cultural context, tailored for an English-speaking audience to maximize engagement. Do not use stiff literal translation.
+1. Caption: Create an extremely short, punchy one-line caption combining Korean and English. It MUST be a single line. Example format: "선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)". Do NOT write long paragraphs or separate sentences.
 2. Hashtags: Provide EXACTLY 5 hashtags in this exact order: '#[Core Topic 1 in Korean]', '#[Core Topic 1 in English]', '#Relatable', '#공감', and '#오리한의원'.`;
 
         const converterResponse = await ai.models.generateContent({
@@ -76,7 +76,7 @@ CRITICAL INSTAGRAM GUIDELINES:
                 title: { type: "STRING", description: "Catchy, extremely short YouTube Shorts style title combining Korean and English (e.g., '선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)')" },
                 location: { type: "STRING", description: "Background location in Korean" },
                 scenario: { type: "STRING", description: "The full step-by-step storyboard in Korean" },
-                instagramCaption: { type: "STRING", description: "Bilingual (Korean & English) Instagram Reels post content/caption" },
+                instagramCaption: { type: "STRING", description: "Extremely short one-line bilingual caption (e.g., '선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)')" },
                 hashtags: { 
                   type: "ARRAY", 
                   items: { type: "STRING" },
