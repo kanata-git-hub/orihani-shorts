@@ -62,7 +62,7 @@ Create a catchy, extremely short YouTube Shorts style title combining Korean and
 
 CRITICAL INSTAGRAM GUIDELINES:
 1. Caption: Create an extremely short, punchy one-line caption combining Korean and English. It MUST be a single line. Example format: "선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)". Do NOT write long paragraphs or separate sentences.
-2. Hashtags: Provide EXACTLY 5 hashtags in this exact order: '#[Core Topic 1 in Korean]', '#[Core Topic 1 in English]', '#Relatable', '#공감', and '#오리한의원'.`;
+2. Hashtags: Provide EXACTLY 5 hashtags in this exact order: '#[Core Topic 1 in Korean]', '#[Core Topic 1 in English]', '#Humor', '#Relatable', and '#유머'.`;
 
         const converterResponse = await ai.models.generateContent({
           model: "gemini-3.6-flash",
@@ -80,7 +80,7 @@ CRITICAL INSTAGRAM GUIDELINES:
                 hashtags: { 
                   type: "ARRAY", 
                   items: { type: "STRING" },
-                  description: "Exactly 5 hashtags (without # symbol) in this exact order: [Core Topic 1 in Korean], [Core Topic 1 in English], Relatable, 공감, 오리한의원." 
+                  description: "Exactly 5 hashtags (without # symbol) in this exact order: [Core Topic 1 in Korean], [Core Topic 1 in English], Humor, Relatable, 유머." 
                 },
                 clips: {
                   type: "ARRAY",
