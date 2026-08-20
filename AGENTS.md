@@ -105,7 +105,6 @@ REFERENCE INSTRUCTION: @image1 = First frame reference.
 OUTPUT SPECS: 5s, vertical 9:16.
 CINEMATOGRAPHY: Medium shot, static camera, eye-level, shallow depth of field focusing strictly on Somi.
 ENVIRONMENT: A cozy modern oriental medicine clinic reception desk. Warm ambient wood tones, traditional herbal medicine wooden cabinets beautifully blurred in the background. A red LED clock clearly displaying '05:59' on the wall.
-CHARACTER DESIGN: Somi is an anthropomorphic white duck character with a smooth, round head, no hair, seamlessly smooth duck bill, and red cheeks. She is wearing an off-white/beige short-sleeved wrap-style nurse top with dark navy pants, exactly like the reference image. A thermometer and a pen are in her pocket. Minimalist 3D toy style, absolutely no human face.
 ACTION: She stands behind the solid wooden desk. Her shoulders are heavily slumped, eyelids are half-closed, looking extremely exhausted and drained. She slowly and lazily flips through medical charts with one hand, gently and pointlessly rolling a pen with the other.
 STRICT RULES (CRITICAL): Somi must maintain perfect 3D toy duck anatomy. Hands must stay clearly above the wooden desk at all times. The desk is a solid physical object, no clipping through it. No mutation.
 
@@ -116,7 +115,6 @@ REFERENCE INSTRUCTION: @image1 or last frame of Clip 1.
 OUTPUT SPECS: 5s, vertical 9:16.
 CINEMATOGRAPHY: Medium close-up, slight cinematic slow zoom-in on her face to emphasize emotion.
 ENVIRONMENT: Same cozy clinic desk, LED clock shows '05:59'.
-CHARACTER DESIGN: Same anthropomorphic white duck nurse character (Somi), wearing the same off-white/beige uniform.
 ACTION: Sudden and dramatic shift in facial expression. Her eyes widen in extreme joy, and a huge, bright smile completely transforms her face. She reaches down (off-screen) and places a small, sparkly silver disco ball firmly onto the wooden desk surface. As the ball touches the desk, the warm clinic lighting instantly shifts to dynamic, flashing neon disco strobe lights (pink, purple, and blue).
 STRICT RULES (CRITICAL): The disco ball must rest solidly on the desk surface. Perfect 3D toy duck anatomy. Seamless duck bill must remain unchanged. Fingers must naturally grip the disco ball without melting into it.
 
@@ -127,7 +125,6 @@ REFERENCE INSTRUCTION: Last frame of Clip 2.
 OUTPUT SPECS: 5s, vertical 9:16.
 CINEMATOGRAPHY: Medium shot, dynamic camera slightly shaking to match the rhythm of the disco lights.
 ENVIRONMENT: Clinic desk fully illuminated by flashing neon disco lights.
-CHARACTER DESIGN: Same anthropomorphic white duck nurse character (Somi), wearing the same uniform.
 ACTION: She smoothly puts on glowing neon-colored sunglasses. She playfully taps the disco ball with one finger, making it spin. She then performs a highly energetic, fast, and rhythmic upper-body shoulder dance behind the desk. Just before the clip ends, she abruptly slides down or ducks out of the camera frame completely, leaving the desk empty.
 STRICT RULES (CRITICAL): Arms, hands, and body must NOT merge or clip through the wooden desk under any circumstances. Maintain perfect, fluid 3D toy duck anatomy during the dance. No melting limbs.
 ```
@@ -144,7 +141,6 @@ REFERENCE INSTRUCTION: [e.g. @image1 = First frame reference...]
 OUTPUT SPECS: [e.g. 5s, vertical 9:16]
 CINEMATOGRAPHY: [Detailed camera movement and depth of field. Do NOT write just "Static shot". Use full sentences.]
 ENVIRONMENT: [Describe the locked background matching LOCKED_ENVIRONMENT. Need multiple sentences.]
-CHARACTER DESIGN: [Describe the character, outfit, and anatomically strict rules. Need multiple sentences.]
 ACTION: [EXTREMELY detailed description of actions, micro-expressions, object interactions for this clip. Minimum 3 sentences. CRITICAL FOR 5s: The peak dramatic action MUST happen instantly in the very first frame. Then describe the cinematic aftermath/zoom for the rest of the clip.]
 STRICT RULES (CRITICAL): [Anatomical boundaries. NO CLIPPING through solid objects. Need multiple sentences.]
 

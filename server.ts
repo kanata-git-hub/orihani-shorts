@@ -54,7 +54,7 @@ Korean Plan:
 ${plannerText}
 
 Ensure the image prompts strictly follow the character reference instructions and environment details.
-Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OUTPUT SPECS, CINEMATOGRAPHY, ENVIRONMENT, CHARACTER DESIGN, ACTION, STRICT RULES.
+Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OUTPUT SPECS, CINEMATOGRAPHY, ENVIRONMENT, ACTION, STRICT RULES. DO NOT include a CHARACTER DESIGN section.
 If any character needs to speak, explicitly include 'DIALOGUE: [Korean dialogue]' inside the video prompt.
 
 CRITICAL TITLE GUIDELINES:
