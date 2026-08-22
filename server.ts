@@ -55,7 +55,9 @@ ${plannerText}
 
 Ensure the image prompts strictly follow the character reference instructions and environment details.
 Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OUTPUT SPECS, CINEMATOGRAPHY, ENVIRONMENT, ACTION, STRICT RULES. DO NOT include a CHARACTER DESIGN section.
-If any character needs to speak, explicitly include 'DIALOGUE: [Korean dialogue]' inside the video prompt.
+If any character needs to speak, explicitly include a DIALOGUE section inside the video prompt in this exact format:
+DIALOGUE : [Character English Name] : "[Korean dialogue]"
+Use these specific English names: 오원장 = O-wonjang, 소미 = Somi, 덕이 = Deok-i. (e.g., DIALOGUE : O-wonjang : "야식 바다를 지나갈 때 절대 날 풀지 마라!")
 
 CRITICAL TITLE GUIDELINES:
 Create a catchy, extremely short YouTube Shorts style title combining Korean and English in a single line. Example format: "선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)". Keep it punchy and very short.

@@ -142,6 +142,7 @@ OUTPUT SPECS: [e.g. 5s, vertical 9:16]
 CINEMATOGRAPHY: [Detailed camera movement and depth of field. Do NOT write just "Static shot". Use full sentences.]
 ENVIRONMENT: [Describe the locked background matching LOCKED_ENVIRONMENT. Need multiple sentences.]
 ACTION: [EXTREMELY detailed description of actions, micro-expressions, object interactions for this clip. Minimum 3 sentences. CRITICAL FOR 5s: The peak dramatic action MUST happen instantly in the very first frame. Then describe the cinematic aftermath/zoom for the rest of the clip.]
+DIALOGUE: [OPTIONAL. If the character speaks, include it exactly in this format: DIALOGUE : Character English Name : "Korean dialogue". e.g., DIALOGUE : O-wonjang : "야식 바다를 지나갈 때 절대 날 풀지 마라!"]
 STRICT RULES (CRITICAL): [Anatomical boundaries. NO CLIPPING through solid objects. Need multiple sentences.]
 
 🎬 CLIP N: [기획한 컷 수만큼 CLIP 1의 템플릿을 반복 생성하세요. CRITICAL: 시나리오에서 4컷으로 나누었다면 반드시 CLIP 1, CLIP 2, CLIP 3, CLIP 4를 모두 작성해야 합니다. 절대 중간에 생략하거나 퉁치지 마세요.]
