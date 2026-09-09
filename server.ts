@@ -3,6 +3,7 @@ import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 import dotenv from "dotenv";
+import { clipDurations, timingInstruction, validateClipTiming } from "./src/utils/clipTiming";
 dotenv.config({ override: true });
 
 async function startServer() {
@@ -24,6 +25,11 @@ async function startServer() {
 
   app.post("/api/generate", async (req, res) => {
     const { character, customPrompt, duration } = req.body;
+    if (duration !== '5s' && duration !== '15s') {
+      res.status(400).json({ error: '영상 길이는 5초 또는 15초여야 합니다.' });
+      return;
+    }
+    const timing = timingInstruction(duration);
     const maxRetries = 3;
     let attempt = 0;
 
@@ -35,13 +41,14 @@ async function startServer() {
 Focus Character: ${character?.name}
 Instructions: Look at the reference formulas. Focus on relatable, cute everyday moments without forcing unnecessary twists. Ensure you strictly follow constraints and never repeat the same physical ailment or setup as the previous outputs. Make it highly engaging and creative.
 User Idea/Twist: ${customPrompt || "Impress me with a fun, VERY diverse, and creative idea without relying on the 'forward head posture' (turtle neck) or 'staring at a monitor' trope."}
-Duration: ${duration}`;
+Duration: ${duration}
+${timing}`;
 
         const plannerResponse = await ai.models.generateContent({
           model: "gemini-3.6-flash",
           contents: plannerPrompt,
           config: { 
-            systemInstruction: agentPrompt,
+            systemInstruction: `${agentPrompt}\n\n${timing}`,
             temperature: 1.0,
           },
         });
@@ -52,6 +59,8 @@ Duration: ${duration}`;
 
 Korean Plan:
 ${plannerText}
+
+${timing}
 
 Ensure the image prompts strictly follow the character reference instructions and environment details.
 Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OUTPUT SPECS, CINEMATOGRAPHY, ENVIRONMENT, ACTION, STRICT RULES. DO NOT include a CHARACTER DESIGN section.
@@ -86,6 +95,8 @@ CRITICAL INSTAGRAM GUIDELINES:
                 },
                 clips: {
                   type: "ARRAY",
+                  minItems: clipDurations(duration).length,
+                  maxItems: clipDurations(duration).length,
                   items: {
                     type: "OBJECT",
                     properties: {
@@ -104,6 +115,7 @@ CRITICAL INSTAGRAM GUIDELINES:
           }
         });
 
+        validateClipTiming(converterResponse.text || '{}', duration);
         res.json({ success: true, result: converterResponse.text });
         return;
       } catch (error: any) {
