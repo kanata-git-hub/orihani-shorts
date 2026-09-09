@@ -23,6 +23,11 @@ export function WorkboardSidebar({
       <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
         {/* Character Selection */}
         <div>
+          <div className="flex justify-end mb-2">
+            <button type="button" onClick={() => setCustomPrompt("")} disabled={isGenerating || !customPrompt}
+              className="text-xs text-[#552c24]/70 hover:text-[#552c24] disabled:opacity-40"
+              aria-label="제작 방향 내용 지우기">내용 지우기</button>
+          </div>
           <h2 className="text-xs font-bold uppercase tracking-widest text-[#552c24]/50 mb-3 flex items-center gap-2">
             <Type size={14} /> 등장인물
           </h2>
