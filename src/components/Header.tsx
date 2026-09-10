@@ -2,8 +2,8 @@ import { Settings, Shield } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface HeaderProps {
-  view: '15s-plan' | '5s-plan' | 'scenario' | 'prompts' | 'history';
-  setView: (view: '15s-plan' | '5s-plan' | 'scenario' | 'prompts' | 'history') => void;
+  view: '15s-plan' | '5s-plan' | 'scenario' | 'prompts' | 'history' | 'editor';
+  setView: (view: '15s-plan' | '5s-plan' | 'scenario' | 'prompts' | 'history' | 'editor') => void;
   setViewingHistoryId: (id: string | null) => void;
 }
 
@@ -50,6 +50,7 @@ export function Header({ view, setView, setViewingHistoryId }: HeaderProps) {
           >
             기록
           </button>
+          <button onClick={() => setView('editor')} className={view === 'editor' ? 'border-b-2 border-[#552c24] pb-1' : 'opacity-60 hover:opacity-100'}>영상 편집</button>
           {isAdmin && (
             <a href="/admin" className="flex items-center gap-1 opacity-60 hover:opacity-100 cursor-pointer text-[#ffcd4a] uppercase bg-[#552c24] px-2 py-1 rounded-md text-xs">
               <Shield size={14} /> 관리자
