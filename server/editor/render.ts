@@ -45,11 +45,13 @@ export function subtitles(p: EditPlan) {
     (title ? `Dialogue: 0,${clock(0)},${clock(1)},Title,,0,0,0,,{\\pos(540,480)}${escapeASS(title)}\n` : '') +
     captions.map(c => `Dialogue: 0,${clock(c.start)},${clock(c.end)},Caption,,0,0,0,,{\\pos(540,1440)}${escapeASS(c.text)}`).join('\n');
 }
-export async function render(p: EditPlan, videos: string[], voice: string, dir: string, signal?: AbortSignal) {
+export async function render(p: EditPlan, videos: string[], voice: string | undefined, dir: string, signal?: AbortSignal) {
   validatePlan(p); const lengths = p.duration === 5 ? [5] : [4, 4, 3, 4];
   if (videos.length !== lengths.length) throw Error(`영상 ${lengths.length}개를 순서대로 넣어주세요.`);
-  const narration = await inspect(voice, dir, signal);
-  if (!narration.audio || narration.duration / p.voiceSpeed > p.duration + 0.05) throw Error('나레이션이 영상보다 깁니다. 속도를 조절하거나 대본을 줄여 음성을 다시 만들어주세요. 음성을 잘라내지는 않습니다.');
+  const narration = voice ? await inspect(voice, dir, signal) : undefined;
+  if (narration && (!narration.audio || (!p.voiceSegments?.length && narration.duration / p.voiceSpeed > p.duration + 0.05))) throw Error('나레이션이 영상보다 깁니다. 속도를 조절하거나 대본을 줄여 음성을 다시 만들어주세요. 음성을 잘라내지는 않습니다.');
+  const segments=voice?(p.voiceSegments?.length?p.voiceSegments:[{sourceStart:0,sourceEnd:narration!.duration,start:0}]):[];
+  for(const s of segments){if(s.sourceEnd>narration!.duration+0.05)throw Error('해설 구간이 음성 길이를 벗어납니다.');if(p.dialogueRanges?.some(d=>s.start<d.end&&s.start+(s.sourceEnd-s.sourceStart)/p.voiceSpeed>d.start))throw Error('해설과 등장인물 대사가 겹칩니다. 자동 싱크를 다시 실행해주세요.');}
   for (let i = 0; i < videos.length; i++) {
     const meta = await inspect(videos[i], dir, signal);
     if (!meta.video || meta.duration < lengths[i] - 0.15 || meta.duration > lengths[i] + 0.5) throw Error(`${i + 1}번 영상은 ${lengths[i]}초 영상이어야 합니다. 현재 ${meta.duration.toFixed(2)}초입니다.`);
@@ -58,7 +60,15 @@ export async function render(p: EditPlan, videos: string[], voice: string, dir: 
   await writeFile(path.join(dir, 'clips.txt'), videos.map((_, i) => `file 'clip${i}.mp4'`).join('\n'));
   await command(ff(), ['-y', '-nostdin', '-f', 'concat', '-safe', '1', '-i', 'clips.txt', '-c', 'copy', 'joined.mp4'], dir, signal);
   await writeFile(path.join(dir, 'captions.ass'), subtitles(p));
-  await command(ff(), ['-y', '-nostdin', '-i', 'joined.mp4', '-i', voice, '-filter_complex', `[0:v]ass=captions.ass[v];[0:a]volume=${p.originalVolume}[original];[1:a]atempo=${p.voiceSpeed},volume=${p.voiceVolume},apad[voice];[original][voice]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.95:level=0[a]`, '-map', '[v]', '-map', '[a]', '-t', String(p.duration), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2', '-movflags', '+faststart', '-threads', '2', 'finished.mp4'], dir, signal);
+  const speaking=(p.dialogueRanges||[]).map(d=>`between(t,${d.start},${d.end})`).join('+');
+  const gain=speaking?`'if(${speaking},1,${p.originalVolume})':eval=frame`:String(p.originalVolume);
+  let filters=`[0:v]ass=captions.ass[v];[0:a]volume=${gain}[original];`;
+  if(segments.length){
+    filters+=`[1:a]asplit=${segments.length}${segments.map((_,i)=>`[src${i}]`).join('')};`;
+    filters+=segments.map((s,i)=>`[src${i}]atrim=start=${s.sourceStart}:end=${s.sourceEnd},asetpts=PTS-STARTPTS,atempo=${p.voiceSpeed},volume=${p.voiceVolume},adelay=${Math.round(s.start*1000)}:all=1[voice${i}];`).join('');
+    filters+=`[original]${segments.map((_,i)=>`[voice${i}]`).join('')}amix=inputs=${segments.length+1}:duration=first:normalize=0,alimiter=limit=0.95:level=0[a]`;
+  }else filters+='[original]alimiter=limit=0.95:level=0[a]';
+  await command(ff(), ['-y', '-nostdin', '-i', 'joined.mp4', ...(voice?['-i',voice]:[]), '-filter_complex', filters, '-map', '[v]', '-map', '[a]', '-t', String(p.duration), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-ar', '48000', '-ac', '2', '-movflags', '+faststart', '-threads', '2', 'finished.mp4'], dir, signal);
   const out = await inspect('finished.mp4', dir, signal);
   if (!out.video || !out.audio || Math.abs(out.duration - p.duration) > 0.15) throw Error('완성 파일의 영상·음성 검증에 실패했습니다.');
   return path.join(dir, 'finished.mp4');
