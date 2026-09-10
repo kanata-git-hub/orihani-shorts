@@ -7,13 +7,25 @@ const root = path.resolve(__dirname, '..');
 const compiled = path.join(root, '.editor-test');
 fs.mkdirSync(compiled, { recursive: true });
 fs.writeFileSync(path.join(compiled, 'package.json'), '{"type":"commonjs"}');
-for (const f of ['src/editor/model.ts', 'server/editor/render.ts']) {
+for (const f of ['src/editor/model.ts', 'server/editor/render.ts', 'server/editor/routes.ts']) {
   const dest = path.join(compiled, f.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
 }
 const { defaultPlan, validatePlan, importEpisode } = require(path.join(compiled, 'src/editor/model.js'));
 const { subtitles, render, command, inspect } = require(path.join(compiled, 'server/editor/render.js'));
+const { audioResponse } = require(path.join(compiled, 'server/editor/routes.js'));
+test('REST model_output audio is joined into a playable 24kHz WAV', () => {
+  const first = Buffer.from([1, 0, 2, 0]), second = Buffer.from([3, 0]);
+  const result = audioResponse({ steps: [
+    { type: 'user_input', content: [{ type: 'audio', data: 'ignored' }] },
+    { type: 'model_output', content: [{ type: 'text', text: 'ignored' }, ...[first, second].map(p => ({type:'audio', mime_type:'audio/pcm;rate=24000', data:p.toString('base64')}))] }
+  ] });
+  assert.equal(result.toString('ascii',0,4),'RIFF'); assert.equal(result.readUInt32LE(24),24000);
+  assert.deepEqual(result.subarray(44),Buffer.concat([first,second]));
+  assert.throws(() => audioResponse({steps:[]}), /오디오가/);
+  assert.throws(() => audioResponse({steps:[{type:'model_output',content:[{type:'audio',mime_type:'audio/mp3',data:'AQACAA=='}]}]}), /음성 형식/);
+});
 test('invalid, overlapping and overlong caption times are rejected', () => {
   for (const captions of [[{start:0,end:6,text:'가'}], [{start:0,end:3,text:'가'},{start:2,end:5,text:'나'}], [{start:NaN,end:2,text:'가'}]]) assert.throws(() => validatePlan({...defaultPlan(), captions}));
 });
