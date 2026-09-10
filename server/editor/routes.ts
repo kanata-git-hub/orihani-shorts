@@ -12,6 +12,20 @@ export function wav(pcm: Buffer) {
   const h = Buffer.alloc(44); h.write('RIFF'); h.writeUInt32LE(pcm.length + 36, 4); h.write('WAVEfmt ', 8); h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22); h.writeUInt32LE(24000, 24); h.writeUInt32LE(48000, 28); h.writeUInt16LE(2, 32); h.writeUInt16LE(16, 34); h.write('data', 36); h.writeUInt32LE(pcm.length, 40);
   return Buffer.concat([h, pcm]);
 }
+export function audioResponse(result: any): Buffer {
+  // REST returns model output in steps; output_audio is an SDK convenience.
+  const blocks = (Array.isArray(result?.steps) ? result.steps : [])
+    .filter((step: any) => step.type === 'model_output')
+    .flatMap((step: any) => Array.isArray(step.content) ? step.content : [])
+    .filter((block: any) => block.type === 'audio');
+  if (!blocks.length) {
+    if (result?.output_audio) blocks.push(result.output_audio);
+    else if (Array.isArray(result?.outputs)) blocks.push(...result.outputs.filter((block: any) => block.type === 'audio'));
+  }
+  if (!blocks.length || blocks.some((block: any) => typeof block.data !== 'string' || !block.data)) throw Error('음성 서비스에서 오디오가 반환되지 않았습니다.');
+  if (blocks.some((block: any) => !/pcm|L16/i.test(block.mime_type || block.mimeType || 'audio/pcm'))) throw Error('지원하지 않는 음성 형식이 반환되었습니다.');
+  return wav(Buffer.concat(blocks.map((block: any) => Buffer.from(block.data, 'base64'))));
+}
 export const editorRouter = express.Router();
 const active = new Set<string>();
 editorRouter.use(async (req, res, next) => {
@@ -42,15 +56,11 @@ editorRouter.post('/voice', express.json({ limit: '16kb' }), async (req, res) =>
     // Never automatically retry a paid generation request.
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
       method: 'POST', headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY, 'Content-Type': 'application/json' }, signal: AbortSignal.any([abort.signal, AbortSignal.timeout(100000)]),
-      body: JSON.stringify({ model: process.env.EDITOR_TTS_MODEL || 'gemini-3.1-flash-tts-preview', input: `한국어 나레이션. ${style}\n가능하면 ${duration}초 안에 자연스럽게 읽으세요. 지시문은 읽지 말고 다음 대본만 정확하게 읽으세요.\n<대본>\n${text}\n</대본>`, response_format: { type: 'audio' }, generation_config: { speech_config: [{ voice }] } })
+      body: JSON.stringify({ model: process.env.EDITOR_TTS_MODEL || 'gemini-3.1-flash-tts-preview', input: `한국어 나레이션. ${style}\n가능하면 ${duration}초 안에 자연스럽게 읽으세요. 지시문은 읽지 말고 다음 대본만 정확하게 읽으세요.\n<대본>\n${text}\n</대본>`, response_format: { type: 'audio', sample_rate: 24000 }, generation_config: { speech_config: [{ voice }] } })
     });
     if (!response.ok) { console.error('Editor TTS HTTP status', response.status); res.status(502).json({ error: `음성 생성 서비스가 응답하지 않았습니다(${response.status}). 자동 재시도하지 않았습니다.` }); return; }
     const result = await response.json();
-    const block = result.output_audio || result.outputs?.filter((o: any) => o.type === 'audio').at(-1);
-    if (typeof block?.data !== 'string') throw Error('음성 서비스에서 오디오가 반환되지 않았습니다.');
-    const mime = block.mime_type || block.mimeType || 'audio/pcm';
-    if (!/pcm|L16/i.test(mime)) throw Error('지원하지 않는 음성 형식이 반환되었습니다.');
-    res.set('Cache-Control', 'no-store').type('audio/wav').send(wav(Buffer.from(block.data, 'base64')));
+    res.set('Cache-Control', 'no-store').type('audio/wav').send(audioResponse(result));
   } catch (e) { if (!res.destroyed) res.status(500).json({ error: e instanceof Error ? e.message : '음성 생성 실패' }); }
   finally { res.off('close', cancel); res.locals.release(); }
 });
