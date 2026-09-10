@@ -21,7 +21,7 @@ function native(n: number) {
 export function spokenNumbers(input: string): string {
   let text = input.replace(/(\d),(?=\d{3}(?:\D|$))/g, '$1').replace(/(\d),(?=\d{3}(?:\D|$))/g, '$1');
   text = text.replace(/(\d{1,2}):(\d{2})(?::(\d{2}))?/g, (_, h, m, s) => `${native(+h)} 시${+m ? ' ' + sino(m.replace(/^0+/, '') || '0') + ' 분' : ''}${s && +s ? ' ' + sino(s.replace(/^0+/, '') || '0') + ' 초' : ''}`);
-  text = text.replace(/(\d+)\s*(시간|명|개|마리|살|시|번|잔)/g, (_, n, unit) => `${+n === 20 ? '스무' : native(+n)} ${unit}`);
+  text = text.replace(/(\d+)\s*(시간|명|개(?!월)|마리|살|시|번|잔)/g, (_, n, unit) => `${+n === 20 ? '스무' : native(+n)} ${unit}`);
   text = text.replace(/(\d+(?:\.\d+)?)\s*(%|퍼센트|초|분|원|년|개월|kg|km|cm|mm|m|도|층|회)/g, (_, n, unit) => `${n.split('.').map((v: string,i: number) => i ? [...v].map(d => '영일이삼사오육칠팔구'[+d]).join(' ') : sino(v)).join(' 점 ')} ${{'%':'퍼센트',kg:'킬로그램',km:'킬로미터',cm:'센티미터',mm:'밀리미터',m:'미터'}[unit] || unit}`);
   return text.replace(/\d+(?:\.\d+)?/g, n => n.split('.').map((v,i) => i ? [...v].map(d => '영일이삼사오육칠팔구'[+d]).join(' ') : sino(v)).join(' 점 '));
 }
