@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { VideoEditor } from '../editor/VideoEditor';
 import { Sparkles, Clapperboard, AlertCircle } from 'lucide-react';
 import { CHARACTERS } from '../constants';
 import { extractScenes } from '../utils/extractors';
@@ -24,7 +25,7 @@ export default function App() {
   
   const [selectedCharacter, setSelectedCharacter] = useState(CHARACTERS[2].id);
   const [customPrompt, setCustomPrompt] = useState("");
-  const [view, setView] = useState<'15s-plan' | '5s-plan' | 'scenario' | 'prompts' | 'history'>('15s-plan');
+  const [view, setView] = useState<'15s-plan' | '5s-plan' | 'scenario' | 'prompts' | 'history' | 'editor'>('15s-plan');
 
   const {
     isGenerating,
@@ -97,6 +98,7 @@ export default function App() {
       />
 
       <main className="flex flex-col md:flex-row flex-1 overflow-hidden">
+        <VideoEditor visible={view === 'editor'} open={() => setView('editor')} />
         {(view === '15s-plan' || view === '5s-plan') && (
           <div className="flex-1 w-full bg-[#f9f7f4] flex flex-col items-center justify-center p-4 md:p-6 overflow-y-auto">
             <div className="w-full max-w-2xl bg-white shadow-[8px_8px_0px_#552c24] border-2 border-[#552c24] flex flex-col shrink-0 my-auto">
@@ -190,6 +192,7 @@ export default function App() {
         >
           기록
         </button>
+        <button onClick={() => setView('editor')} className={`flex-1 py-3 text-xs font-bold ${view === 'editor' ? 'bg-[#ffcd4a] text-[#552c24]' : 'text-[#ffcd4a] opacity-60'}`}>영상 편집</button>
       </nav>
 
       <footer className="hidden md:flex h-8 bg-[#ffcd4a] border-t border-[#552c24] px-4 items-center justify-between text-xs font-bold shrink-0">

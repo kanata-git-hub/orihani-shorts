@@ -1,4 +1,5 @@
 import express from "express";
+import { editorRouter } from "./server/editor/routes";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
@@ -10,6 +11,7 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
+  app.use('/api/editor', editorRouter);
   app.use(express.json({ limit: '50mb' }));
 
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
