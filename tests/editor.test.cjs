@@ -63,6 +63,7 @@ const { spokenNumbers, parseWords, alignCaptions, scheduleNarration, placedWords
 test('Korean readings preserve units and native counters',()=>{
   assert.equal(spokenNumbers('3명이 15초 동안 1%를 20개로'), '세 명이 십오 초 동안 일 퍼센트를 스무 개로');
   assert.equal(spokenNumbers('07:00에 1,000원'), '일곱 시에 천 원');
+  assert.equal(spokenNumbers('3개월에 3개'), '삼 개월에 세 개');
 });
 test('character dialogue is not placed in TTS narration',()=>{
   const p=importEpisode({duration:5,korean:'나레이션: 오늘도 출근이다.\n오원장: "퇴근합시다!"',scenario:'Dialog:오원장:"퇴근합시다!"'});
