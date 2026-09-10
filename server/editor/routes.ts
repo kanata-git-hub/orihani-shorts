@@ -6,6 +6,8 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { render } from './render';
+import { transcribe } from './transcribe';
+import { spokenNumbers } from '../../src/editor/speech';
 
 export function wav(pcm: Buffer) {
   if (!pcm.length || pcm.length % 2 || pcm.length > 24000 * 2 * 60) throw Error('음성 응답의 길이가 올바르지 않습니다.');
@@ -40,7 +42,7 @@ editorRouter.use(async (req, res, next) => {
   } catch { res.status(401).json({ error: '로그인을 다시 확인해주세요.' }); }
 });
 editorRouter.use((req, res, next) => {
-  if (req.method !== 'POST' || !['/voice', '/render'].includes(req.path)) { res.status(404).json({ error: '지원하지 않는 편집 요청입니다.' }); return; }
+  if (req.method !== 'POST' || !['/voice', '/render', '/transcribe'].includes(req.path)) { res.status(404).json({ error: '지원하지 않는 편집 요청입니다.' }); return; }
   const uid = res.locals.uid;
   if (active.has(uid) || active.size >= 1) { res.status(429).json({ error: '다른 음성·영상 작업을 처리 중입니다. 완료 후 다시 시도해주세요.' }); return; }
   active.add(uid); res.locals.release = () => active.delete(uid); next();
@@ -50,7 +52,8 @@ editorRouter.post('/voice', express.json({ limit: '16kb' }), async (req, res) =>
   const abort = new AbortController();
   const cancel = () => { if (!res.writableFinished) abort.abort(); }; res.on('close', cancel);
   try {
-    const { text, voice, style, duration } = req.body;
+    const { text: originalText, voice, style, duration } = req.body;
+    const text = typeof originalText === 'string' ? spokenNumbers(originalText) : originalText;
     if (typeof text !== 'string' || !text.trim() || text.length > 1200 || !['Zubenelgenubi', 'Achird', 'Algenib', 'Kore', 'Puck'].includes(voice) || typeof style !== 'string' || style.length > 500 || ![5, 15].includes(duration)) { res.status(400).json({ error: '나레이션과 목소리 설정을 확인해주세요.' }); return; }
     if (!process.env.GEMINI_API_KEY) throw Error('서버의 Gemini 키 설정이 필요합니다.');
     // Never automatically retry a paid generation request.
@@ -65,7 +68,7 @@ editorRouter.post('/voice', express.json({ limit: '16kb' }), async (req, res) =>
   finally { res.off('close', cancel); res.locals.release(); }
 });
 
-editorRouter.post('/render', async (req, res) => {
+editorRouter.post(['/render','/transcribe'], async (req, res) => {
   const size = Number(req.headers['content-length']);
   if (!Number.isFinite(size) || size <= 0 || size > 28 * 1024 * 1024) { res.locals.release(); res.status(413).json({ error: '영상과 음성 합계는 28MB 이하여야 합니다.' }); return; }
   let dir: string | undefined; const abort = new AbortController();
@@ -82,8 +85,15 @@ editorRouter.post('/render', async (req, res) => {
       upload(req, res, err => { cleanup(); err ? reject(err) : resolve(); });
     });
     const files = req.files as Record<string, Express.Multer.File[]>;
-    if (!files?.videos?.length || files.voice?.length !== 1) throw Error('영상과 나레이션 파일을 확인해주세요.');
-    const output = await render(JSON.parse(req.body.plan), files.videos.map(f => f.path), files.voice[0].path, dir, abort.signal);
+    if(req.path==='/transcribe'){
+      if(files?.videos?.length!==1||files.voice?.length)throw Error('분석할 파일 하나를 넣어주세요.');
+      const result=await transcribe(files.videos[0].path,dir,AbortSignal.any([abort.signal,AbortSignal.timeout(100000)]));
+      res.set('Cache-Control','no-store').json(result);return;
+    }
+    if (!files?.videos?.length || (files.voice?.length||0)>1) throw Error('영상과 나레이션 파일을 확인해주세요.');
+    const plan=JSON.parse(req.body.plan);
+    if(plan.narration?.trim()&&!files.voice?.length)throw Error('해설 음성 파일이 필요합니다.');
+    const output = await render(plan, files.videos.map(f => f.path), files.voice?.[0]?.path, dir, abort.signal);
     res.set('Cache-Control', 'no-store');
     await new Promise<void>((resolve, reject) => res.download(output, 'orihani-edited.mp4', err => err ? reject(err) : resolve()));
   } catch (e) {
