@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const compiled = path.join(root, '.editor-test');
 fs.mkdirSync(compiled, { recursive: true });
 fs.writeFileSync(path.join(compiled, 'package.json'), '{"type":"commonjs"}');
-for (const f of ['src/editor/model.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
+for (const f of ['src/workflow/package.ts','src/workflow/weekly.ts','src/utils/extractors.ts','src/editor/model.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
   const dest = path.join(compiled, f.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
@@ -15,6 +15,31 @@ for (const f of ['src/editor/model.ts', 'src/editor/media.ts', 'src/editor/stora
 const { defaultPlan, validatePlan, importEpisode } = require(path.join(compiled, 'src/editor/model.js'));
 const { subtitles, render, command, inspect } = require(path.join(compiled, 'server/editor/render.js'));
 const { audioResponse } = require(path.join(compiled, 'server/editor/routes.js'));
+const workPackage=require(path.join(compiled,'src/workflow/package.js'));
+const {parseWeekly}=require(path.join(compiled,'src/workflow/weekly.js'));
+test('portable work preserves source and pictures; invalid data and wrong duration are rejected',()=>{
+ const item={id:'record-1',timestamp:1,characterId:'owonjang',duration:5,result:JSON.stringify({title:'제목',clips:[2,3].map((n,i)=>({title:'장면',imageTitle:'사진'+i,imagePrompt:'image',videoPrompt:`OUTPUT SPECS: ${n}s`}))}),episode:{duration:5,title:'원본 제목',scenario:'오원장: "일어나!"',korean:'나레이션: 아침이다.',thumbnail:'아침',caption:'아침 #밈'}};
+ const images={'사진0':'data:image/png;base64,AQID'};
+ const raw=workPackage.makePackage(item,images),data=workPackage.readPackage(raw);
+ assert.equal(data.item.episode.korean,item.episode.korean);assert.deepEqual(data.images,images);
+ assert.equal(workPackage.editorEpisode(item).korean,'나레이션: 아침이다.');
+ assert.equal(workPackage.editorEpisode({...item,episode:undefined}).korean,'');
+ assert.notEqual(workPackage.importIdentity(item,[item]).id,item.id);
+ assert.equal(workPackage.importIdentity(item,[]).id,item.id);
+ assert.throws(()=>workPackage.makePackage({...item,duration:99},images));
+ assert.throws(()=>workPackage.makePackage({...item,duration:15},images));
+ assert.throws(()=>workPackage.makePackage(item,{'사진0':'https://example.com/image.png'}));
+ assert.throws(()=>workPackage.makePackage(item,{'다른 기록 사진':'data:image/png;base64,AQID'}));
+ assert.throws(()=>workPackage.makePackage(item,{'사진0':'data:image/svg+xml;base64,AQID'}));
+});
+test('mobile weekly import keeps explicit narration and derives two episode durations',()=>{
+ const make=(id,n)=>`[에피소드 ${id}: ${n}초 테스트]\n1. 시나리오\n오원장: "일어나!"\n2. 한글 나레이션 및 자막\n나레이션: 아침이다.\n자막: 아침\n3. 제목 및 해시태그\n아침 #밈\n4. 썸네일 추천 문구\n아침이다`;
+ const episodes=parseWeekly(make(1,5)+'\n'+make(2,15));
+ assert.equal(episodes.length,2);assert.deepEqual(episodes.map(e=>e.duration),[5,15]);
+ assert.equal(episodes[0].characters[0],'owonjang');
+ assert.equal(importEpisode(episodes[0]).narration,'아침이다.');
+ assert.throws(()=>parseWeekly('부족한 문서'));
+});
 test('REST model_output audio is joined into a playable 24kHz WAV', () => {
   const first = Buffer.from([1, 0, 2, 0]), second = Buffer.from([3, 0]);
   const result = audioResponse({ steps: [

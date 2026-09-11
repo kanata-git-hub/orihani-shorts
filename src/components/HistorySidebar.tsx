@@ -8,12 +8,15 @@ interface HistorySidebarProps {
   setViewingHistoryId: (id: string | null) => void;
   handleDeleteHistory: (id: string, e: React.MouseEvent) => void;
   handleClearHistory: () => void;
+  onImport:(file:File)=>void;
+  busy?:boolean;
 }
 
-export function HistorySidebar({ history, viewingHistoryId, setViewingHistoryId, handleDeleteHistory, handleClearHistory }: HistorySidebarProps) {
+export function HistorySidebar({ history, viewingHistoryId, setViewingHistoryId, handleDeleteHistory, handleClearHistory, onImport, busy }: HistorySidebarProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   return (
-    <aside className="w-full md:w-72 bg-[#ffffff] border-b md:border-b-0 md:border-r border-[#552c24]/10 p-4 md:p-5 flex flex-col shrink-0 overflow-y-auto max-h-[30vh] md:max-h-none">
+    <aside inert={busy||undefined} className={` ${viewingHistoryId?'ori-history-list-selected':''} w-full md:w-72 bg-[#ffffff] border-b md:border-b-0 md:border-r border-[#552c24]/10 p-4 md:p-5 flex flex-col shrink-0 overflow-y-auto max-h-full md:max-h-none`}>
+      <label className="ori-workflow mb-4">작업 파일 가져오기<input aria-label="작업 파일 가져오기" type="file" accept=".json,application/json" onChange={e=>{const f=e.target.files?.[0];e.target.value='';if(f)onImport(f);}}/><span className="text-xs">이 기기의 기록입니다. 다른 기기에서 저장한 작업 파일을 여세요.</span></label>
       <div className="mb-6 space-y-6 flex-1">
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -51,14 +54,14 @@ export function HistorySidebar({ history, viewingHistoryId, setViewingHistoryId,
                 return (
                   <div 
                     key={item.id} 
-                    onClick={() => setViewingHistoryId(item.id)}
+                    role="button" tabIndex={0} onKeyDown={e=>{if(e.target===e.currentTarget&&['Enter',' '].includes(e.key)){e.preventDefault();setViewingHistoryId(item.id);}}} onClick={() => setViewingHistoryId(item.id)}
                     className={`group p-3 border rounded text-xs cursor-pointer transition-colors relative ${viewingHistoryId === item.id ? 'bg-[#ffcd4a]/10 border-[#ffcd4a]/40' : 'border-[#552c24]/10 hover:bg-gray-50 opacity-70 hover:opacity-100'}`}
                   >
                     <div className="font-bold truncate pr-6">{displayTitle}</div>
                     <div className="text-xs opacity-60 mt-1">{new Date(item.timestamp).toLocaleString()}</div>
                     <button
                       onClick={(e) => handleDeleteHistory(item.id, e)}
-                      className="absolute right-2 top-2 p-1 text-[#552c24]/40 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute right-2 top-2 p-3 text-[#552c24]/40 hover:text-red-500 opacity-70 md:opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                       title="기획 삭제"
                     >
                       <Trash2 size={14} />

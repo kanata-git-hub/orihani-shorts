@@ -45,7 +45,7 @@ export function Header({ view, setView, setViewingHistoryId }: HeaderProps) {
             시각화
           </button>
           <button 
-            onClick={() => { setView('history'); setViewingHistoryId(null); }}
+            onClick={() => { setView('history'); }}
             className={`${view === 'history' ? 'border-b-2 border-[#552c24] pb-1 cursor-default opacity-100' : 'opacity-60 hover:opacity-100 cursor-pointer'} uppercase`}
           >
             기록

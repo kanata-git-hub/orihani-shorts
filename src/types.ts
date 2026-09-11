@@ -12,6 +12,19 @@ export interface HistoryItem {
   timestamp: number;
   characterId: string;
   result: string;
+  duration?: 5 | 15;
+  customPrompt?: string;
+  episode?: SourceEpisode;
+  editorKey?: string;
+}
+
+export interface SourceEpisode {
+  duration: 5 | 15;
+  title: string;
+  scenario: string;
+  korean: string;
+  thumbnail: string;
+  caption: string;
 }
 
 export interface MemeCaption {

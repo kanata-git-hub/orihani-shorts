@@ -1,3 +1,4 @@
+import { HistoryContinue } from '../workflow/HistoryContinue';
 import ReactMarkdown from 'react-markdown';
 import { Clapperboard, Copy, CheckCircle2, Download, RefreshCw, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { useState } from 'react';
@@ -12,7 +13,9 @@ interface HistoryContentProps {
   sceneImages: Record<string, string>;
   generatingImages: Record<string, boolean>;
   
-  handleGenerateImage: (sceneTitle: string, promptText: string, sceneIdx: number, allScenes: any[], fullPlanText?: string) => void;
+  handleGenerateImage: (sceneTitle: string, promptText: string, sceneIdx: number, allScenes: any[], fullPlanText?: string) => Promise<boolean>;
+  onEdit:()=>void;
+  onBusy:(v:boolean)=>void;
 }
 
 export function HistoryContent({
@@ -21,7 +24,7 @@ export function HistoryContent({
   viewingScenes,
   sceneImages,
   generatingImages,
-  handleGenerateImage
+  handleGenerateImage, onEdit, onBusy
 }: HistoryContentProps) {
   const [showRawPrompt, setShowRawPrompt] = useState(false);
   const [copiedAllPrompts, setCopiedAllPrompts] = useState(false);
@@ -83,6 +86,7 @@ export function HistoryContent({
 
   return (
     <div className="flex-1 flex flex-col gap-6 pb-8">
+      {viewingItem&&<HistoryContinue key={viewingItem.id} item={viewingItem} images={sceneImages} generating={generatingImages} onGenerate={handleGenerateImage} onEdit={onEdit} onBusy={onBusy}/>}
       {renderTabs()}
 
       {/* Top: Scenario Overview */}

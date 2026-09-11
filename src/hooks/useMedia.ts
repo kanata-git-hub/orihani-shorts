@@ -4,10 +4,12 @@ import { db } from '../utils/db';
 export function useMedia(view: 'workboard' | 'history', currentWorkboardId: string | null, viewingHistoryId: string | null) {
   const [generatingImages, setGeneratingImages] = useState<Record<string, boolean>>({});
   const [sceneImages, setSceneImages] = useState<Record<string, string>>({});
+  const [loadedId,setLoadedId]=useState<string|null>(null);
 
   const targetId = view === 'workboard' ? currentWorkboardId : viewingHistoryId;
 
   useEffect(() => {
+    let active=true;setSceneImages({});setLoadedId(null);
     const loadMedia = async () => {
       if (!targetId) {
         setSceneImages({});
@@ -15,6 +17,8 @@ export function useMedia(view: 'workboard' | 'history', currentWorkboardId: stri
       }
       try {
         const data = await db.get(targetId);
+        if(!active)return;
+        setLoadedId(targetId);
         if (data) {
           setSceneImages(data.images || {});
         } else {
@@ -24,7 +28,7 @@ export function useMedia(view: 'workboard' | 'history', currentWorkboardId: stri
         console.warn("DB load error", e);
       }
     };
-    loadMedia();
+    loadMedia();return ()=>{active=false;};
   }, [targetId]);
 
   const saveMediaToDB = async (idToSave: string, currentImages: Record<string, string>) => {
@@ -35,13 +39,13 @@ export function useMedia(view: 'workboard' | 'history', currentWorkboardId: stri
       };
       await db.set(idToSave, dataToSave);
     } catch(err) {
-      console.warn("DB save error", err);
+      console.warn("DB save error", err);throw err;
     }
   };
 
   return {
     generatingImages, setGeneratingImages,
-    sceneImages, setSceneImages,
+    sceneImages:loadedId===targetId?sceneImages:{}, setSceneImages,
     saveMediaToDB,
     targetId
   };
