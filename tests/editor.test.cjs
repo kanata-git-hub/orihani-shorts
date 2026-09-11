@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const compiled = path.join(root, '.editor-test');
 fs.mkdirSync(compiled, { recursive: true });
 fs.writeFileSync(path.join(compiled, 'package.json'), '{"type":"commonjs"}');
-for (const f of ['server/workflow/weekly.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
+for (const f of ['server/workflow/weekly.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/typography.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
   const dest = path.join(compiled, f.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
@@ -184,6 +184,55 @@ test('ASS user text cannot insert commands; titles end at one second', () => {
   const text = subtitles({...defaultPlan(),thumbnail:'첫 화면',captions:[{start:0,end:5,text:'{\\pos(0,0)} 자막'}]});
   assert.match(text,/0:00:00.00,0:00:01.00,Title/); assert.match(text,/pos\(540,1440\)/); assert.ok(!text.includes('{\\pos(0,0)}'));
 });
+test('larger text invalidates only finished output, including unopened legacy summaries', () => {
+  const d=makeDraft({plan:{...defaultPlan(),narration:'아침이다.'},videos:[new File(['video'],'clip.mp4',{lastModified:1})],voiceBlob:new Blob(['voice']),result:new Blob(['previous result'])});
+  d.voiceKey=draftModel.voiceKey(d);d.syncKey=draftModel.syncKey(d);
+  d.resultKey=JSON.stringify([3,1,d.plan,d.voiceKey,[[d.videos[0].name,d.videos[0].size,d.videos[0].lastModified]]]);
+  const restored=draftModel.restoreDraft(d);
+  assert.equal(restored,d);assert.equal(draftModel.voiceIsCurrent(restored),true);
+  assert.equal(restored.syncKey,draftModel.syncKey(restored));assert.equal(draftModel.draftStage(restored),'captions');
+  assert.equal(draftModel.resultIsCurrent(restored),false);assert.equal(restored.result,d.result);
+  const oldSummary={...draftModel.summarizeDraft(d),state:'result',renderVersion:undefined};
+  assert.match(draftModel.draftProgress(oldSummary).label,/이전 완성본/);
+  d.resultKey=draftModel.resultKey(d);
+  assert.equal(draftModel.draftProgress(draftModel.summarizeDraft(d)).label,'완성됨');
+});
+test('caption sizes are independent and wrapping preserves words and explicit line breaks', () => {
+  const {fitVideoText}=require(path.join(compiled,'server/editor/typography.js'));
+  const short={start:0,end:2,text:'월요일 아침 알람 끄려다'};
+  const first=ass=>ass.split('\n').find(line=>line.startsWith('Dialogue:')&&line.includes(',Caption,'));
+  assert.equal(first(subtitles({...defaultPlan(),captions:[short]})),first(subtitles({...defaultPlan(),captions:[short,{start:2,end:5,text:'긴 자막이 들어와도 다른 자막의 크기는 줄어들지 않고 그대로 유지되어야 합니다.'}]})));
+  const phrase='Trying to turn off Monday alarm';
+  const wrapped=fitVideoText(phrase,400);
+  assert.equal(wrapped.text.split('\\N').join(' '),phrase);assert.ok(wrapped.text.includes('\\N'));
+  assert.equal(fitVideoText('첫 줄\n둘째 줄',400).text,'첫 줄\\N둘째 줄');
+  assert.ok(fitVideoText('안녕!',400).size<=150);
+});
+test('actual font renders larger titles and captions inside the central 75 percent', {skip:!process.env.FFMPEG_PATH}, () => {
+  const {execFileSync}=require('node:child_process');
+  const examples=[
+    ['치약 짰더니 로켓?','월요일 아침 알람 끄려다'],
+    ['알람 껐더니...?\nTurned off alarm...?','월요일 아침 알람 끄려다\nTrying to turn off\nMonday alarm'],
+    ['WWWWW iiiii 123!?','아주긴한글문장과VeryLongEnglishWord12345가있어도화면을벗어나지않습니다.']
+  ];
+  for(const [index,[thumbnail,text]] of examples.entries()) {
+    fs.writeFileSync(path.join(compiled,'text-size.ass'),subtitles({...defaultPlan(),thumbnail,captions:[{start:0,end:5,text}]}));
+    const pixels=execFileSync(process.env.FFMPEG_PATH,['-v','error','-f','lavfi','-i','color=black:s=1080x1920','-vf','ass=text-size.ass','-frames:v','1','-threads','1','-f','rawvideo','-pix_fmt','rgb24','pipe:1'],{cwd:compiled,maxBuffer:8e6});
+    assert.equal(pixels.length,1080*1920*3);
+    for(const [from,to,center] of [[0,960,480],[960,1920,1440]]) {
+      let left=1080,right=-1,top=1920,bottom=-1;
+      for(let y=from;y<to;y++)for(let x=0;x<1080;x++) {
+        const i=(y*1080+x)*3;
+        if(Math.max(pixels[i],pixels[i+1],pixels[i+2])>60) {left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);}
+      }
+      assert.ok(right>left,'text must be visible');
+      assert.ok(left>=132&&right<=948,`example ${index}: horizontal bounds ${left}..${right}`);
+      if(index<2)assert.ok(right-left>=740,`example ${index}: text remains too small (${right-left}px)`);
+      assert.ok(Math.abs((top+bottom)/2-center)<45,'vertical position must stay fixed');
+    }
+  }
+});
+
 test('real render: silent source, audio source, narration mixing and 15s concat', { skip: !process.env.FFMPEG_PATH, timeout:240000 }, async () => {
   const dir = path.join(compiled, 'media'); fs.mkdirSync(dir,{recursive:true}); const ff = process.env.FFMPEG_PATH;
   await command(ff,['-y','-f','lavfi','-i','color=c=0x67514a:s=360x640:r=30','-f','lavfi','-i','sine=frequency=220:sample_rate=48000','-t','5','-c:v','libx264','-pix_fmt','yuv420p','-c:a','aac','source.mp4'],dir);
