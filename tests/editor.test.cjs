@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const compiled = path.join(root, '.editor-test');
 fs.mkdirSync(compiled, { recursive: true });
 fs.writeFileSync(path.join(compiled, 'package.json'), '{"type":"commonjs"}');
-for (const f of ['src/workflow/package.ts','src/workflow/weekly.ts','src/utils/extractors.ts','src/editor/model.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
+for (const f of ['server/workflow/weekly.ts','src/workflow/package.ts','src/workflow/weekly.ts','src/utils/extractors.ts','src/editor/model.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
   const dest = path.join(compiled, f.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
@@ -17,6 +17,45 @@ const { subtitles, render, command, inspect } = require(path.join(compiled, 'ser
 const { audioResponse } = require(path.join(compiled, 'server/editor/routes.js'));
 const workPackage=require(path.join(compiled,'src/workflow/package.js'));
 const {parseWeekly}=require(path.join(compiled,'src/workflow/weekly.js'));
+const {newestWeekly,createWeeklyReader}=require(path.join(compiled,'server/workflow/weekly.js'));
+const weeklyFile=(date,id='a'.repeat(25))=>({id,name:`[${date}] 3D 오리 삼총사 릴스 개그 시리즈 주간 패키지.md`,mimeType:'application/vnd.google-apps.document'});
+const weeklyText='[에피소드 1: 5초 테스트]\n1. 시나리오\n오원장 등장\n2. 한글 나레이션 및 자막\n나레이션: 아침이다.\n3. 제목 및 해시태그\n아침 #밈\n4. 썸네일 추천 문구\n아침';
+test('latest weekly uses valid filename dates, not a recently edited old document',()=>{
+ assert.equal(newestWeekly([{...weeklyFile('2026-08-30'),modifiedTime:'2026-09-11'},weeklyFile('2026-09-06','b'.repeat(25)),weeklyFile('2026-02-30'),{...weeklyFile('2027-01-01'),mimeType:'application/pdf'}]).id,'b'.repeat(25));
+ assert.throws(()=>newestWeekly([weeklyFile('2026-02-30')]));
+});
+test('weekly reader paginates, coalesces requests, caches and refreshes without AI',async()=>{
+ let calls=0,time=100000;const urls=[];
+ const read=createWeeklyReader({key:()=> 'test-only',now:()=>time,fetch:async(url,options)=>{
+  calls++;urls.push(String(url));assert.equal(options.headers['x-goog-api-key'],'test-only');
+  if(String(url).includes('/export'))return new Response(weeklyText);
+  return Response.json(String(url).includes('pageToken=next')?{files:[weeklyFile('2026-09-06','b'.repeat(25))]}:{files:[weeklyFile('2026-08-30')],nextPageToken:'next'});
+ }});
+ const [a,b]=await Promise.all([read(),read()]);assert.equal(a,b);assert.equal(a.date,'2026-09-06');assert.equal(a.episodeCount,1);assert.equal(calls,3);
+ await read();assert.equal(calls,3);time+=6000;await read(true);assert.equal(calls,6);assert.ok(urls.every(url=>!url.includes('test-only')));
+});
+test('public Docs export never forwards credentials and rejects foreign redirects',async()=>{
+ const read=createWeeklyReader({key:()=> 'test-only',fetch:async(url,options)=>{
+  if(String(url).includes('/drive/v3/files?'))return Response.json({files:[weeklyFile('2026-09-06')]});
+  if(String(url).includes('googleapis.com'))return new Response('',{status:403});
+  assert.equal(options.headers,undefined);assert.equal(options.credentials,'omit');
+  if(String(url).includes('docs.google.com'))return new Response('',{status:302,headers:{location:'https://doc-test.googleusercontent.com/export'}});
+  return new Response(weeklyText);
+ }});assert.equal((await read()).episodeCount,1);
+ const bad=createWeeklyReader({key:()=> 'test-only',fetch:async(url)=>String(url).includes('/drive/v3/files?')?Response.json({files:[weeklyFile('2026-09-06')]}):String(url).includes('googleapis.com')?new Response('',{status:403}):new Response('',{status:302,headers:{location:'https://evil.example/export'}})});
+ await assert.rejects(bad(),/지원하지 않는/);
+});
+test('invalid latest text does not select an older document and failed imports remain retryable',async()=>{
+ let valid=false;const downloaded=[];
+ const read=createWeeklyReader({key:()=> 'test-only',fetch:async(url)=>{
+  if(String(url).includes('/drive/v3/files?'))return Response.json({files:[weeklyFile('2026-08-30'),weeklyFile('2026-09-06','b'.repeat(25))]});
+  downloaded.push(String(url));return new Response(valid?weeklyText:'<html>sign in</html>');
+ }});
+ await assert.rejects(read(),/텍스트로/);assert.equal(downloaded.length,1);assert.ok(downloaded[0].includes('b'.repeat(25)));
+ valid=true;assert.equal((await read()).date,'2026-09-06');
+ const huge=createWeeklyReader({key:()=> 'test-only',fetch:async(url)=>String(url).includes('/drive/v3/files?')?Response.json({files:[weeklyFile('2026-09-06')]}):new Response('x'.repeat(1000001))});
+ await assert.rejects(huge(),/너무 큽니다/);
+});
 test('portable work preserves source and pictures; invalid data and wrong duration are rejected',()=>{
  const item={id:'record-1',timestamp:1,characterId:'owonjang',duration:5,result:JSON.stringify({title:'제목',clips:[2,3].map((n,i)=>({title:'장면',imageTitle:'사진'+i,imagePrompt:'image',videoPrompt:`OUTPUT SPECS: ${n}s`}))}),episode:{duration:5,title:'원본 제목',scenario:'오원장: "일어나!"',korean:'나레이션: 아침이다.',thumbnail:'아침',caption:'아침 #밈'}};
  const images={'사진0':'data:image/png;base64,AQID'};

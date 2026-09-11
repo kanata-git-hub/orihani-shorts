@@ -8,6 +8,7 @@ import path from 'node:path';
 import { render } from './render';
 import { transcribe } from './transcribe';
 import { spokenNumbers } from '../../src/editor/speech';
+import { latestWeekly } from '../workflow/weekly';
 
 export function wav(pcm: Buffer) {
   if (!pcm.length || pcm.length % 2 || pcm.length > 24000 * 2 * 60) throw Error('음성 응답의 길이가 올바르지 않습니다.');
@@ -40,6 +41,11 @@ editorRouter.use(async (req, res, next) => {
     if (allowed?.length && !allowed.includes(user.email?.toLowerCase() || '')) { res.status(403).json({ error: '영상 편집 사용 권한이 없습니다.' }); return; }
     res.locals.uid = user.uid; next();
   } catch { res.status(401).json({ error: '로그인을 다시 확인해주세요.' }); }
+});
+editorRouter.get('/weekly', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try { res.json(await latestWeekly(req.query.refresh === '1')); }
+  catch (e) { res.status(502).json({error:e instanceof Error && e.name !== 'TimeoutError' ? e.message : '최신 대본 확인이 지연되고 있습니다. 잠시 후 다시 확인해주세요.'}); }
 });
 editorRouter.use((req, res, next) => {
   if (req.method !== 'POST' || !['/voice', '/render', '/transcribe'].includes(req.path)) { res.status(404).json({ error: '지원하지 않는 편집 요청입니다.' }); return; }
