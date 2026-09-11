@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { db } from '../utils/db';
 import { CHARACTERS } from "../constants";
+import { buildReferenceParts, loadReferenceImage, CharacterReference } from '../characterReference';
 
 
 export function useMediaGeneration(
@@ -62,34 +63,20 @@ export function useMediaGeneration(
         if (defaultChar) matchedChars.push(defaultChar);
       }
 
-      let imageParts: any[] = [];
+      if (!matchedChars.length) throw Error('사용할 캐릭터를 선택해주세요. 원본 사진 없이 생성하지 않습니다.');
+      const references: CharacterReference[] = [];
 
       for (const matchedChar of matchedChars) {
         if (matchedChar && matchedChar.imgs) {
           const labels = ["(Front View)", "(Side View)", "(Back View)"];
           for (let i = 0; i < matchedChar.imgs.length; i++) {
             const imgPath = matchedChar.imgs[i];
-            const res = await fetch(imgPath);
-            const blob = await res.blob();
-            const base64 = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () =>
-                resolve((reader.result as string).split(",")[1]);
-              reader.readAsDataURL(blob);
-            });
-
-            imageParts.push({ text: `[Character Reference Image: ${matchedChar.name} ${labels[i] || ""}]` });
-            imageParts.push({
-              inlineData: {
-                data: base64,
-                mimeType: blob.type || "image/png",
-              },
-            });
+            references.push({ url: await loadReferenceImage(imgPath), label: `${matchedChar.name} ${labels[i] || ''}` });
           }
         }
       }
 
-      let prevImagePart = null;
+      let previousImage: string | null = null;
       let prevSceneDesc = "";
       if (sceneIdx > 0 && allScenes.length > 0) {
         // Find the most recently generated scene to use as a visual anchor
@@ -99,12 +86,7 @@ export function useMediaGeneration(
           if (prevDataUrl) {
             const match = prevDataUrl.match(/^data:([^;]+);base64,(.+)$/);
             if (match) {
-              prevImagePart = {
-                inlineData: {
-                  mimeType: match[1],
-                  data: match[2],
-                },
-              };
+              previousImage = prevDataUrl;
               prevSceneDesc = allScenes[i].prompt;
               break;
             }
@@ -113,7 +95,7 @@ export function useMediaGeneration(
       }
 
       let finalPrompt = "";
-      if (!prevImagePart) {
+      if (!previousImage) {
         finalPrompt = `[USER INSTRUCTION: You are generating a highly specific image. Character reference images are attached (labelled with their character names and views). Strictly follow the structured prompt below to match their designs. CRITICAL: NEVER generate any garbled, fake, or nonsense text (squiggles). If the prompt does not explicitly request specific English text, ensure screens, papers, and signs are completely blank. Do NOT generate any Korean text. NEVER include any logos or stock photo watermarks.]\n\nPrompt Details:\n${promptText}`;
       } else {
         finalPrompt = `[USER INSTRUCTION: You are generating Scene ${sceneIdx + 1} of a continuous sequence. 
@@ -121,7 +103,7 @@ I have provided character reference images, and additionally, the VERY LAST imag
 
 Your task is to generate the current scene while maintaining EXACT visual continuity with the PREVIOUS scene. 
 - Keep the exact same room, background, lighting, and object placements as the previous scene (unless the prop is explicitly moved in the prompt).
-- Keep the character's appearance and clothing identical.
+- Preserve each character from its ORIGINAL sheets; correct accidental changes in the previous scene's hands, colors or anatomy.
 - Strictly follow the new structured prompt for the character's pose, facial expression, and actions.
 CRITICAL: NEVER generate any garbled, fake, or nonsense text (squiggles). If the prompt does not explicitly request specific English text, ensure screens, papers, and signs are completely blank. Do NOT generate any Korean text. NEVER include any logos or stock photo watermarks.
 
@@ -133,13 +115,9 @@ Current Scene Structured Prompt (WHAT YOU MUST GENERATE NOW):
 ${promptText}`;
       }
 
-      const parts: any[] = [];
-      if (imageParts.length > 0) parts.push(...imageParts);
-      if (prevImagePart) {
-        parts.push({ text: `[PREVIOUS SCENE IMAGE FOR VISUAL CONTINUITY ANCHOR]` });
-        parts.push(prevImagePart);
-      }
-      parts.push({ text: finalPrompt });
+      if (!references.length) throw Error('캐릭터 원본 사진을 찾지 못했습니다. 생성을 중단했습니다.');
+      if (previousImage) references.push({url: previousImage, role: 'scene'});
+      const parts = buildReferenceParts(references, finalPrompt);
 
       const response = await fetch('/api/generate-image', {
         method: 'POST',
