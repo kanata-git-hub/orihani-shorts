@@ -21,7 +21,8 @@ jobs:
           mkdir -p ~/.local/share/fonts
           cp src/KyoboHandwriting2024psw.ttf ~/.local/share/fonts/
           fc-cache -f
-          test "$(fc-match -f '%{family}' 'Kyobo Handwriting 2024')" = 'Kyobo Handwriting 2024'
+          fc-match -f '%{family}\n' 'Kyobo Handwriting 2024'
+          fc-match -f '%{file}' 'Kyobo Handwriting 2024' | grep -E '/KyoboHandwriting2024psw[.]ttf$'
       - run: npm ci
       - run: npm run lint
       - run: npx tsc --noEmit --target ES2022 --module ESNext --moduleResolution bundler --esModuleInterop --skipLibCheck server.ts server/editor/routes.ts server/editor/render.ts
