@@ -9,7 +9,11 @@ dotenv.config({ override: true });
 
 async function startServer() {
   const app = express();
-  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  // Honor local preview flags; production keeps the existing Cloud Run PORT.
+  const devArg = (name: string) => process.env.NODE_ENV !== 'production' && process.argv.includes(name) ? process.argv[process.argv.indexOf(name) + 1] : undefined;
+  const PORT = Number(devArg('--port') || process.env.PORT || 3000);
+  const HOST = devArg('--host') || '0.0.0.0';
+  if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw Error('올바른 포트 번호가 필요합니다.');
 
   app.use('/api/editor', editorRouter);
   app.use(express.json({ limit: '50mb' }));
@@ -195,7 +199,7 @@ CRITICAL INSTAGRAM GUIDELINES:
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, HOST, () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }

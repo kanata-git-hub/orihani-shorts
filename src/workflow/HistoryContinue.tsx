@@ -4,13 +4,17 @@ import { extractClips, extractOverview, extractScenes } from '../utils/extractor
 import { makePackage, recordDuration } from './package';
 import { imageFile, shareFile } from './share';
 import './workflow.css';
+import { DraftSummary, draftProgress } from '../editor/draft';
 
-export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy}:{item:HistoryItem;images:Record<string,string>;generating:Record<string,boolean>;onGenerate:(title:string,prompt:string,i:number,scenes:any[],result?:string)=>Promise<boolean>;onEdit:()=>void;onBusy:(v:boolean)=>void}) {
+export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy,draft,mediaReady}:{item:HistoryItem;images:Record<string,string>;generating:Record<string,boolean>;onGenerate:(title:string,prompt:string,i:number,scenes:any[],result?:string)=>Promise<boolean>;onEdit:()=>void;onBusy:(v:boolean)=>void;draft?:DraftSummary;mediaReady:boolean}) {
   const clips=extractClips(item.result), scenes=extractScenes(item.result);
-  const [step,setStep]=useState(Object.keys(images).length?'kling':'images');
+  const [chosenStep,setStep]=useState<'images'|'kling'|null>(null);
   const [index,setIndex]=useState(0),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
+  const editLocked=busy||Object.values(generating).some(Boolean);
   let duration:5|15;try{duration=recordDuration(item);}catch{return <p>이 기록의 클립 수를 확인해주세요.</p>;}
   const missing=clips.filter(c=>!images[c.imageTitle]);
+  const step=chosenStep||(mediaReady&&clips.length>0&&!missing.length?'kling':'images');
+  const clipCountValid=clips.length===(duration===5?2:4)&&new Set(clips.map(c=>c.imageTitle)).size===clips.length;
   const lengths=duration===5?[2,3]:[4,4,3,4];
   const action=async(fn:()=>Promise<void>)=>{if(busy)return;setBusy(true);onBusy(true);try{await fn();}catch(e){setMessage((e as Error).message);}finally{setBusy(false);onBusy(false);}};
   const copy=async(text:string,label:string)=>{if(!text.trim())throw Error('복사할 내용이 없습니다.');await navigator.clipboard.writeText(text);setMessage(label+' 복사 완료');};
@@ -20,13 +24,14 @@ export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy
   const exportFile=()=>action(async()=>{const raw=makePackage(item,images);const name=(extractOverview(item.result).title||'오리쇼츠').replace(/[\\/:*?"<>|]/g,'').slice(0,60);await shareFile(new File([raw],name+'.ori.json',{type:'application/json'}));setMessage('다른 기기에서 기록 → 작업 파일 가져오기로 열면 됩니다. 영상 파일과 편집 중인 음성은 별도로 보관해주세요.');});
   return <article className="ori-workflow">
     <p className="ori-workflow-label">{duration}초 밈 · 이 기록에서 이어하기</p>
+    {draft?<div className="ori-workflow-current"><strong>{draftProgress(draft).label}</strong><button disabled={editLocked} className="ori-workflow-primary" onClick={onEdit}>{draftProgress(draft).action}</button></div>:<button disabled={editLocked} className="ori-workflow-link" onClick={onEdit}>Kling 영상을 이미 받았다면 바로 편집</button>}
     <div className="ori-workflow-steps" role="group" aria-label="제작 단계">
       <button disabled={busy} aria-pressed={step==='images'} onClick={()=>setStep('images')}>1. 사진</button>
       <button disabled={busy} aria-pressed={step==='kling'} onClick={()=>setStep('kling')}>2. Kling</button>
-      <button disabled={busy} aria-pressed={step==='edit'} onClick={()=>setStep('edit')}>3. 편집</button>
+      <button disabled={editLocked} onClick={onEdit}>3. 편집 열기</button>
     </div>
-    <p role="status" aria-live="polite">{message||`사진 ${clips.length-missing.length}/${clips.length}장 준비됨`}</p>
-    <fieldset disabled={busy||Object.values(generating).some(Boolean)}>
+    <p role="status" aria-live="polite">{message||(!mediaReady?'이 기록의 사진을 확인 중입니다.':!clipCountValid?'기록의 클립 수를 확인해주세요.':`사진 ${clips.length-missing.length}/${clips.length}장 준비됨`)}</p>
+    <fieldset disabled={busy||Object.values(generating).some(Boolean)||!mediaReady||!clipCountValid}>
       {step==='images'&&<>
         <p>이미 있는 사진은 그대로 사용합니다. 새 사진 생성에는 기존 Gemini 비용이 발생합니다. 완료될 때까지 화면을 열어두세요.</p>
         <div className="ori-workflow-pictures">{clips.map((c,i)=><div key={i}>{images[c.imageTitle]?<img src={images[c.imageTitle]} alt={`클립 ${i+1} 시작 사진`}/>:<span>사진 없음</span>}<span>Clip {i+1} · {lengths[i]}초</span></div>)}</div>
@@ -44,13 +49,12 @@ export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy
         </div>}
         <a className="ori-workflow-link" href="https://kling.ai/app/video/new?ac=1" target="_blank" rel="noopener noreferrer">Kling 열기</a>
         <p>에셋·오디오·영상 길이를 확인하고 생성하세요. 완성 영상을 휴대폰에 저장한 뒤 편집으로 넘어오면 됩니다.</p>
-        <button className="ori-workflow-primary" onClick={()=>setStep('edit')}>Kling 영상 준비됨 → 편집</button>
+        <button className="ori-workflow-primary" onClick={onEdit}>Kling 영상 준비됨 → 바로 편집</button>
       </>}
-      {step==='edit'&&<>
+      <details><summary>대본 연결 안내 / 릴스·쇼츠 문구</summary>
         <p>{item.episode?'이 기록의 한글 나레이션·자막·첫 화면 문구를 편집으로 연결합니다. 기존 편집이 있으면 그대로 이어갑니다.':'이 기록에는 주간 대본이 연결되어 있지 않습니다. 편집 화면에서 한글 나레이션·자막을 한 번 가져와주세요. 등장인물 대사는 원본 영상에서 유지합니다.'}</p>
-        <button className="ori-workflow-primary" onClick={onEdit}>이 밈 영상 편집 이어하기</button>
         {!!caption&&<div className="ori-workflow-actions"><button onClick={()=>action(()=>copy(caption,'릴스 내용·쇼츠 설명'))}>릴스 내용·쇼츠 설명 복사</button><button onClick={()=>action(()=>copy(shortsTitle,'쇼츠 제목'))}>쇼츠 제목 복사</button></div>}
-      </>}
+      </details>
       <details><summary>다른 기기로 옮기기</summary><p>기획·사진·연결된 주간 대본을 한 파일로 옮깁니다. 새 기기에서는 기록의 ‘작업 파일 가져오기’를 누르세요. 편집 중인 영상·음성 파일은 포함되지 않습니다.</p><button onClick={exportFile}>작업 파일 저장·공유</button></details>
     </fieldset>
   </article>;

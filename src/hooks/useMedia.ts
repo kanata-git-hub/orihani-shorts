@@ -47,6 +47,7 @@ export function useMedia(view: 'workboard' | 'history', currentWorkboardId: stri
     generatingImages, setGeneratingImages,
     sceneImages:loadedId===targetId?sceneImages:{}, setSceneImages,
     saveMediaToDB,
-    targetId
+    targetId,
+    mediaReady: !!targetId && loadedId === targetId
   };
 }
