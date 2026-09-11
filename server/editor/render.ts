@@ -3,6 +3,7 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { EditPlan } from '../../src/editor/model';
 import { validatePlan, cleanPlanText } from '../../src/editor/model';
+import { fitVideoText } from './typography';
 
 export function command(binary: string, args: string[], cwd: string, signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -22,29 +23,15 @@ export async function inspect(file: string, cwd: string, signal?: AbortSignal) {
   if (!m) throw Error('영상 또는 음성 길이를 읽을 수 없습니다.');
   return { duration: +m[1] * 3600 + +m[2] * 60 + +m[3], audio: /Audio:/.test(log), video: /Video:/.test(log) };
 }
-const escapeASS = (s: string) => s.replace(/\\/g, '＼').replace(/{/g, '｛').replace(/}/g, '｝').replace(/\r/g, '').replace(/\n/g, '\\N');
+const escapeASS = (s: string) => s.replace(/\\/g, '＼').replace(/{/g, '｛').replace(/}/g, '｝').replace(/\r/g, '');
 const clock = (s: number) => `0:00:${s.toFixed(2).padStart(5, '0')}`;
-function wrap(text: string, width = 22) {
-  return text.split('\n').flatMap(line => {
-    const result: string[] = []; let row = ''; let units = 0;
-    for (const char of line) {
-      const size = /[ -~]/.test(char) ? 0.55 : 1;
-      if (units + size > width) { result.push(row.trim()); row = ''; units = 0; }
-      row += char; units += size;
-    }
-    if (row.trim()) result.push(row.trim()); return result;
-  }).join('\n');
-}
 export function subtitles(p: EditPlan) {
   p = cleanPlanText(p);
-  const captions = p.captions.map(c => ({ ...c, text: wrap(c.text) }));
-  const maxLines = Math.max(1, ...captions.map(c => c.text.split('\n').length));
-  const units = (text: string) => Math.max(1, ...text.split('\n').map(line => Array.from(line).reduce((n, ch) => n + (/[a-z0-9 ]/.test(ch) ? 0.65 : 1), 0)));
-  const size = Math.min(90, Math.floor(790 / Math.max(1, ...captions.map(c => units(c.text)))), Math.floor(210 / maxLines));
-  const title = wrap(p.thumbnail, 17);
-  return `[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Caption,Kyobo Handwriting 2024,${size},&H00FFFFFF,&H00FFFFFF,&H00111111,&H80000000,0,0,0,0,100,100,0,0,1,3,0,5,135,135,0,1\nStyle: Title,Kyobo Handwriting 2024,${Math.min(100, Math.floor(790 / units(title)), Math.floor(220 / Math.max(1, title.split('\n').length)))},&H0000DFFF,&H00FFFFFF,&H00111111,&H80000000,0,0,0,0,100,100,0,0,1,3,0,5,135,135,0,1\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n` +
-    (title ? `Dialogue: 0,${clock(0)},${clock(1)},Title,,0,0,0,,{\\pos(540,480)}${escapeASS(title)}\n` : '') +
-    captions.map(c => `Dialogue: 0,${clock(c.start)},${clock(c.end)},Caption,,0,0,0,,{\\pos(540,1440)}${escapeASS(c.text)}`).join('\n');
+  const captions = p.captions.map(c => ({ ...c, layout: fitVideoText(escapeASS(c.text), 400) }));
+  const title = fitVideoText(escapeASS(p.thumbnail), 360);
+  return `[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Caption,Kyobo Handwriting 2024,150,&H00FFFFFF,&H00FFFFFF,&H00111111,&H80000000,0,0,0,0,100,100,0,0,1,3,0,5,135,135,0,1\nStyle: Title,Kyobo Handwriting 2024,150,&H0000DFFF,&H00FFFFFF,&H00111111,&H80000000,0,0,0,0,100,100,0,0,1,3,0,5,135,135,0,1\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n` +
+    (title.text ? `Dialogue: 0,${clock(0)},${clock(1)},Title,,0,0,0,,{\\pos(540,480)\\fs${title.size}}${title.text}\n` : '') +
+    captions.map(c => `Dialogue: 0,${clock(c.start)},${clock(c.end)},Caption,,0,0,0,,{\\pos(540,1440)\\fs${c.layout.size}}${c.layout.text}`).join('\n');
 }
 export async function render(p: EditPlan, videos: string[], voice: string | undefined, dir: string, signal?: AbortSignal) {
   p = cleanPlanText(p);

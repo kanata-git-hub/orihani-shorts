@@ -3,13 +3,16 @@ import { spokenNumbers } from './speech';
 import { clipLengths } from './media';
 import { TEXT_POLICY_VERSION } from './text';
 
+// Bump when rendered layout changes; voice and timing caches remain reusable.
+const RENDER_VERSION = 4;
+
 export type Draft = { id: string; plan: EditPlan; original: string; voice: string; style: string; voiceBlob?: Blob; voiceKey?: string; videos: (File | null)[]; result?: Blob; resultKey?: string; syncKey?: string; textBackup?: Pick<EditPlan, 'title' | 'narration' | 'thumbnail' | 'captions'> };
 export type EditorStage = 'videos' | 'voice' | 'captions' | 'result';
-export type DraftSummary = { id: string; title: string; updatedAt?: number; version?: 1; state?: EditorStage; videoCount?: number; requiredVideos?: number; hasResult?: boolean; textPolicy?: number };
+export type DraftSummary = { id: string; title: string; updatedAt?: number; version?: 1; state?: EditorStage; videoCount?: number; requiredVideos?: number; hasResult?: boolean; textPolicy?: number; renderVersion?: number };
 const filesKey = (d: Draft) => d.videos.map(f => f && [f.name, f.size, f.lastModified]);
 export const voiceKey = (d: Draft) => JSON.stringify([spokenNumbers(d.plan.narration), d.voice, d.style, d.plan.duration]);
 export const syncKey = (d: Draft) => JSON.stringify([2, voiceKey(d), d.plan.voiceSpeed, d.plan.captions.map(c => [c.text, c.source]), filesKey(d)]);
-export const resultKey = (d: Draft) => JSON.stringify([3, TEXT_POLICY_VERSION, d.plan, d.voiceKey, filesKey(d)]);
+export const resultKey = (d: Draft) => JSON.stringify([RENDER_VERSION, TEXT_POLICY_VERSION, d.plan, d.voiceKey, filesKey(d)]);
 export const voiceIsCurrent = (d: Draft) => !d.plan.narration.trim() || (!!d.voiceBlob && d.voiceKey === voiceKey(d));
 export const resultIsCurrent = (d: Draft) => !!d.result && d.resultKey === resultKey(d) && voiceIsCurrent(d) && d.syncKey === syncKey(d) && !d.plan.captions.some(c => c.review);
 export const hasDraftContent = (d: Draft) => !!(d.original.trim() || d.plan.title.trim() || d.plan.narration.trim() || d.plan.thumbnail.trim() || d.plan.captions.length || d.videos.some(Boolean) || d.voiceBlob || d.result);
@@ -19,7 +22,7 @@ export function draftStage(d: Draft): EditorStage {
   return voiceIsCurrent(d) && d.syncKey === syncKey(d) ? 'captions' : 'voice';
 }
 export function summarizeDraft(d: Draft, updatedAt = Date.now()): DraftSummary {
-  return { id: d.id, title: d.plan.title || '제목 없는 편집', updatedAt, version: 1, state: draftStage(d), videoCount: d.videos.filter(Boolean).length, requiredVideos: clipLengths(d.plan.duration).length, hasResult: !!d.result, textPolicy: TEXT_POLICY_VERSION };
+  return { id: d.id, title: d.plan.title || '제목 없는 편집', updatedAt, version: 1, state: draftStage(d), videoCount: d.videos.filter(Boolean).length, requiredVideos: clipLengths(d.plan.duration).length, hasResult: !!d.result, textPolicy: TEXT_POLICY_VERSION, renderVersion: RENDER_VERSION };
 }
 export function restoreDraft(d: Draft): Draft {
   const plan = cleanPlanText(d.plan);
@@ -31,7 +34,7 @@ export function restoreDraft(d: Draft): Draft {
 }
 export function draftProgress(s?: DraftSummary) {
   if (!s?.state || s.version !== 1) return { label: '저장된 편집 · 상태 확인 필요', action: '편집 이어하기' };
-  if (s.state === 'result' && s.textPolicy === TEXT_POLICY_VERSION) return { label: '완성됨', action: '완성 영상 확인·저장' };
+  if (s.state === 'result' && s.textPolicy === TEXT_POLICY_VERSION && s.renderVersion === RENDER_VERSION) return { label: '완성됨', action: '완성 영상 확인·저장' };
   if (s.state === 'videos') return { label: s.videoCount ? `영상 ${s.videoCount}/${s.requiredVideos}개 입력됨` : 'Kling 영상 대기', action: 'Kling 영상 넣기' };
   if (s.state === 'voice') return { label: '영상 입력됨', action: '음성·자막 준비' };
   return { label: s.hasResult ? '편집 중 · 이전 완성본 보관' : '편집 중', action: '편집 이어하기' };
