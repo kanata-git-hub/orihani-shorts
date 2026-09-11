@@ -19,7 +19,9 @@ function native(n: number) {
   return ['', '열', '스물', '서른', '마흔', '쉰', '예순', '일흔', '여든', '아흔'][Math.floor(n / 10)] + ['', '한', '두', '세', '네', '다섯', '여섯', '일곱', '여덟', '아홉'][n % 10];
 }
 export function spokenNumbers(input: string): string {
-  let text = input.replace(/(\d),(?=\d{3}(?:\D|$))/g, '$1').replace(/(\d),(?=\d{3}(?:\D|$))/g, '$1');
+  let text = input.replace(/\b\d{1,3}(?:,\d{3})+\b/g, n => n.replace(/,/g, ''));
+  // Decimals must be read before counters so 1.5개 never becomes 일.다섯 개.
+  text = text.replace(/(\d+\.\d+)(?:\s*(%|퍼센트|시간|개월|마리|명|개|살|시|번|잔|초|분|원|년|kg|km|cm|mm|m|도|층|회))?/g, (_, n, unit) => n.split('.').map((v:string,i:number) => i ? [...v].map(d => '영일이삼사오육칠팔구'[+d]).join(' ') : sino(v)).join(' 점 ') + (unit ? ' ' + ({'%':'퍼센트',kg:'킬로그램',km:'킬로미터',cm:'센티미터',mm:'밀리미터',m:'미터'}[unit] || unit) : ''));
   text = text.replace(/(\d{1,2}):(\d{2})(?::(\d{2}))?/g, (_, h, m, s) => `${native(+h)} 시${+m ? ' ' + sino(m.replace(/^0+/, '') || '0') + ' 분' : ''}${s && +s ? ' ' + sino(s.replace(/^0+/, '') || '0') + ' 초' : ''}`);
   text = text.replace(/(\d+)\s*(시간|명|개(?!월)|마리|살|시|번|잔)/g, (_, n, unit) => `${+n === 20 ? '스무' : native(+n)} ${unit}`);
   text = text.replace(/(\d+(?:\.\d+)?)\s*(%|퍼센트|초|분|원|년|개월|kg|km|cm|mm|m|도|층|회)/g, (_, n, unit) => `${n.split('.').map((v: string,i: number) => i ? [...v].map(d => '영일이삼사오육칠팔구'[+d]).join(' ') : sino(v)).join(' 점 ')} ${{'%':'퍼센트',kg:'킬로그램',km:'킬로미터',cm:'센티미터',mm:'밀리미터',m:'미터'}[unit] || unit}`);
@@ -58,8 +60,23 @@ export function alignCaptions<T extends {text:string;start:number;end:number}>(c
   });
 }
 
-export function scheduleNarration(words: Word[], duration: number, dialogue: {start:number;end:number}[], speed: number): VoiceSegment[] {
+export function speechRanges(words: Word[], duration: number): {start:number;end:number}[] {
+  const result:{start:number;end:number}[]=[];
+  for(const w of [...words].sort((a,b)=>a.start-b.start)) {
+    const range={start:Math.max(0,w.start-0.04),end:Math.min(duration,w.end+0.04)};
+    if(range.end<=range.start)continue;
+    const last=result.at(-1);
+    if(last&&range.start-last.end<=0.3)last.end=Math.max(last.end,range.end);
+    else result.push(range);
+  }
+  return result;
+}
+export function scheduleNarration(words: Word[], duration: number, dialogue: {start:number;end:number}[], speed: number, audioDuration?: number): VoiceSegment[] {
   if(!words.length)return [];
+  if(!dialogue.length&&audioDuration!==undefined) {
+    if(!Number.isFinite(audioDuration)||audioDuration<=0||audioDuration/speed>duration+0.05)throw Error('해설 음성이 영상보다 깁니다. 해설을 줄이거나 음성 속도를 높여주세요.');
+    return [{sourceStart:0,sourceEnd:audioDuration,start:0}];
+  }
   const spans=dialogue.slice().sort((a,b)=>a.start-b.start), slots:{start:number;end:number}[]=[];let cursor=0;
   for(const d of spans){if(d.start>cursor)slots.push({start:cursor,end:Math.max(cursor,d.start-0.08)});cursor=Math.max(cursor,d.end+0.08);}
   if(cursor<duration)slots.push({start:cursor,end:duration});
