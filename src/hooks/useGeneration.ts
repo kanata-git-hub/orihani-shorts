@@ -1,3 +1,4 @@
+import { SourceEpisode } from '../types';
 import { useState } from "react";
 import { CHARACTERS, getSystemPrompt } from "../constants";
 
@@ -16,6 +17,7 @@ export function useGeneration(
     selectedCharacter: string,
     customPrompt: string,
     duration: '15s' | '5s' = '15s',
+    episode?: SourceEpisode,
   ) => {
     setIsGenerating(true);
     setResult("");
@@ -58,6 +60,7 @@ export function useGeneration(
         timestamp: Date.now(),
         characterId: character?.id || "unknown",
         result: finalJson,
+        duration: duration==='5s'?5:15, customPrompt, ...(episode?{episode}:{}),
       });
       
       showToast("Plan generated successfully!", "success");
