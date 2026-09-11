@@ -31,6 +31,9 @@ test('portable work preserves source and pictures; invalid data and wrong durati
  assert.throws(()=>workPackage.makePackage(item,{'사진0':'https://example.com/image.png'}));
  assert.throws(()=>workPackage.makePackage(item,{'다른 기록 사진':'data:image/png;base64,AQID'}));
  assert.throws(()=>workPackage.makePackage(item,{'사진0':'data:image/svg+xml;base64,AQID'}));
+ for(const patch of [{title:{wrong:true}},{hashtags:'not a list'}])assert.throws(()=>workPackage.makePackage({...item,result:JSON.stringify({...JSON.parse(item.result),...patch})},images));
+ const duplicated=JSON.parse(item.result);duplicated.clips[1].imageTitle=duplicated.clips[0].imageTitle;
+ assert.throws(()=>workPackage.makePackage({...item,result:JSON.stringify(duplicated)},images));
 });
 test('mobile weekly import keeps explicit narration and derives two episode durations',()=>{
  const make=(id,n)=>`[에피소드 ${id}: ${n}초 테스트]\n1. 시나리오\n오원장: "일어나!"\n2. 한글 나레이션 및 자막\n나레이션: 아침이다.\n자막: 아침\n3. 제목 및 해시태그\n아침 #밈\n4. 썸네일 추천 문구\n아침이다`;

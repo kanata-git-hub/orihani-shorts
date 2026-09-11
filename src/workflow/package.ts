@@ -31,6 +31,9 @@ export function readPackage(raw: string): {format:'orihani-work';version:1;item:
   const duration=recordDuration(i);
   if(extractClips(i.result).length!==(duration===5?2:4))throw Error('영상 길이와 클립 수가 맞지 않습니다.');
   if(extractClips(i.result).some(c=>!text(c.imageTitle,500)||!c.imageTitle||!text(c.imagePrompt,30000)||!text(c.videoPrompt,30000)))throw Error('클립의 사진과 프롬프트 정보를 확인해주세요.');
+  const overview=extractOverview(i.result),clips=extractClips(i.result);
+  if(!text(overview.title,1000)||!text(overview.scenario,40000)||!text(overview.location,3000)||!text(overview.instagramCaption,5000)||!Array.isArray(overview.hashtags)||overview.hashtags.some((s:unknown)=>!text(s,500)))throw Error('기획의 제목과 본문 형식을 확인해주세요.');
+  if(new Set(clips.map(c=>c.imageTitle)).size!==clips.length||clips.some(c=>['__proto__','constructor','prototype'].includes(c.imageTitle)||!text(c.title,1000)))throw Error('서로 다른 장면 이름이 필요합니다.');
   const item:HistoryItem={id:i.id,timestamp:i.timestamp,characterId:i.characterId,result:i.result,duration};
   if(i.episode)item.episode=sourceEpisode(i.episode);
   if(item.episode&&item.episode.duration!==duration)throw Error('대본과 기획의 영상 길이가 다릅니다.');
