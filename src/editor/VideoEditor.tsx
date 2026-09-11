@@ -5,6 +5,7 @@ import { editorStore, draftWriter } from './storage';
 import { spokenNumbers, alignCaptions, scheduleNarration, placedWords, speechRanges, Word } from './speech';
 import { clipLengths, validateMediaSizes, validateMediaDuration, mediaDuration } from './media';
 import './editor.css';
+import { shareFile } from '../workflow/share';
 
 type Draft = { id: string; plan: EditPlan; original: string; voice: string; style: string; voiceBlob?: Blob; voiceKey?: string; videos: (File | null)[]; result?: Blob; resultKey?: string; syncKey?: string };
 const fresh = (): Draft => ({ id: crypto.randomUUID(), plan: defaultPlan(), original: '', voice: 'Zubenelgenubi', style: '털털하고 편안한 남성 말투. 과장하지 않고 짧은 농담을 담백하게 말한다.', videos: [] });
@@ -71,6 +72,7 @@ export function VideoEditor({ visible, open }: { visible: boolean; open: () => v
         const payload = (event as CustomEvent).detail;
         if (payload?.version !== 1 || typeof payload.key !== 'string' || payload.key.length > 200) return;
         const plan = importEpisode(payload.episode);
+        if(!payload.episode.korean.trim())plan.importWarning='한글 나레이션·자막이 연결되지 않은 기록입니다. 원본 대본을 가져오거나 해설 없는 영상인지 확인해주세요.';
         const id = 'episode-' + payload.key;
         busyRef.current = true; setBusy(true);
         (async () => {
@@ -164,7 +166,7 @@ export function VideoEditor({ visible, open }: { visible: boolean; open: () => v
         <p className="ori-next">{lengths.some((_,i)=>!d.videos[i])?'다음: 위의 영상 칸에 Kling 파일을 모두 넣어주세요.':!syncCurrent?'다음: 2번에서 음성·자동 싱크를 준비해주세요.':d.plan.captions.some(c=>c.review)?'다음: 확인 표시가 있는 자막을 검토해주세요.':'준비 완료: 아래 버튼으로 음성·자막을 넣은 MP4를 만듭니다.'}</p>
         <button className="ori-primary ori-finish" disabled={!voiceCurrent || !syncCurrent || d.plan.captions.some(c=>c.review) || lengths.some((_,i)=>!d.videos[i])} onClick={makeVideo}>{busy ? '처리 중…' : '음성·자막 넣고 영상 완성'}</button>
       </fieldset>
-      {resultURL && <article><h3>{finishedCurrent ? '완성 영상' : '이전 설정의 완성 영상'}</h3>{!finishedCurrent && <p>설정이 바뀌었습니다. 현재 설정으로 다시 완성해주세요.</p>}<video className="ori-result" controls playsInline src={resultURL} /><a className="ori-download" href={resultURL} download={`${d.plan.title.replace(/[\\/:*?"<>|]/g, '').slice(0, 80) || '오리쇼츠'}.mp4`}>완성 MP4 다운로드</a></article>}
+      {resultURL && <article><h3>{finishedCurrent ? '완성 영상' : '이전 설정의 완성 영상'}</h3>{!finishedCurrent && <p>설정이 바뀌었습니다. 현재 설정으로 다시 완성해주세요.</p>}<video className="ori-result" controls playsInline src={resultURL} /><a className="ori-download" href={resultURL} download={`${d.plan.title.replace(/[\\/:*?"<>|]/g, '').slice(0, 80) || '오리쇼츠'}.mp4`}>완성 MP4 다운로드</a><button className="ori-download" onClick={()=>run(async()=>{const name=(d.plan.title||'오리쇼츠').replace(/[\\/:*?"<>|]/g,'').slice(0,80);await shareFile(new File([d.result!],name+'.mp4',{type:'video/mp4'}));})}>완성 영상 공유·저장</button></article>}
     </div>
   </section>;
 }
