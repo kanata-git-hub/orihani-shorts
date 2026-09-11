@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const compiled = path.join(root, '.editor-test');
 fs.mkdirSync(compiled, { recursive: true });
 fs.writeFileSync(path.join(compiled, 'package.json'), '{"type":"commonjs"}');
-for (const f of ['src/editor/model.ts', 'server/editor/render.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
+for (const f of ['src/editor/model.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
   const dest = path.join(compiled, f.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
@@ -80,4 +80,45 @@ test('narration is moved around original dialogue without dropping words',()=>{
   const segments=scheduleNarration(words,5,[{start:0,end:2}],1);
   assert.ok(segments[0].start>=2);assert.equal(placedWords(words,segments,1).length,2);
   assert.throws(()=>scheduleNarration(words,5,[{start:0,end:4.8}],1),/부족/);
+});
+
+const {validateMediaSizes,validateMediaDuration}=require(path.join(compiled,'src/editor/media.js'));
+const {speechRanges}=require(path.join(compiled,'src/editor/speech.js'));
+const {draftWriter}=require(path.join(compiled,'src/editor/storage.js'));
+test('multiline narration and varied caption time markers preserve speaker separation',()=>{
+ const p=importEpisode({duration:5,korean:'**나레이션:**\n오늘은 1.5개를 샀다.\n\n자막:\n[0초~2초] 오늘은 1.5개\n[2-3s] 샀다.\n오원장: "하나 반이네!"',scenario:'Dialog:오원장:"하나 반이네!"'});
+ assert.equal(p.narration,'오늘은 1.5개를 샀다.');assert.equal(p.captions.length,3);
+ assert.deepEqual(p.captions.slice(0,2).map(c=>[c.start,c.end,c.text]),[[0,2,'오늘은 1.5개'],[2,3,'샀다.']]);
+ assert.equal(p.captions[2].source,'dialogue');assert.ok(!p.narration.includes('하나 반'));
+ assert.equal(importEpisode({duration:5,korean:'나레이션:\n좋은 아침.\n의사: "안녕"'}).narration,'좋은 아침.');
+ assert.ok(importEpisode({duration:5,korean:'나레이션:\n좋은 아침.\n의사: "안녕"'}).importWarning);
+});
+test('decimal counters and grouped large numbers have readable Korean pronunciation',()=>{
+ assert.equal(spokenNumbers('1.5개와 2.5% 그리고 0.3kg'),'일 점 오 개와 이 점 오 퍼센트 그리고 영 점 삼 킬로그램');
+ assert.equal(spokenNumbers('1,234,567,890원'),'십이억 삼천사백오십육만 칠천팔백구십 원');
+});
+test('all input clips must pass size and duration checks before speech analysis',()=>{
+ assert.throws(()=>validateMediaSizes([{size:27*1024*1024}],5),/26MB/);
+ assert.throws(()=>validateMediaSizes([{size:1},null,{size:1},{size:1}],15),/각 칸/);
+ assert.throws(()=>validateMediaSizes([1,2,3,4].map(()=>({size:8*1024*1024})),15),/합계/);
+ assert.throws(()=>validateMediaDuration(5,4,1),/2번 영상/);assert.throws(()=>validateMediaDuration(Infinity,5,0));
+ validateMediaDuration(5.03,5,0);validateMediaSizes([{size:100}],5);
+});
+test('dialogue phrases retain their short pauses and full narration audio is preserved without dialogue',()=>{
+ assert.deepEqual(speechRanges([{text:'안녕',start:.2,end:.8},{text:'친구',start:1,end:1.5},{text:'또 봐',start:3,end:4}],5),[{start:.16,end:1.54},{start:2.96,end:4.04}]);
+ const w=[{text:'안녕',start:.25,end:1}];assert.deepEqual(scheduleNarration(w,5,[],1,1.4),[{sourceStart:0,sourceEnd:1.4,start:0}]);
+ assert.throws(()=>scheduleNarration(w,5,[],1,6),/영상보다/);
+ assert.throws(()=>validatePlan({...defaultPlan(),voiceSegments:[{sourceStart:0,sourceEnd:2,start:0},{sourceStart:2,sourceEnd:3,start:1}]}),/겹칩니다/);
+ assert.throws(()=>validatePlan({...defaultPlan(),voiceSegments:[{sourceStart:0,sourceEnd:2,start:0}],dialogueRanges:[{start:1,end:3}]}),/겹칩니다/);
+});
+test('saving coalesces rapid edits and preserves both episodes when switching',async()=>{
+ let release;const gate=new Promise(r=>release=r);const saved=[];
+ const writer=draftWriter(async value=>{if(!saved.length)await gate;saved.push(value);});
+ const pending=writer.write('a','a1');writer.write('a','a2');writer.write('a','a3');writer.write('b','b1');release();await pending;await writer.flush();
+ assert.deepEqual(saved,['a1','a3','b1']);await writer.write('b','b2');assert.equal(saved.at(-1),'b2');
+});
+
+test('explicit absence of narration never produces spoken placeholder text',()=>{
+ const p=importEpisode({duration:5,korean:'나레이션: 없음 (캐릭터 대사만)\nDialog: O-wong: "안녕!"'});
+ assert.equal(p.narration,'');assert.equal(p.importWarning,undefined);assert.equal(p.captions[0].text,'안녕!');assert.equal(p.captions[0].source,'dialogue');
 });
