@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { EditPlan } from '../../src/editor/model';
-import { validatePlan } from '../../src/editor/model';
+import { validatePlan, cleanPlanText } from '../../src/editor/model';
 
 export function command(binary: string, args: string[], cwd: string, signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -36,6 +36,7 @@ function wrap(text: string, width = 22) {
   }).join('\n');
 }
 export function subtitles(p: EditPlan) {
+  p = cleanPlanText(p);
   const captions = p.captions.map(c => ({ ...c, text: wrap(c.text) }));
   const maxLines = Math.max(1, ...captions.map(c => c.text.split('\n').length));
   const units = (text: string) => Math.max(1, ...text.split('\n').map(line => Array.from(line).reduce((n, ch) => n + (/[a-z0-9 ]/.test(ch) ? 0.65 : 1), 0)));
@@ -46,6 +47,7 @@ export function subtitles(p: EditPlan) {
     captions.map(c => `Dialogue: 0,${clock(c.start)},${clock(c.end)},Caption,,0,0,0,,{\\pos(540,1440)}${escapeASS(c.text)}`).join('\n');
 }
 export async function render(p: EditPlan, videos: string[], voice: string | undefined, dir: string, signal?: AbortSignal) {
+  p = cleanPlanText(p);
   validatePlan(p); const lengths = p.duration === 5 ? [5] : [4, 4, 3, 4];
   if (videos.length !== lengths.length) throw Error(`영상 ${lengths.length}개를 순서대로 넣어주세요.`);
   const narration = voice ? await inspect(voice, dir, signal) : undefined;

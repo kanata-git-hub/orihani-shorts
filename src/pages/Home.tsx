@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { SourceEpisode } from '../types';
 import { HistoryItem } from '../types';
 import { WeeklyScript } from '../workflow/WeeklyScript';
 import { editorEpisode, readPackage, importIdentity, MAX_PACKAGE_BYTES } from '../workflow/package';
-import { db } from '../utils/db';
+import { db, MEDIA_CHANGED, MediaSummary } from '../utils/db';
+import { DraftSummary } from '../editor/draft';
+import { RecentWork, RecentTarget, readRecentTarget } from '../workflow/RecentWork';
+import { recordDraftId, recordProgress } from '../workflow/progress';
 import { VideoEditor } from '../editor/VideoEditor';
 import { Sparkles, Clapperboard, AlertCircle } from 'lucide-react';
 import { CHARACTERS } from '../constants';
@@ -30,6 +33,20 @@ export default function App() {
   
   const [source,setSource]=useState<SourceEpisode|null>(null);
   const [workflowBusy,setWorkflowBusy]=useState(false);
+  const [editorBusy,setEditorBusy]=useState(false);
+  const [drafts,setDrafts]=useState<DraftSummary[]>([]);
+  const [mediaSummaries,setMediaSummaries]=useState<Record<string,MediaSummary>>({});
+  const [resumeId,setResumeId]=useState<string>();
+  const resumeHandled=useCallback(()=>setResumeId(undefined),[]);
+  const [recent,setRecent]=useState<RecentTarget|undefined>(readRecentTarget);
+  const remember=useCallback((value:RecentTarget)=>{setRecent(value);try{localStorage.setItem('orihani-recent-work',JSON.stringify(value));}catch{/* preference only */}},[]);
+  const editorActive=useCallback((id:string)=>remember({kind:'editor',id}),[remember]);
+  useEffect(()=>{
+    let active=true;
+    db.summaries().then(values=>{if(active)setMediaSummaries(current=>({...values,...current}));}).catch(()=>{});
+    const changed=(event:Event)=>{const {id,summary,clear}=(event as CustomEvent).detail;setMediaSummaries(current=>{if(clear)return {};const next={...current};if(summary)next[id]=summary;else delete next[id];return next;});};
+    window.addEventListener(MEDIA_CHANGED,changed);return()=>{active=false;window.removeEventListener(MEDIA_CHANGED,changed);};
+  },[]);
   const [selectedCharacter, setSelectedCharacter] = useState(CHARACTERS[2].id);
   const [customPrompt, setCustomPrompt] = useState("");
   const [view, setView] = useState<'15s-plan' | '5s-plan' | 'scenario' | 'prompts' | 'history' | 'editor'>('15s-plan');
@@ -41,12 +58,13 @@ export default function App() {
     currentWorkboardId,
     handleGenerate: generatePlan
   } = useGeneration(showToast, saveHistory, apiKeys);
+  useEffect(()=>{if(result&&currentWorkboardId&&!isGenerating)remember({kind:'history',id:currentWorkboardId});},[result,currentWorkboardId,isGenerating,remember]);
   
   const {
     generatingImages, setGeneratingImages,
     sceneImages, setSceneImages,
     saveMediaToDB,
-    targetId
+    targetId, mediaReady
   } = useMedia(view === 'history' ? 'history' : 'workboard', currentWorkboardId, viewingHistoryId);
 
   const {
@@ -63,9 +81,11 @@ export default function App() {
     generatePlan(selectedCharacter, customPrompt, duration, source&&source.duration===(duration==='5s'?5:15)&&source.scenario===customPrompt?source:undefined);
   };
 
-  const locked=workflowBusy||Object.values(generatingImages).some(Boolean);
-  const openRecordEditor=(item:HistoryItem)=>{try{if(document.documentElement.dataset.oriEditorReady!=='1')throw Error('편집 화면을 준비 중입니다. 잠시 후 다시 눌러주세요.');window.dispatchEvent(new CustomEvent('orihani-editor-import',{detail:{version:1,key:item.editorKey||'history-'+item.id,episode:editorEpisode(item)}}));}catch(e){showToast((e as Error).message,'error');}};
-  const importWork=async(file:File)=>{try{if(file.size>MAX_PACKAGE_BYTES)throw Error('작업 파일은 48MB 이하로 넣어주세요.');const pack=readPackage(await file.text());const item=importIdentity(pack.item,history);await db.set(item.id,{images:pack.images});saveHistory(item);setViewingHistoryId(item.id);showToast('기획·사진·대본을 가져왔습니다.');}catch(e){showToast((e as Error).message,'error');}};
+  const locked=workflowBusy||editorBusy||Object.values(generatingImages).some(Boolean);
+  const selectHistory=(id:string|null)=>{setViewingHistoryId(id);if(id)remember({kind:'history',id});};
+  const resumeEditor=(id:string)=>{setResumeId(id);setView('editor');remember({kind:'editor',id});};
+  const openRecordEditor=(item:HistoryItem)=>{try{if(document.documentElement.dataset.oriEditorReady!=='1')throw Error('편집 화면을 준비 중입니다. 잠시 후 다시 눌러주세요.');setResumeId(undefined);window.dispatchEvent(new CustomEvent('orihani-editor-import',{detail:{version:1,key:item.editorKey||'history-'+item.id,episode:editorEpisode(item)}}));}catch(e){showToast((e as Error).message,'error');}};
+  const importWork=async(file:File)=>{try{if(file.size>MAX_PACKAGE_BYTES)throw Error('작업 파일은 48MB 이하로 넣어주세요.');const pack=readPackage(await file.text());const item=importIdentity(pack.item,history);await db.set(item.id,{images:pack.images});saveHistory(item);selectHistory(item.id);showToast('기획·사진·대본을 가져왔습니다.');}catch(e){showToast((e as Error).message,'error');}};
   const currentScenes = extractScenes(result);
   const viewingScenes = viewingHistoryId ? extractScenes(history.find(h => h.id === viewingHistoryId)?.result || '') : [];
 
@@ -108,9 +128,10 @@ export default function App() {
       /></div>
 
       <main className="flex flex-col md:flex-row flex-1 overflow-hidden">
-        <VideoEditor visible={view === 'editor'} open={() => setView('editor')} />
+        <VideoEditor visible={view === 'editor'} open={() => setView('editor')} onIndex={setDrafts} onBusy={setEditorBusy} resumeId={resumeId} onResumeHandled={resumeHandled} onActive={editorActive}/>
         {(view === '15s-plan' || view === '5s-plan') && (
           <div className="flex-1 w-full bg-[#f9f7f4] flex flex-col items-center p-4 md:p-6 overflow-y-auto">
+            <RecentWork history={history} drafts={drafts} media={mediaSummaries} recent={recent} onHistory={item=>{selectHistory(item.id);setView('history');}} onEditor={resumeEditor}/>
             <WeeklyScript onChoose={(episode,character)=>{setSource(episode);setCustomPrompt(episode.scenario);setSelectedCharacter(character);setView(episode.duration===5?'5s-plan':'15s-plan');}}/>
             <div className="w-full max-w-2xl bg-white shadow-[8px_8px_0px_#552c24] border-2 border-[#552c24] flex flex-col shrink-0 my-auto">
               <WorkboardSidebar 
@@ -129,10 +150,12 @@ export default function App() {
           <HistorySidebar
             history={history}
             viewingHistoryId={viewingHistoryId}
-            setViewingHistoryId={setViewingHistoryId}
+            setViewingHistoryId={selectHistory}
             handleDeleteHistory={handleDeleteHistory}
             handleClearHistory={handleClearHistory}
             onImport={importWork} busy={locked}
+            progress={Object.fromEntries(history.map(item=>[item.id,recordProgress(item,mediaSummaries[item.id],drafts.find(d=>d.id===recordDraftId(item)))]))}
+            onContinue={item=>{const draft=drafts.find(d=>d.id===recordDraftId(item));if(draft)resumeEditor(draft.id);else selectHistory(item.id);}}
           />
         )}
 
@@ -160,7 +183,9 @@ export default function App() {
           <section className={`ori-history-content ${!viewingHistoryId?'ori-history-content-empty':''} flex-1 p-4 md:p-6 lg:p-10 flex flex-col gap-6 overflow-y-auto bg-[#ffffff]`}>
             <button disabled={locked} className="ori-history-back" onClick={()=>setViewingHistoryId(null)}>← 다른 기록 고르기</button>
             <div className="max-w-4xl w-full mx-auto flex flex-col gap-6">
-              <HistoryContent key={viewingHistoryId} 
+              <HistoryContent key={viewingHistoryId}
+                draft={drafts.find(d=>d.id===recordDraftId(history.find(h=>h.id===viewingHistoryId)||{id:''} as HistoryItem))}
+                mediaReady={mediaReady}
                 onEdit={()=>{const item=history.find(h=>h.id===viewingHistoryId);if(item)openRecordEditor(item);}} onBusy={setWorkflowBusy}
                 viewingHistoryId={viewingHistoryId}
                 history={history}

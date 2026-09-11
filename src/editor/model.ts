@@ -1,7 +1,11 @@
 import type { VoiceSegment } from './speech';
+import { cleanVideoText } from './text';
 export type Caption = { start: number; end: number; text: string; source?: 'narration' | 'dialogue' | 'screen'; review?: string };
 export type EditPlan = { duration: 5 | 15; title: string; narration: string; thumbnail: string; captions: Caption[]; originalVolume: number; voiceVolume: number; voiceSpeed: number; voiceSegments?: VoiceSegment[]; dialogueRanges?: {start:number;end:number}[]; importWarning?: string };
 export const defaultPlan = (): EditPlan => ({ duration: 5, title: '', narration: '', thumbnail: '', captions: [], originalVolume: 0.2, voiceVolume: 1, voiceSpeed: 1 });
+export function cleanPlanText(p: EditPlan): EditPlan {
+  return { ...p, title: cleanVideoText(p.title), narration: cleanVideoText(p.narration), thumbnail: cleanVideoText(p.thumbnail), captions: p.captions.map(c => ({ ...c, text: cleanVideoText(c.text) })).filter((c, i) => c.text || !p.captions[i].text.trim()) };
+}
 export function validatePlan(p: EditPlan) {
   if (!p || ![5, 15].includes(p.duration)) throw Error('영상 길이를 확인해주세요.');
   if (typeof p.thumbnail !== 'string' || p.thumbnail.length > 100 || typeof p.title !== 'string' || p.title.length > 300) throw Error('제목 문구가 너무 깁니다.');
@@ -29,7 +33,7 @@ export function validatePlan(p: EditPlan) {
 export function importEpisode(e: any): EditPlan {
   if (!e || ![5, 15].includes(e.duration) || typeof e.korean !== 'string' || e.korean.length > 20000) throw Error('에피소드 자료의 형식을 확인해주세요.');
   const p=defaultPlan();p.duration=e.duration;p.title=String(e.title||'').slice(0,300);
-  const lines=e.korean.split('\n').map((s:string)=>s.replace(/\*\*|__/g,'').replace(/^[\s*#-]+/,'').trim()).filter(Boolean);
+  const lines=e.korean.split('\n').map((s:string)=>cleanVideoText(s.replace(/\*\*|__/g,'').replace(/^[\s*#-]+/,''))).filter(Boolean);
   const narration:string[]=[], pending:{text:string;start?:number;end?:number;source?:Caption['source']}[]=[], dialogue:string[]=[];
   let mode:''|'narration'|'caption'|'dialogue'|'screen'='', uncertain=false, noNarration=false;
   const unquote=(text:string)=>text.replace(/^["“']|["”']$/g,'').trim();
@@ -60,7 +64,7 @@ export function importEpisode(e: any): EditPlan {
   for(const m of scenario.matchAll(/(?:Dialog(?:ue)?\s*[:：]\s*[^:"“'\n]{1,30}|오원장|소미|덕이)\s*[:：]\s*["“']([^"”'\n]+)["”']/gi))dialogue.push(m[1]);
   const comparison=(text:string)=>text.replace(/[^가-힣a-z0-9]/gi,'').toLowerCase();
   for(const text of dialogue)if(!p.captions.some(c=>comparison(c.text)===comparison(text)))p.captions.push({text,start:0,end:p.duration,source:'dialogue',review:'원본 영상에서 대사 시간을 자동으로 찾습니다.'});
-  p.thumbnail=String(e.thumbnail||'').split('\n').filter(s=>/[가-힣]/.test(s)).map(s=>s.replace(/^[\s*#-]+/,'').replace(/\*\*/g,'')).join('\n').slice(0,100);
+  p.thumbnail=cleanVideoText(String(e.thumbnail||'').split('\n').map(s=>s.replace(/^[\s*#-]+/,'').replace(/\*\*/g,'')).join('\n')).slice(0,100);
   if(uncertain||(!p.narration&&!noNarration&&lines.some((s:string)=>/나레이션|내레이션|해설/.test(s))))p.importWarning='해설 표기를 확실히 구분하지 못한 부분이 있습니다. 읽을 대본에는 해설만 있는지 확인해주세요.';
-  return p;
+  return cleanPlanText(p);
 }

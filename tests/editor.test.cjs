@@ -7,12 +7,92 @@ const root = path.resolve(__dirname, '..');
 const compiled = path.join(root, '.editor-test');
 fs.mkdirSync(compiled, { recursive: true });
 fs.writeFileSync(path.join(compiled, 'package.json'), '{"type":"commonjs"}');
-for (const f of ['server/workflow/weekly.ts','src/workflow/package.ts','src/workflow/weekly.ts','src/utils/extractors.ts','src/editor/model.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
+for (const f of ['server/workflow/weekly.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
   const dest = path.join(compiled, f.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
 }
 const { defaultPlan, validatePlan, importEpisode } = require(path.join(compiled, 'src/editor/model.js'));
+const { cleanVideoText } = require(path.join(compiled, 'src/editor/text.js'));
+const draftModel = require(path.join(compiled, 'src/editor/draft.js'));
+const { recordProgress, recordDraftId } = require(path.join(compiled, 'src/workflow/progress.js'));
+const makeDraft = (patch={}) => ({id:'independent-uuid',plan:defaultPlan(),original:'',voice:'Zubenelgenubi',style:'편안하게',videos:[],...patch});
+test('safe text removes emoji clusters, decorations and invisible marks without losing ordinary text',()=>{
+  assert.equal(cleanVideoText('치약 짰더니 로켓? 🚀'),'치약 짰더니 로켓?');
+  assert.equal(cleanVideoText('가👨‍👩‍👧‍👦나 👍🏽 🇰🇷 ✨ ★ ■ \uFFFD'),'가 나');
+  assert.equal(cleanVideoText('1️⃣ 2⃣ #️⃣ *️⃣'),'1 2 # *');
+  const ordinary='한글 ABC xyz 123!? “인용” (29°C) 1,000₩ 3.5% + - / @ # & …';
+  assert.equal(cleanVideoText(ordinary),ordinary);
+  assert.equal(cleanVideoText('한글\r\nＡＢＣ　１２３\u200B\uFE0F'),'한글\nABC 123');
+  assert.equal(cleanVideoText('앞→뒤\n10≤20'),'앞->뒤\n10<=20');
+  assert.equal(cleanVideoText(cleanVideoText(ordinary+'🚀')),ordinary);
+});
+test('Spark import cleans narration, screen titles and captions while preserving speakers and times',()=>{
+  const p=importEpisode({duration:5,title:'로켓 🚀',korean:'🎙️ 해설: 숫자 12개! 🚀\n[0~2초] 자막: 12개! ✨\n[2~4초] 덕이: "가자! 👍🏽"\n[4~5초] 화면 문구: 🚀',thumbnail:'ROCKET 123 🚀'});
+  assert.equal(p.title,'로켓');assert.equal(p.narration,'숫자 12개!');assert.equal(p.thumbnail,'ROCKET 123');
+  assert.equal(p.captions.length,2);assert.equal(p.captions[1].source,'dialogue');assert.equal(p.captions[1].start,2);assert.equal(p.captions[1].text,'가자!');validatePlan(p);
+  const ass=subtitles({...p,thumbnail:'치약 짰더니 로켓? 🚀'});
+  assert.ok(!ass.includes('🚀'));assert.match(ass,/치약 짰더니 로켓\?/);assert.match(ass,/pos\(540,480\)/);assert.match(ass,/Kyobo Handwriting 2024/);
+});
+test('legacy drafts keep their media and text backup, reuse display-only timing and invalidate old results',()=>{
+  const file=new File(['video'],'clip.mp4',{lastModified:1}),voice=new Blob(['voice']),result=new Blob(['result']);
+  const old=makeDraft({plan:{...defaultPlan(),thumbnail:'로켓 🚀',captions:[{start:0,end:5,text:'가자! 🚀',source:'dialogue'}]},videos:[file],voiceBlob:voice,result,resultKey:'old-policy'});
+  old.syncKey=draftModel.syncKey(old);
+  const next=draftModel.restoreDraft(old);
+  assert.equal(next.videos[0],file);assert.equal(next.voiceBlob,voice);assert.equal(next.result,result);assert.equal(next.textBackup.thumbnail,'로켓 🚀');
+  assert.equal(next.plan.captions[0].start,0);assert.equal(next.plan.captions[0].text,'가자!');assert.equal(next.syncKey,draftModel.syncKey(next));assert.equal(draftModel.resultIsCurrent(next),false);
+  assert.equal(draftModel.restoreDraft(next),next);
+  next.resultKey=draftModel.resultKey(next);assert.equal(draftModel.resultIsCurrent(next),true);
+  assert.equal(draftModel.resultIsCurrent({...next,plan:{...next.plan,thumbnail:'다른 제목'}}),false);
+  assert.equal(old.plan.thumbnail,'로켓 🚀');
+});
+test('draft stages and summaries are honest, lightweight and do not store empty work',()=>{
+  assert.equal(draftModel.hasDraftContent(makeDraft()),false);
+  const d=makeDraft({videos:[new File(['video'],'clip.mp4')]});
+  assert.equal(draftModel.draftStage(d),'voice');d.syncKey=draftModel.syncKey(d);assert.equal(draftModel.draftStage(d),'captions');
+  d.result=new Blob(['result']);d.resultKey=draftModel.resultKey(d);assert.equal(draftModel.draftStage(d),'result');
+  const summary=draftModel.summarizeDraft(d,5);assert.equal(summary.updatedAt,5);assert.ok(!('videos' in summary));assert.ok(!('result' in summary));assert.ok(JSON.stringify(summary).length<500);
+  assert.match(draftModel.draftProgress({id:'legacy',title:'과거'}).label,/확인 필요/);
+  assert.equal(draftModel.draftStage({...d,plan:{...d.plan,duration:15}}),'videos');
+});
+test('only exact history identities connect edits; one picture is not a complete image set',()=>{
+  const item={id:'h1',duration:5,result:JSON.stringify({clips:[{imageTitle:'a'},{imageTitle:'b'}]})};
+  assert.equal(recordProgress(item).action,'작업 확인하기');
+  assert.equal(recordProgress(item,{imageTitles:['a','unrelated']}).action,'남은 사진 1장 만들기');
+  assert.equal(recordProgress(item,{imageTitles:['a','b']}).action,'Kling 자료 확인');
+  const d=draftModel.summarizeDraft(makeDraft({id:recordDraftId(item),videos:[new File(['v'],'a.mp4')]}));
+  assert.equal(recordProgress(item,undefined,d).action,'음성·자막 준비');
+  assert.equal(recordProgress(item,undefined,{...d,id:'independent-uuid'}).target,'history');
+  assert.equal(recordDraftId({...item,editorKey:'explicit'}),'episode-explicit');
+});
+test('IndexedDB keeps legacy drafts and Blobs, commits summaries atomically and skips blank drafts',async()=>{
+ const {IDBFactory}=require('fake-indexeddb');global.indexedDB=new IDBFactory();
+ const {editorStore,persistDraft}=require(path.join(compiled,'src/editor/storage.js'));
+ const old=makeDraft({id:'legacy',plan:{...defaultPlan(),title:'과거'},result:new Blob(['old'])});
+ await editorStore('legacy',old);await editorStore('list',[{id:'legacy',title:'과거'}]);await editorStore('current','legacy');
+ await persistDraft(makeDraft());assert.equal((await editorStore('list')).length,1);assert.equal(await editorStore('current'),'legacy');
+ const a=makeDraft({id:'a',plan:{...defaultPlan(),title:'A'},videos:[new File(['video'],'a.mp4',{lastModified:1})]});
+ const b=makeDraft({id:'b',plan:{...defaultPlan(),title:'B'}});
+ await Promise.all([persistDraft(a,1),persistDraft(b,2)]);
+ const list=await editorStore('list');assert.equal(list.length,3);assert.equal(list.find(s=>s.id==='legacy').version,undefined);
+ assert.equal((await editorStore('a')).videos[0].size,5);assert.equal(await (await editorStore('legacy')).result.text(),'old');
+ assert.ok(list.filter(s=>s.version===1).every(s=>!('videos'in s)&&!('result'in s)));
+});
+test('v1 picture store upgrades without losing images and indexes only an opened record',async()=>{
+ const {IDBFactory,IDBObjectStore}=require('fake-indexeddb');global.indexedDB=new IDBFactory();global.window=new EventTarget();
+ const original={images:{a:'data:image/png;base64,AQID',b:''}};
+ await new Promise((resolve,reject)=>{const r=indexedDB.open('pov_director_db',1);r.onupgradeneeded=()=>r.result.createObjectStore('media');r.onerror=()=>reject(r.error);r.onsuccess=()=>{const database=r.result,tx=database.transaction('media','readwrite');tx.objectStore('media').put(original,'legacy-record');tx.oncomplete=()=>{database.close();resolve();};};});
+ const {db}=require(path.join(compiled,'src/utils/db.js'));
+ const calls=[],getAll=IDBObjectStore.prototype.getAll;
+ IDBObjectStore.prototype.getAll=function(...args){calls.push(this.name);return getAll.apply(this,args);};
+ try {
+   assert.deepEqual(await db.summaries(),{});assert.deepEqual(await db.get('legacy-record'),original);
+   assert.deepEqual(await db.summaries(),{'legacy-record':{imageTitles:['a']}});
+   assert.ok(calls.every(name=>name==='summaries'),'must not scan image Blobs');
+   await db.set('second',{images:{x:'data:image/png;base64,AQID'}});await db.delete('second');assert.equal((await db.summaries()).second,undefined);
+   assert.deepEqual(await db.get('legacy-record'),original);
+ } finally {IDBObjectStore.prototype.getAll=getAll;}
+});
 const { subtitles, render, command, inspect } = require(path.join(compiled, 'server/editor/render.js'));
 const { audioResponse } = require(path.join(compiled, 'server/editor/routes.js'));
 const workPackage=require(path.join(compiled,'src/workflow/package.js'));
@@ -98,7 +178,7 @@ test('invalid, overlapping and overlong caption times are rejected', () => {
 });
 test('5 second source preserves narration and original caption times', () => {
   const p = importEpisode({ duration:5, title:'테스트', korean:'나레이션: 월요일 아침입니다.\n[0~2초] 일어나!\n[2~4초] 벽이 날아갔다.', thumbnail:'월요일 아침\nMonday morning' });
-  assert.equal(p.narration, '월요일 아침입니다.'); assert.equal(p.captions.length,2); assert.equal(p.captions[1].end,4); assert.equal(p.thumbnail,'월요일 아침'); validatePlan(p);
+  assert.equal(p.narration, '월요일 아침입니다.'); assert.equal(p.captions.length,2); assert.equal(p.captions[1].end,4); assert.equal(p.thumbnail,'월요일 아침\nMonday morning'); validatePlan(p);
 });
 test('ASS user text cannot insert commands; titles end at one second', () => {
   const text = subtitles({...defaultPlan(),thumbnail:'첫 화면',captions:[{start:0,end:5,text:'{\\pos(0,0)} 자막'}]});
@@ -108,7 +188,7 @@ test('real render: silent source, audio source, narration mixing and 15s concat'
   const dir = path.join(compiled, 'media'); fs.mkdirSync(dir,{recursive:true}); const ff = process.env.FFMPEG_PATH;
   await command(ff,['-y','-f','lavfi','-i','color=c=0x67514a:s=360x640:r=30','-f','lavfi','-i','sine=frequency=220:sample_rate=48000','-t','5','-c:v','libx264','-pix_fmt','yuv420p','-c:a','aac','source.mp4'],dir);
   await command(ff,['-y','-f','lavfi','-i','sine=frequency=880:sample_rate=24000','-t','4.5','voice.wav'],dir);
-  const p = {...defaultPlan(),thumbnail:'월요일 아침\n일어나야 한다',captions:[{start:0,end:2,text:'첫 번째 자막입니다.'},{start:2,end:5,text:'마지막 음성과 자막을 확인합니다.'}]};
+  const p = {...defaultPlan(),thumbnail:'치약 짰더니 로켓? 🚀',captions:[{start:0,end:2,text:'첫 번째 자막입니다. 👨‍👩‍👧‍👦'},{start:2,end:5,text:'마지막 음성과 자막을 확인합니다. ✨'}]};
   await render(p,[path.join(dir,'source.mp4')],path.join(dir,'voice.wav'),dir);
   const meta = await inspect('finished.mp4',dir); assert.equal(meta.audio,true); assert.ok(Math.abs(meta.duration-5)<0.1);
   const stats = await command(ff,['-i','finished.mp4','-vn','-af','astats','-f','null','-'],dir); assert.ok(/RMS level dB: -(?!inf)\d/.test(stats));
@@ -183,6 +263,17 @@ test('saving coalesces rapid edits and preserves both episodes when switching',a
  const writer=draftWriter(async value=>{if(!saved.length)await gate;saved.push(value);});
  const pending=writer.write('a','a1');writer.write('a','a2');writer.write('a','a3');writer.write('b','b1');release();await pending;await writer.flush();
  assert.deepEqual(saved,['a1','a3','b1']);await writer.write('b','b2');assert.equal(saved.at(-1),'b2');
+});
+test('a failed save remains queued and must succeed before switching drafts',async()=>{
+ let fail=true;const saved=[];const writer=draftWriter(async value=>{if(fail)throw Error('quota');saved.push(value);});
+ await assert.rejects(writer.write('a','a1'),/quota/);fail=false;await writer.flush();assert.deepEqual(saved,['a1']);
+ await writer.write('b','b1');assert.deepEqual(saved,['a1','b1']);
+});
+test('cleaned text uses glyphs from the actual bundled caption font', {skip:!process.env.FFMPEG_PATH||process.platform==='win32'},()=>{
+ const {execFileSync}=require('node:child_process');
+ const ranges=execFileSync('fc-query',['--format=%{charset}',path.join(root,'src/KyoboHandwriting2024psw.ttf')],{encoding:'utf8'}).trim().split(/\s+/).map(s=>s.split('-').map(n=>parseInt(n,16)));
+ const text=cleanVideoText('치약 짰더니 로켓? 🚀👨‍👩‍👧‍👦 1️⃣ ABC 123 “인용” — … ° ℃ ℉ ₩ € ¥ £ ¢ ± × ÷ ‰ 「」『』【】〈〉《》 ㄱㅎぁんァヶΑΩαωЁАяё ★ ■');
+ for(const c of text){const n=c.codePointAt(0);assert.ok(ranges.some(([a,b=a])=>a<=n&&n<=b),`font missing ${c} U+${n.toString(16)}`);}
 });
 
 test('explicit absence of narration never produces spoken placeholder text',()=>{
