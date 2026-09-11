@@ -4,7 +4,7 @@ import { clipLengths } from './media';
 import { TEXT_POLICY_VERSION } from './text';
 
 // Bump when rendered layout changes; voice and timing caches remain reusable.
-const RENDER_VERSION = 4;
+const RENDER_VERSION = 5;
 
 export type Draft = { id: string; plan: EditPlan; original: string; voice: string; style: string; voiceBlob?: Blob; voiceKey?: string; videos: (File | null)[]; result?: Blob; resultKey?: string; syncKey?: string; textBackup?: Pick<EditPlan, 'title' | 'narration' | 'thumbnail' | 'captions'> };
 export type EditorStage = 'videos' | 'voice' | 'captions' | 'result';
