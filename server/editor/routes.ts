@@ -87,7 +87,7 @@ editorRouter.post(['/render','/transcribe'], async (req, res) => {
     const files = req.files as Record<string, Express.Multer.File[]>;
     if(req.path==='/transcribe'){
       if(files?.videos?.length!==1||files.voice?.length)throw Error('분석할 파일 하나를 넣어주세요.');
-      const result=await transcribe(files.videos[0].path,dir,AbortSignal.any([abort.signal,AbortSignal.timeout(100000)]));
+      const result=await transcribe(files.videos[0].path,dir,AbortSignal.any([abort.signal,AbortSignal.timeout(100000)]),req.body.expectedDuration===undefined?undefined:Number(req.body.expectedDuration));
       res.set('Cache-Control','no-store').json(result);return;
     }
     if (!files?.videos?.length || (files.voice?.length||0)>1) throw Error('영상과 나레이션 파일을 확인해주세요.');
