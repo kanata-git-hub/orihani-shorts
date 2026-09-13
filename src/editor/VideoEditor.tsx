@@ -3,7 +3,7 @@ import { auth } from '../lib/firebase';
 import { defaultPlan, EditPlan, importEpisode, validatePlan } from './model';
 import { editorStore, draftWriter, persistDraft } from './storage';
 import { Draft, DraftSummary, EditorStage, voiceKey, syncKey, resultKey, voiceIsCurrent, resultIsCurrent, hasDraftContent, restoreDraft, draftStage, draftProgress, summarizeDraft } from './draft';
-import { spokenNumbers, alignCaptions, scheduleNarration, placedWords, speechRanges, Word } from './speech';
+import { spokenNumbers, alignCaptions, alignSourceCaptions, sourceSpeechTimeline, scheduleNarration, placedWords, SpeechAnalysis, Word } from './speech';
 import { clipLengths, validateMediaSizes, validateMediaDuration, mediaDuration } from './media';
 import './editor.css';
 import { shareFile } from '../workflow/share';
@@ -13,6 +13,10 @@ function useURL(blob?: Blob) {
   const [url, setURL] = useState('');
   useEffect(() => { if (!blob) { setURL(''); return; } const value = URL.createObjectURL(blob); setURL(value); return () => URL.revokeObjectURL(value); }, [blob]); return url;
 }
+function SourcePreview({ file, index }: { file: File; index: number }) {
+  const url = useURL(file);
+  return <div><p>{index + 1}번 원본 영상 · {file.name}</p><video className="ori-result" controls playsInline preload="none" src={url} /></div>;
+}
 async function request(url: string, body: FormData | object) {
   const user = auth.currentUser; if (!user) throw Error('먼저 로그인해주세요.');
   const headers: Record<string, string> = { Authorization: `Bearer ${await user.getIdToken()}` };
@@ -21,14 +25,19 @@ async function request(url: string, body: FormData | object) {
   if (!res.ok) { const error = await res.json().catch(() => ({})); throw Error(error.error || `서버 응답 오류 (${res.status})`); }
   return res.blob();
 }
-async function analyze(blob:Blob,expectedDuration?:number):Promise<Word[]>{
+async function analyze(blob:Blob,expectedDuration?:number):Promise<SpeechAnalysis>{
   const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer()))).map(n=>n.toString(16).padStart(2,'0')).join('');
-  const key='transcribe-v1-'+hash,cached=await editorStore<Word[]>(key);if(cached)return cached;
+  const key='transcribe-v2-'+hash,cached=await editorStore<SpeechAnalysis>(key);if(cached)return cached;
+  const legacy=await editorStore<Word[]>('transcribe-v1-'+hash);if(Array.isArray(legacy))return {words:legacy};
   const form=new FormData();form.append('videos',blob,'audio-input');
   if(expectedDuration!==undefined)form.append('expectedDuration',String(expectedDuration));
-  const result=JSON.parse(await (await request('transcribe',form)).text());
+  const result=JSON.parse(await (await request('transcribe?timingReview=1',form)).text());
   if(!Array.isArray(result.words))throw Error('음성 분석 결과를 읽지 못했습니다.');
-  await editorStore(key,result.words);return result.words;
+  // Failed source timings remain reviewable without paying for the same request
+  // again. Keep legacy successful Word[] caches usable across this upgrade.
+  const analysis:SpeechAnalysis={words:result.words,...(result.timingWarning?{timingWarning:String(result.timingWarning)}:{})};
+  if(!analysis.timingWarning||expectedDuration!==undefined)await editorStore(key,analysis);
+  return analysis;
 }
 
 export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResumeHandled, onActive }: { visible: boolean; open: () => void; onIndex?: (list: DraftSummary[]) => void; onBusy?: (busy: boolean) => void; resumeId?: string; onResumeHandled?: () => void; onActive?: (id: string) => void }) {
@@ -134,15 +143,16 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
     for(let i=0;i<lengths.length;i++)validateMediaDuration(await mediaDuration(d.videos[i]!,'video'),lengths[i],i);
     if(d.plan.importWarning)throw Error(d.plan.importWarning);
     if(/(?:Dialog(?:ue)?|오원장|소미|덕이)\s*[:：]/i.test(d.plan.narration))throw Error('읽을 대본에 등장인물 대사가 있습니다. 해설만 남겨주세요.');
-    let working={...d};let originalWords:Word[]=[];let offset=0;
-    for(let i=0;i<lengths.length;i++){setMessage(`Kling 대사 시간 확인 중 · ${i+1}/${lengths.length}`);const words=await analyze(d.videos[i]!,lengths[i]);originalWords.push(...words.map(w=>({...w,start:Math.min(offset+lengths[i],w.start+offset),end:Math.min(offset+lengths[i],w.end+offset)})).filter(w=>w.end>w.start));offset+=lengths[i];}
+    let working={...d};const analyses:SpeechAnalysis[]=[];
+    for(let i=0;i<lengths.length;i++){setMessage(`Kling 대사 시간 확인 중 · ${i+1}/${lengths.length}`);try{analyses.push(await analyze(d.videos[i]!,lengths[i]));}catch(error){throw Error(`${i+1}번 영상 분석: ${error instanceof Error?error.message:'분석에 실패했습니다.'}`);}}
+    const timeline=sourceSpeechTimeline(analyses,lengths);
     let dialogue=d.plan.captions.filter(c=>c.source==='dialogue');
-    const alignedDialogue=alignCaptions(dialogue,originalWords);
-    const dialogueRanges=speechRanges(originalWords,d.plan.duration);
+    const alignedDialogue=alignSourceCaptions(dialogue,timeline.words,timeline.uncertain);
+    const dialogueRanges=timeline.dialogueRanges;
     // Preserve all speech, including unexpected Kling dialogue, instead of ducking it.
     if(d.plan.narration.trim()&&!voiceCurrent){setMessage('해설 나레이션 생성 중입니다. 등장인물 대사는 읽지 않습니다.');const blob=await request('voice',{text:spokenNumbers(d.plan.narration),voice:d.voice,style:d.style,duration:d.plan.duration});working={...working,voiceBlob:blob,voiceKey:voiceKey(d)};setD(working);}
     let narrationWords:Word[]=[];let voiceDuration:number|undefined;
-    if(d.plan.narration.trim()){setMessage('해설 음성과 자막 시간을 연결하고 있습니다.');voiceDuration=await mediaDuration(working.voiceBlob!,'audio');narrationWords=await analyze(working.voiceBlob!);if(!narrationWords.length)throw Error('해설 음성에서 발화를 찾지 못했습니다.');}
+    if(d.plan.narration.trim()){setMessage('해설 음성과 자막 시간을 연결하고 있습니다.');voiceDuration=await mediaDuration(working.voiceBlob!,'audio');const narration=await analyze(working.voiceBlob!);if(narration.timingWarning)throw Error('해설 음성의 발화 시간을 확인하지 못했습니다. 원본 대사를 보호하기 위해 해설 자동 배치를 멈췄습니다.');narrationWords=narration.words;if(!narrationWords.length)throw Error('해설 음성에서 발화를 찾지 못했습니다.');}
     const segments=scheduleNarration(narrationWords,d.plan.duration,dialogueRanges,d.plan.voiceSpeed,voiceDuration);
     const onTimeline=placedWords(narrationWords,segments,d.plan.voiceSpeed);
     let narratorCaptions=d.plan.captions.filter(c=>!c.source||c.source==='narration');
@@ -150,7 +160,8 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
     const captions=[...alignCaptions(narratorCaptions,onTimeline),...alignedDialogue,...d.plan.captions.filter(c=>c.source==='screen')].sort((a,b)=>a.start-b.start);
     for(let i=1;i<captions.length;i++)if(captions[i].start<captions[i-1].end)captions[i].review='앞 자막과 겹칩니다. 시간을 확인해주세요.';
     working={...working,plan:{...working.plan,captions,voiceSegments:segments,dialogueRanges}};working.syncKey=syncKey(working);setD(working);
-    setMessage(captions.some(c=>c.review)?'음성 준비 완료. 확인 표시가 있는 자막만 검토해주세요.':'음성과 자동 싱크가 준비되었습니다. 미리듣기 후 영상을 완성하세요.');
+    if(timeline.uncertain.length){setMessage(`${timeline.uncertain.map(c=>c.clip).join(', ')}번 영상의 자동 시간을 확인하지 못해 원본 소리를 그대로 유지했습니다. 자막 단계에서 원본을 듣고 확인 표시가 있는 자막 시간을 검토해주세요.`);if(!d.plan.narration.trim())setStage('captions');}
+    else setMessage(captions.some(c=>c.review)?'음성 준비 완료. 확인 표시가 있는 자막만 검토해주세요.':'음성과 자동 싱크가 준비되었습니다. 미리듣기 후 영상을 완성하세요.');
   });
   const makeVideo = () => run(async () => {
     const cleaned = restoreDraft(d); if (cleaned !== d) { setD(cleaned); throw Error('자막 문자를 정리했습니다. 문구를 확인한 뒤 다시 완성해주세요.'); }
@@ -194,6 +205,7 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
           <details><summary>원본 대본 확인 / 직접 가져오기</summary>{d.original && <pre>{d.original}</pre>}{d.textBackup&&<details><summary>문자 정리 전 편집 원문</summary><pre>{JSON.stringify(d.textBackup,null,2)}</pre></details>}<textarea aria-label="가져올 원본 대본" rows={6} value={raw} onChange={e=>setRaw(e.target.value)} placeholder="한글 나레이션 및 자막 부분을 붙여넣으세요"/><button onClick={()=>{try{const p=importEpisode({duration:d.plan.duration,korean:raw,title:d.plan.title,thumbnail:d.plan.thumbnail});setD(v=>({...v,plan:{...v.plan,narration:p.narration,captions:p.captions,importWarning:p.importWarning},original:raw}));setMessage('대본을 가져오고 깨질 수 있는 문자를 정리했습니다. 해설과 자막을 확인해주세요.');}catch(e){setMessage(e.message);}}}>대본에서 나레이션·자막 가져오기</button></details>
         </article>
         <article hidden={stage!=='captions'}><h3>3. 자막과 첫 화면 문구</h3><p>음성에서 찾은 발화 시간으로 자동 정렬합니다. 확인 표시가 있는 문장만 검토하세요. 등장인물 대사 구간의 원본 소리는 유지됩니다.</p><p className="ori-note">이모티콘과 지원되지 않는 장식 문자는 자동 정리합니다. 한글·영문·숫자·일반 문장부호는 유지합니다.</p>
+          <details><summary>원본 영상·대사 들으며 시간 확인</summary><p>원본 재생 시간은 각 영상의 0초부터 시작합니다. 자막 시간은 완성 영상 전체 기준입니다{d.plan.duration===15?' (1번: 0초, 2번: 4초, 3번: 8초, 4번: 11초부터).':'.'}</p>{stage==='captions'&&d.videos.map((file,index)=>file&&<SourcePreview key={`${d.id}-${index}`} file={file} index={index}/>)}</details>
           {d.plan.captions.map((c, i) => <div className="ori-caption-card" key={i}>
             <div className="ori-caption-heading"><strong>{i+1}. {c.source==='dialogue'?'등장인물 대사':c.source==='screen'?'화면 문구':'해설'}</strong><span>{c.start.toFixed(2)}–{c.end.toFixed(2)}초</span></div>
             <label>자막 {i+1}<textarea rows={2} maxLength={160} value={c.text} onChange={e=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,text:e.target.value}:r)})} onBlur={cleanText}/></label>

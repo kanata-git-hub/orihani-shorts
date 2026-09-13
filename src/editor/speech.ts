@@ -1,5 +1,27 @@
 export type Word = { text: string; start: number; end: number };
 export type VoiceSegment = { sourceStart: number; sourceEnd: number; start: number };
+export type SpeechAnalysis = { words: Word[]; timingWarning?: string };
+export type UncertainClip = { start: number; end: number; clip: number };
+
+class WordTimingError extends Error {}
+
+// Normalize explicit duration formats only; never guess whether a bare number
+// means seconds or milliseconds, or invent timing for an untimed spoken word.
+function seconds(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const match = value.trim().match(/^(\d+(?:\.\d+)?)(ms|s)?$/);
+    return match ? Number(match[1]) / (match[2] === 'ms' ? 1000 : 1) : NaN;
+  }
+  if (value && typeof value === 'object') {
+    const duration = value as { seconds?: unknown; nanos?: unknown };
+    const s = duration.seconds ?? 0, n = duration.nanos ?? 0;
+    if (!('seconds' in duration || 'nanos' in duration)) return NaN;
+    const whole = typeof s === 'number' ? s : typeof s === 'string' && /^\d+$/.test(s) ? Number(s) : NaN;
+    return Number.isSafeInteger(whole) && whole >= 0 && typeof n === 'number' && Number.isInteger(n) && n >= 0 && n < 1e9 ? whole + n / 1e9 : NaN;
+  }
+  return NaN;
+}
 
 function sino(value: string): string {
   const digits = '영일이삼사오육칠팔구';
@@ -29,14 +51,56 @@ export function spokenNumbers(input: string): string {
 }
 export const normalizeSpeech = (s: string) => spokenNumbers(s).replace(/[^가-힣a-z]/gi, '').toLowerCase();
 export function parseWords(result: any): Word[] {
-  const seconds = (x: unknown) => typeof x === 'number' ? x : typeof x === 'string' && /^\d+(?:\.\d+)?s?$/.test(x) ? parseFloat(x) : NaN;
   const words: Word[] = [];
   for (const step of result?.steps || []) if (step.type === 'model_output') for (const content of step.content || []) for (const a of content.annotations || []) if (a.type === 'word_info') {
+    // Separately annotated punctuation has no spoken duration of its own.
+    if (typeof a.text === 'string' && !/[\p{L}\p{N}]/u.test(a.text)) continue;
     const start = seconds(a.start_offset), end = seconds(a.end_offset);
-    if (typeof a.text !== 'string' || !Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > 60) throw Error('음성 분석의 시간 정보가 올바르지 않습니다.');
+    if (typeof a.text !== 'string' || !Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > 60) throw new WordTimingError('음성 분석의 시간 정보가 올바르지 않습니다.');
     words.push({ text: a.text, start, end });
   }
   return words.sort((a,b) => a.start-b.start);
+}
+
+export function readSpeechAnalysis(result: any, duration: number): SpeechAnalysis {
+  const uncertain = (): SpeechAnalysis => ({ words: [], timingWarning: '자동 분석에서 발화 시간을 확인하지 못했습니다. 원본 소리를 유지하고 자막 시간을 직접 확인해주세요.' });
+  if (!Array.isArray(result?.steps) || (result.status && result.status !== 'completed')) return uncertain();
+  const outputs = result.steps.filter((s: any) => s?.type === 'model_output');
+  if (!outputs.length || outputs.some((s: any) => !Array.isArray(s.content) || s.content.some((c: any) => !c || (c.annotations !== undefined && (!Array.isArray(c.annotations) || c.annotations.some((a: any) => !a || typeof a !== 'object')))))) return uncertain();
+  try {
+    const words = parseWords({ steps: outputs });
+    const text = outputs.flatMap((s: any) => s.content).map((c: any) => typeof c.text === 'string' ? c.text : '').join('');
+    if ((!words.length && /[\p{L}\p{N}]/u.test(text)) || words.some(w => w.end > duration + 0.15)) return uncertain();
+    return { words };
+  } catch (error) {
+    if (error instanceof WordTimingError) return uncertain();
+    throw error;
+  }
+}
+
+export function sourceSpeechTimeline(analyses: SpeechAnalysis[], lengths: number[]) {
+  if (analyses.length !== lengths.length) throw Error('모든 영상의 음성 분석이 필요합니다.');
+  const words: Word[] = [], uncertain: UncertainClip[] = [];
+  let offset = 0;
+  analyses.forEach((analysis, i) => {
+    const end = offset + lengths[i];
+    if (analysis.timingWarning) uncertain.push({ start: offset, end, clip: i + 1 });
+    else words.push(...analysis.words.map(w => ({ ...w, start: Math.min(end, offset + w.start), end: Math.min(end, offset + w.end) })).filter(w => w.end > w.start));
+    offset = end;
+  });
+  // Unknown speech protects the entire source clip from attenuation/narration.
+  const protectedWords = [...words, ...uncertain.map(c => ({ text: '', start: c.start, end: c.end }))];
+  return { words, uncertain, dialogueRanges: speechRanges(protectedWords, offset) };
+}
+
+export function alignSourceCaptions<T extends { text: string; start: number; end: number }>(captions: T[], words: Word[], uncertain: UncertainClip[]): (T & { review?: string })[] {
+  const overlap = (c: T) => uncertain.filter(r => c.start < r.end && c.end > r.start);
+  const reliable = alignCaptions(captions.filter(c => !overlap(c).length), words);
+  let index = 0;
+  return captions.map(c => {
+    const clips = overlap(c);
+    return clips.length ? { ...c, review: `${clips.map(r => r.clip).join(', ')}번 영상의 발화 시간을 확인하지 못했습니다. 원본을 들으며 자막 시작·끝 시간을 확인해주세요.` } : reliable[index++];
+  });
 }
 
 // Character-level monotonic alignment tolerates Korean spacing differences.

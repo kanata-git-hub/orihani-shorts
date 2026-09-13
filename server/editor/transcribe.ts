@@ -1,7 +1,7 @@
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import {command,inspect} from './render';
-import {parseWords} from '../../src/editor/speech';
+import {readSpeechAnalysis} from '../../src/editor/speech';
 import {validateMediaDuration} from '../../src/editor/media';
 
 export async function transcribe(file:string,dir:string,signal:AbortSignal,expectedDuration?:number){
@@ -18,9 +18,6 @@ export async function transcribe(file:string,dir:string,signal:AbortSignal,expec
     body:JSON.stringify({model,input:[{type:'audio',data,mime_type:'audio/wav'}],generation_config:{transcription_config:{language_codes:['ko-KR'],mode:{type:'verbatim',timestamp_granularities:['word']}}}})
   });
   if(!response.ok)throw Error(`음성 분석 서비스 오류 (${response.status}). 자동으로 재요청하지 않았습니다.`);
-  const result=await response.json();const words=parseWords(result);
-  const text=(result.steps||[]).filter((s:any)=>s.type==='model_output').flatMap((s:any)=>s.content||[]).map((c:any)=>c.text||'').join('');
-  if(!words.length&&text.trim())throw Error('분석 결과에 단어 시간이 없습니다. 자동 싱크를 적용하지 않았습니다.');
-  if(words.some(w=>w.end>meta.duration+0.15))throw Error('분석 결과가 실제 파일 길이를 벗어납니다.');
-  return {words,model};
+  const analysis=readSpeechAnalysis(await response.json(),meta.duration);
+  return {...analysis,model};
 }

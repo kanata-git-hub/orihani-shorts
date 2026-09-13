@@ -311,6 +311,76 @@ test('real render: silent source, audio source, narration mixing and 15s concat'
 });
 
 const { spokenNumbers, parseWords, alignCaptions, scheduleNarration, placedWords } = require(path.join(compiled,'src/editor/speech.js'));
+const {readSpeechAnalysis,sourceSpeechTimeline,alignSourceCaptions}=require(path.join(compiled,'src/editor/speech.js'));
+const transcriptResult=annotations=>({status:'completed',steps:[{type:'model_output',content:[{type:'text',text:'안녕 친구야',annotations}]}]});
+const annotation=(text,start_offset,end_offset)=>({type:'word_info',text,start_offset,end_offset});
+test('explicit timestamp units and duration objects normalize without guessing numeric units',()=>{
+ const result=transcriptResult([
+  annotation('안녕',' 100ms ','0.800s'),
+  annotation('친구야',{seconds:'1',nanos:100000000},{seconds:1,nanos:500000000}),
+  annotation('.', '1.5s', '1.5s')
+ ]);
+ assert.deepEqual(readSpeechAnalysis(result,4),{words:[{text:'안녕',start:.1,end:.8},{text:'친구야',start:1.1,end:1.5}]});
+ assert.deepEqual(parseWords(transcriptResult([annotation('안녕',{nanos:100000000},.8)])),[{text:'안녕',start:.1,end:.8}]);
+ assert.ok(readSpeechAnalysis(transcriptResult([annotation('안녕',100,800)]),4).timingWarning);
+});
+test('unusable spoken timings require review and never become invented timings or silence',()=>{
+ for(const [start,end] of [[null,.8],[undefined,.8],['00:00:01',2],[.8,.8],[1,.8],[-.1,.8],[0,Infinity],[0,61],[0,4.3],[{},.8],[{seconds:true},.8],[0,{seconds:0,nanos:1e9}]]) {
+  const result=readSpeechAnalysis(transcriptResult([annotation('안녕',.1,.5),annotation('친구야',start,end)]),4);
+  assert.ok(result.timingWarning,JSON.stringify([start,end]));assert.deepEqual(result.words,[]);
+ }
+ assert.ok(readSpeechAnalysis(transcriptResult([]),4).timingWarning);
+ assert.ok(readSpeechAnalysis({status:'in_progress',steps:[]},4).timingWarning);
+ assert.ok(readSpeechAnalysis({steps:[{type:'model_output',content:[null]}]},4).timingWarning);
+ assert.ok(readSpeechAnalysis(transcriptResult([null]),4).timingWarning);
+ assert.deepEqual(readSpeechAnalysis({status:'completed',steps:[{type:'model_output',content:[{text:'',annotations:[]}]}]},4),{words:[]});
+});
+test('one uncertain clip retains its captions and source audio while other clips still align',()=>{
+ const failed=readSpeechAnalysis(transcriptResult([annotation('안녕',0,0)]),4);
+ const timeline=sourceSpeechTimeline([
+  {words:[{text:'출발',start:.2,end:1}]},failed,{words:[]},{words:[{text:'도착',start:.5,end:2}]}
+ ],[4,4,3,4]);
+ assert.deepEqual(timeline.uncertain,[{start:4,end:8,clip:2}]);
+ assert.deepEqual(timeline.words,[{text:'출발',start:.2,end:1},{text:'도착',start:11.5,end:13}]);
+ assert.ok(timeline.dialogueRanges.some(r=>r.start<=4&&r.end>=8));
+ const captions=alignSourceCaptions([
+  {text:'출발',start:0,end:4,source:'dialogue'},
+  {text:'안녕 친구야',start:4,end:8,source:'dialogue'},
+  {text:'도착',start:11,end:15,source:'dialogue'}
+ ],timeline.words,timeline.uncertain);
+ assert.deepEqual(captions.map(c=>[c.start,c.end]),[[.2,1],[4,8],[11.5,13]]);
+ assert.match(captions[1].review,/2번 영상/);assert.equal(captions[0].review,undefined);assert.equal(captions[2].review,undefined);
+ const original=makeDraft({plan:{...defaultPlan(),duration:15,captions,dialogueRanges:timeline.dialogueRanges},result:new Blob(['old result']),videos:[1,2,3,4].map(i=>new File(['video'],`clip${i}.mp4`,{lastModified:i}))});
+ original.syncKey=draftModel.syncKey(original);original.resultKey=draftModel.resultKey(original);
+ assert.equal(draftModel.resultIsCurrent(original),false);
+ const reviewed={...original,plan:{...original.plan,captions:captions.map(c=>({...c,review:undefined}))}};
+ assert.equal(draftModel.syncKey(reviewed),original.syncKey);assert.notEqual(draftModel.resultKey(reviewed),original.resultKey);
+ validatePlan(reviewed.plan);
+ const allUncertain=sourceSpeechTimeline([failed,failed,failed,failed],[4,4,3,4]);
+ assert.deepEqual(allUncertain.dialogueRanges,[{start:0,end:15}]);
+ assert.throws(()=>scheduleNarration([{text:'해설',start:0,end:.5}],15,allUncertain.dialogueRanges,1),/부족/);
+ assert.throws(()=>sourceSpeechTimeline([failed],[4,4,3,4]),/모든 영상/);
+});
+test('transcription timing failure returns reviewable metadata after exactly one request',async t=>{
+ const renderer=require(path.join(compiled,'server/editor/render.js'));
+ const {transcribe}=require(path.join(compiled,'server/editor/transcribe.js'));
+ const dir=fs.mkdtempSync(path.join(compiled,'transcribe-'));
+ const previousKey=process.env.GEMINI_API_KEY;process.env.GEMINI_API_KEY='unit-test-only';
+ let requests=0,meta={duration:4.04,audio:true,video:true},httpStatus=200;
+ t.mock.method(renderer,'inspect',async()=>meta);
+ t.mock.method(renderer,'command',async()=>{fs.writeFileSync(path.join(dir,'analysis.wav'),Buffer.from('test wav'));return '';});
+ t.mock.method(globalThis,'fetch',async(url,options)=>{
+  requests++;assert.equal(url,'https://generativelanguage.googleapis.com/v1beta/interactions');
+  const body=JSON.parse(options.body);assert.deepEqual(body.generation_config.transcription_config.mode,{type:'verbatim',timestamp_granularities:['word']});
+  return Response.json(transcriptResult([annotation('안녕',0,0)]),{status:httpStatus});
+ });
+ try {
+  const analysis=await transcribe('test.mp4',dir,new AbortController().signal,4);
+  assert.equal(requests,1);assert.ok(analysis.timingWarning);assert.deepEqual(analysis.words,[]);
+  httpStatus=429;await assert.rejects(()=>transcribe('test.mp4',dir,new AbortController().signal,4),/429/);assert.equal(requests,2);
+  meta={...meta,audio:false};assert.deepEqual(await transcribe('test.mp4',dir,new AbortController().signal,4),{words:[],model:'no-audio'});assert.equal(requests,2);
+ } finally {if(previousKey===undefined)delete process.env.GEMINI_API_KEY;else process.env.GEMINI_API_KEY=previousKey;fs.rmSync(dir,{recursive:true,force:true});}
+});
 test('Korean readings preserve units and native counters',()=>{
   assert.equal(spokenNumbers('3명이 15초 동안 1%를 20개로'), '세 명이 십오 초 동안 일 퍼센트를 스무 개로');
   assert.equal(spokenNumbers('07:00에 1,000원'), '일곱 시에 천 원');
