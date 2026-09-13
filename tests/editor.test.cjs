@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const compiled = path.join(root, '.editor-test');
 fs.mkdirSync(compiled, { recursive: true });
 fs.writeFileSync(path.join(compiled, 'package.json'), '{"type":"commonjs"}');
-for (const f of ['server/workflow/weekly.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/typography.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
+for (const f of ['server/workflow/weekly.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/typography.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
   const dest = path.join(compiled, f.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
@@ -162,6 +162,61 @@ test('mobile weekly import keeps explicit narration and derives two episode dura
  assert.equal(importEpisode(episodes[0]).narration,'아침이다.');
  assert.throws(()=>parseWeekly('부족한 문서'));
 });
+// Same Google Docs table structure as serial packages; these are synthetic lines.
+const serialRows=[
+ ['장면 1 (0~4초)','오원장 대사','같이 출발하자.'],['장면 1 (0~4초)','화면 자막','같이 출발하자.'],
+ ['장면 2 (4~8초)','덕이 대사','잠깐만요!'],['장면 2 (4~8초)','화면 자막','잠깐만요!'],
+ ['장면 3 (8~11초)','(무대사)','우산이 뒤집혔다!'],
+ ['장면 4 (11~15초)','소미 대사','다음에는 날씨부터 보죠.'],['장면 4 (11~15초)','화면 자막','다음에는 날씨부터 보죠.']
+];
+const tableText=rows=>['시점','캐릭터','내용',...rows.flat()].join('\r\n\t');
+const serialWeekly=[1,2,3].map(n=>`🐥 [에피소드 ${n}] ${n}화 작은 산책 (이어지는 일상)\n1. 시나리오\n${[4,4,3,4].map((s,i)=>`[장면 ${i+1} (${s}초)]: 오원장, 덕이, 소미의 산책 장면 ${i+1}.`).join('\n')}\n2. 한글 대사 및 자막\n${tableText(serialRows)}\n3. 영어 자막\nEnglish screen text only.\n4. 제목 및 해시태그\n${n}화 작은 산책 #일상\n5. 썸네일 추천 문구\n${n}화 작은 산책`).join('\n');
+test('three serial episodes infer 15 seconds from scenes and preserve source dialogue for planning',()=>{
+ const {episodePrompt}=require(path.join(compiled,'src/workflow/weekly.js'));
+ const episodes=parseWeekly(serialWeekly);
+ assert.deepEqual(episodes.map(e=>e.duration),[15,15,15]);
+ for(const [i,e]of episodes.entries()){
+  assert.match(e.title,new RegExp(`${i+1}화 작은 산책`));assert.equal(e.thumbnail,`${i+1}화 작은 산책`);
+  assert.ok(e.characters.includes('nurse'));assert.ok(e.korean.includes('오원장 대사'));assert.ok(!e.korean.includes('English screen'));
+  const input=episodePrompt(e);assert.ok(input.includes(e.title));assert.ok(input.includes(e.scenario));assert.ok(input.includes(e.korean));
+  const p=importEpisode(e);validatePlan(p);
+  assert.equal(p.narration,'');assert.equal(p.captions.length,4);
+  assert.deepEqual(p.captions.map(c=>[c.start,c.end,c.source]),[[0,4,'dialogue'],[4,8,'dialogue'],[8,11,'screen'],[11,15,'dialogue']]);
+  assert.deepEqual(p.captions.map(c=>c.text),['같이 출발하자.','잠깐만요!','우산이 뒤집혔다!','다음에는 날씨부터 보죠.']);
+ }
+});
+test('Docs export, TSV and Markdown dialogue tables produce the same captions without duplicate rows',()=>{
+ const forms=[tableText(serialRows),[['시점','캐릭터','내용'],...serialRows].map(r=>r.join('\t')).join('\n'),['| 시점 | 캐릭터 | 내용 |','| --- | --- | --- |',...serialRows.map(r=>'| '+r.join(' | ')+' |')].join('\n')];
+ const plans=forms.map(korean=>importEpisode({duration:15,korean}));
+ plans.forEach(p=>{validatePlan(p);assert.equal(p.narration,'');assert.deepEqual(p.captions,plans[0].captions);});
+ const reversed=importEpisode({duration:15,korean:tableText([serialRows[1],serialRows[0],...serialRows.slice(2)])});
+ assert.deepEqual(reversed.captions,plans[0].captions);
+});
+test('table narration is explicit; screen-only and repeated dialogue text keep their own times',()=>{
+ const p=importEpisode({duration:15,korean:tableText([
+  ['장면 1 (0~4초)','해설','비가 왔다.'],['장면 1 (0~4초)','화면 자막','비가 왔다.'],
+  ['장면 2 (4~8초)','덕이 대사','네!'],['장면 3 (8~11초)','덕이 대사','네!'],
+  ['장면 4 (11~15초)','(무대사)','집으로 돌아갔다.']
+ ])});
+ validatePlan(p);assert.equal(p.narration,'비가 왔다.');assert.equal(p.captions.filter(c=>c.text==='네!').length,2);
+ assert.equal(p.captions.at(-1).source,'screen');
+ assert.throws(()=>importEpisode({duration:15,korean:tableText([['장면 1 (0~4초)','덕이 대사']])}),/대사 표/);
+ assert.throws(()=>importEpisode({duration:15,korean:tableText([['장면 1 (4~0초)','덕이 대사','말']])}),/대사 표/);
+});
+test('duration-free headings require usable scene durations and never silently omit a broken episode',()=>{
+ assert.throws(()=>parseWeekly(serialWeekly.replace('[장면 3 (3초)]','[장면 3 (2초)]')),/영상 길이/);
+ assert.throws(()=>parseWeekly(serialWeekly.replace('[장면 1 (4초)]','[장면 2 (4초)]')),/영상 길이/);
+ assert.throws(()=>parseWeekly(serialWeekly.replace('[에피소드 2]','[에피소드 2: 30초]')),/5초 또는 15초/);
+ assert.deepEqual(parseWeekly(weeklyText+'\n'+serialWeekly).map(e=>e.duration),[5,15,15,15]);
+ const ranges=serialWeekly.replace(/\[장면 ([1-4]) \(\d초\)\]/g,(_,n)=>`[장면 ${n} (${[0,4,8,11][n-1]}~${[4,8,11,15][n-1]}초)]`);
+ assert.deepEqual(parseWeekly(ranges).map(e=>e.duration),[15,15,15]);
+});
+test('latest Drive package reports three serial episodes and retains their raw table text',async()=>{
+ const read=createWeeklyReader({key:()=> 'test-only',fetch:async url=>String(url).includes('/export')?new Response(serialWeekly):Response.json({files:[weeklyFile('2026-09-06'),weeklyFile('2026-09-13','b'.repeat(25))]})});
+ const latest=await read();assert.equal(latest.date,'2026-09-13');assert.equal(latest.episodeCount,3);assert.equal(latest.text,serialWeekly);
+ assert.deepEqual(parseWeekly(latest.text).map(e=>e.duration),[15,15,15]);
+});
+
 test('REST model_output audio is joined into a playable 24kHz WAV', () => {
   const first = Buffer.from([1, 0, 2, 0]), second = Buffer.from([3, 0]);
   const result = audioResponse({ steps: [

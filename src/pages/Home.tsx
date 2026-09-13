@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { SourceEpisode } from '../types';
 import { HistoryItem } from '../types';
 import { WeeklyScript } from '../workflow/WeeklyScript';
+import { episodePrompt } from '../workflow/weekly';
 import { editorEpisode, readPackage, importIdentity, MAX_PACKAGE_BYTES } from '../workflow/package';
 import { db, MEDIA_CHANGED, MediaSummary } from '../utils/db';
 import { DraftSummary } from '../editor/draft';
@@ -78,7 +79,7 @@ export default function App() {
   const handleGenerate = (duration: '15s' | '5s' = '15s') => {
     setSceneImages({});
     setView('scenario');
-    generatePlan(selectedCharacter, customPrompt, duration, source&&source.duration===(duration==='5s'?5:15)&&source.scenario===customPrompt?source:undefined);
+    generatePlan(selectedCharacter, customPrompt, duration, source&&source.duration===(duration==='5s'?5:15)&&episodePrompt(source)===customPrompt?source:undefined);
   };
 
   const locked=workflowBusy||editorBusy||Object.values(generatingImages).some(Boolean);
@@ -132,7 +133,7 @@ export default function App() {
         {(view === '15s-plan' || view === '5s-plan') && (
           <div className="flex-1 w-full bg-[#f9f7f4] flex flex-col items-center p-4 md:p-6 overflow-y-auto">
             <RecentWork history={history} drafts={drafts} media={mediaSummaries} recent={recent} onHistory={item=>{selectHistory(item.id);setView('history');}} onEditor={resumeEditor}/>
-            <WeeklyScript onChoose={(episode,character)=>{setSource(episode);setCustomPrompt(episode.scenario);setSelectedCharacter(character);setView(episode.duration===5?'5s-plan':'15s-plan');}}/>
+            <WeeklyScript onChoose={(episode,character)=>{setSource(episode);setCustomPrompt(episodePrompt(episode));setSelectedCharacter(character);setView(episode.duration===5?'5s-plan':'15s-plan');}}/>
             <div className="w-full max-w-2xl bg-white shadow-[8px_8px_0px_#552c24] border-2 border-[#552c24] flex flex-col shrink-0 my-auto">
               <WorkboardSidebar 
                 selectedCharacter={selectedCharacter}
