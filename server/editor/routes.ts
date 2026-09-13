@@ -94,6 +94,9 @@ editorRouter.post(['/render','/transcribe'], async (req, res) => {
     if(req.path==='/transcribe'){
       if(files?.videos?.length!==1||files.voice?.length)throw Error('분석할 파일 하나를 넣어주세요.');
       const result=await transcribe(files.videos[0].path,dir,AbortSignal.any([abort.signal,AbortSignal.timeout(100000)]),req.body.expectedDuration===undefined?undefined:Number(req.body.expectedDuration));
+      // An older open tab only understands Word[] and would otherwise mistake
+      // unknown speech for silence. Require the review-capable client explicitly.
+      if(result.timingWarning&&req.query.timingReview!=='1')throw Error('음성의 자동 시간을 확인하지 못했습니다. 앱을 새로고침한 뒤 다시 준비하면 자막 시간을 직접 확인하며 편집할 수 있습니다.');
       res.set('Cache-Control','no-store').json(result);return;
     }
     if (!files?.videos?.length || (files.voice?.length||0)>1) throw Error('영상과 나레이션 파일을 확인해주세요.');
