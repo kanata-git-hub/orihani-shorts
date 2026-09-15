@@ -69,6 +69,7 @@ ${plannerText}
 ${timing}
 
 Ensure the image prompts strictly follow the character reference instructions and environment details.
+For EACH clip, set backgroundAsset from the location actually visible in that clip: pantry = the clinic staff tea/break room (탕비실), treatment = the clinic treatment/acupuncture room (치료실), reception = the clinic reception/front desk/waiting area (접수대), none = every other location or uncertain setting. Read the narrative context, not isolated words in dialogue. Do not classify a home kitchen, an office break room, a restaurant, or an outdoor scene as a clinic room. Reuse the same asset for shots in the same room and change it when the location changes. All three clinic rooms share light warm wood furniture, cream walls and warm lighting. The supplied empty room original will be attached during image generation. Keep the story's actual locations; do not relocate unrelated scenes to the clinic.
 Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OUTPUT SPECS, CINEMATOGRAPHY, ENVIRONMENT, ACTION, STRICT RULES. DO NOT include a CHARACTER DESIGN section.
 If any character needs to speak, explicitly include a DIALOGUE section inside the video prompt in this exact format:
 DIALOGUE : [Character English Name] : "[Korean dialogue]"
@@ -109,10 +110,11 @@ CRITICAL INSTAGRAM GUIDELINES:
                       title: { type: "STRING", description: "Clip title" },
                       imageTitle: { type: "STRING", description: "Image scene title" },
                       imagePrompt: { type: "STRING", description: "English prompt for image generation" },
+                      backgroundAsset: { type: "STRING", enum: ["pantry", "treatment", "reception", "none"], description: "Canonical clinic room visible in this clip, or none for other locations" },
                       videoTitle: { type: "STRING", description: "Video clip title" },
                       videoPrompt: { type: "STRING", description: "English prompt for video generation" }
                     },
-                    required: ["title", "imageTitle", "imagePrompt", "videoTitle", "videoPrompt"]
+                    required: ["title", "imageTitle", "imagePrompt", "backgroundAsset", "videoTitle", "videoPrompt"]
                   }
                 }
               },

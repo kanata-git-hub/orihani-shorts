@@ -1,7 +1,7 @@
 export interface CharacterReference {
   url: string;
   label?: string;
-  role?: 'character' | 'scene';
+  role?: 'character' | 'scene' | 'background';
 }
 
 export const MAX_REFERENCE_IMAGES = 14;
@@ -42,13 +42,15 @@ export async function loadReferenceImage(url: string): Promise<string> {
 
 export function buildReferenceParts(references: (CharacterReference | string)[], prompt: string) {
   if (references.length > MAX_REFERENCE_IMAGES) throw Error('참조 사진은 이전 장면을 포함해 14장까지 사용할 수 있습니다.');
-  const originals = references.map(ref => typeof ref === 'string' ? {url: ref} : ref).filter(ref => ref.role !== 'scene');
+  const originals = references.map(ref => typeof ref === 'string' ? {url: ref} : ref).filter(ref => !ref.role || ref.role === 'character');
   if (references.length && !originals.length) throw Error('이전 장면만으로 생성할 수 없습니다. 캐릭터 원본 사진을 먼저 불러와주세요.');
   const parts: any[] = [];
   for (const [i, refItem] of references.entries()) {
     const ref = typeof refItem === 'string' ? {url: refItem} : refItem;
     parts.push({text: ref.role === 'scene'
       ? '[PREVIOUS GENERATED SCENE: background/lighting/props only. NOT a character design reference.]'
+      : ref.role === 'background'
+      ? `[CANONICAL ROOM BACKGROUND: ${ref.label}. Highest priority for the room only. NOT a character design reference.]`
       : `[ORIGINAL CHARACTER DESIGN SHEET: ${ref.label || `reference ${i + 1}`}. Highest priority for identity, limb shape and colors.]`});
     parts.push({inlineData: referenceData(ref.url)});
   }

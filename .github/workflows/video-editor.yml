@@ -30,4 +30,5 @@ jobs:
         env:
           FFMPEG_PATH: ffmpeg
       - run: node --test tests/character-reference.test.cjs
+      - run: node --test tests/background-assets.test.cjs
       - run: npm run build
