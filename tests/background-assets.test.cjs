@@ -52,6 +52,15 @@ test('canonical backgrounds are never classified as character sheets',()=>{
   assert.match(parts.at(-1).text,/O-wonjang: pale/);
   assert.throws(()=>refs.buildReferenceParts([{url:png,role:'background'}],'x'),/원본/);
 });
+test('generation uses blank labels even when the approved original contains markings',()=>{
+  for(const asset of bg.BACKGROUND_ASSETS){
+    const instruction=bg.backgroundInstruction(asset.id);
+    assert.match(instruction,/ALL jar labels/);
+    assert.match(instruction,/blank surfaces/);
+    assert.match(instruction,/takes priority over any markings/);
+    assert.doesNotMatch(instruction,/machinery|NOT a character sheet/);
+  }
+});
 test('room changes and canonical room images exclude stale generated scene references',()=>{
   assert.equal(bg.mayUsePreviousScene([scene('탕비실'),scene('치료실')],1,0,'',{}),false);
   assert.equal(bg.mayUsePreviousScene([scene('탕비실'),scene('home bedroom')],1,0,'',{}),false);
