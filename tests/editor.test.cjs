@@ -171,6 +171,44 @@ const serialRows=[
 ];
 const tableText=rows=>['시점','캐릭터','내용',...rows.flat()].join('\r\n\t');
 const serialWeekly=[1,2,3].map(n=>`🐥 [에피소드 ${n}] ${n}화 작은 산책 (이어지는 일상)\n1. 시나리오\n${[4,4,3,4].map((s,i)=>`[장면 ${i+1} (${s}초)]: 오원장, 덕이, 소미의 산책 장면 ${i+1}.`).join('\n')}\n2. 한글 대사 및 자막\n${tableText(serialRows)}\n3. 영어 자막\nEnglish screen text only.\n4. 제목 및 해시태그\n${n}화 작은 산책 #일상\n5. 썸네일 추천 문구\n${n}화 작은 산책`).join('\n');
+const scenarioTableRows=[['순서','시간','장면 설명 및 발화 상태'],...[4,4,3,4].map((seconds,i)=>[`장면 ${i+1}`,`${seconds}초`,'오원장과 덕이가 산책한다. (덕이 발화)'])];
+const scenarioTableForms=rows=>[
+ rows.flat().join('\r\n\t'),
+ rows.map(r=>r.join('\t')).join('\n'),
+ [rows[0],['---','---','---'],...rows.slice(1)].map(r=>'| '+r.join(' | ')+' |').join('\n')
+];
+const withScenarioTable=table=>serialWeekly.replace(/(1\. 시나리오\n)[\s\S]*?(\n2\. 한글)/g,(_,start,end)=>start+table+end);
+test('Docs, TSV and Markdown scenario tables infer every episode duration without changing source content',()=>{
+ for(const table of scenarioTableForms(scenarioTableRows)){
+  const episodes=parseWeekly(withScenarioTable(table));
+  assert.deepEqual(episodes.map(e=>e.duration),[15,15,15]);
+  assert.equal(episodes[0].scenario,table.replace(/\r\n?/g,'\n').trim());
+  assert.ok(episodes.every(e=>e.characters.includes('owonjang')&&e.characters.includes('deoki')));
+  const plan=importEpisode(episodes[0]);validatePlan(plan);
+  assert.equal(plan.narration,'');assert.equal(plan.captions[0].text,'같이 출발하자.');
+ }
+ const ranges=scenarioTableRows.map((r,i)=>i?[r[0],`${[0,4,8,11][i-1]}~${[4,8,11,15][i-1]}초`,r[2]]:r);
+ assert.deepEqual(parseWeekly(withScenarioTable(scenarioTableForms(ranges)[0])).map(e=>e.duration),[15,15,15]);
+ const short=[scenarioTableRows[0],['장면 1','2초','덕이가 걷는다.'],['장면 2','3초','오원장이 손을 흔든다.']];
+ assert.deepEqual(parseWeekly(withScenarioTable(scenarioTableForms(short)[0])).map(e=>e.duration),[5,5,5]);
+});
+test('scenario timing tables reject incomplete rows, wrong totals and duplicate or missing scenes',()=>{
+ const invalid=[
+  scenarioTableRows.map((r,i)=>i===3?[r[0],'2초',r[2]]:r),
+  scenarioTableRows.filter((_,i)=>i!==2),
+  scenarioTableRows.map((r,i)=>i===2?['장면 1',r[1],r[2]]:r),
+  scenarioTableRows.map((r,i)=>i===2?[r[0],'',r[2]]:r),
+  scenarioTableRows.map((r,i)=>i===4?[r[0],r[1],'']:r),
+  scenarioTableRows.map((r,i)=>i===2?[r[0],'나중에',r[2]]:r)
+ ];
+ for(const rows of invalid)for(const table of scenarioTableForms(rows))assert.throws(()=>parseWeekly(withScenarioTable(table)),/영상 길이/);
+});
+test('latest weekly Drive read accepts exported scenario tables and returns all three episodes',async()=>{
+ const raw=withScenarioTable(scenarioTableForms(scenarioTableRows)[0]);
+ const read=createWeeklyReader({key:()=> 'test-only',fetch:async url=>String(url).includes('/export')?new Response(raw):Response.json({files:[weeklyFile('2026-09-14')]})});
+ const latest=await read();assert.equal(latest.episodeCount,3);assert.equal(latest.text,raw);
+ assert.deepEqual(parseWeekly(latest.text).map(e=>e.duration),[15,15,15]);
+});
 test('three serial episodes infer 15 seconds from scenes and preserve source dialogue for planning',()=>{
  const {episodePrompt}=require(path.join(compiled,'src/workflow/weekly.js'));
  const episodes=parseWeekly(serialWeekly);

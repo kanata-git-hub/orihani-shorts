@@ -1,15 +1,39 @@
 import { SourceEpisode } from '../types';
 
+function scenarioSceneTimes(scenario:string):[number,string][] {
+ // Docs text exports put table cells on separate lines; pasted tables may
+ // instead use tabs or Markdown pipes. Read only the scenario timing table.
+ const cells=scenario.split('\n').flatMap(line=>{
+  const value=line.trim();
+  if(/^\|?\s*:?-{3,}:?\s*\|/.test(value))return [];
+  if(value.startsWith('|')&&value.endsWith('|'))return value.slice(1,-1).split(/(?<!\\)\|/).map(s=>s.trim());
+  return line.split('\t').map(s=>s.trim());
+ }).filter(Boolean);
+ const header=cells.findIndex((s,i)=>/^(?:순서|장면)$/.test(s)&&cells[i+1]==='시간'&&/^장면\s*설명/.test(cells[i+2]||''));
+ if(header<0)return [...scenario.matchAll(/\[장면\s*(\d+)\s*\(([^)\n]+)\)\s*\]/g)].map(s=>[Number(s[1]),s[2]]);
+ const scenes:[number,string][]=[];
+ for(let i=header+3;i<cells.length;){
+  const scene=cells[i].match(/^장면\s*(\d+)$/);
+  let next=i+2;
+  while(next<cells.length&&!/^장면\s*\d+$/.test(cells[next]))next++;
+  // Keep malformed rows as invalid evidence rather than guessing a duration
+  // from dialogue or silently skipping a scene with a missing table cell.
+  scenes.push([scene?Number(scene[1]):NaN,next>i+2?cells[i+1]||'':'']);
+  i=next;
+ }
+ return scenes;
+}
+
 function episodeDuration(heading:string,scenario:string):5|15 {
  const stated=heading.match(/(?:^|[^\d])(\d+)\s*초/);
  if(stated){const n=Number(stated[1]);if(n===5||n===15)return n;throw Error('에피소드 길이는 5초 또는 15초여야 합니다.');}
  // Serial scripts omit duration in the episode heading. Use all numbered scenes,
  // never the number of episodes or a blanket 15-second default.
- const scenes=[...scenario.matchAll(/\[장면\s*(\d+)\s*\(([^)\n]+)\)\s*\]/g)];
+ const scenes=scenarioSceneTimes(scenario);
  const lengths=scenes.map((s,i)=>{
-  if(Number(s[1])!==i+1)return NaN;
-  const single=s[2].match(/^\s*(\d+(?:\.\d+)?)\s*초\s*$/);
-  const range=s[2].match(/^\s*(\d+(?:\.\d+)?)\s*초?\s*[~～–—-]\s*(\d+(?:\.\d+)?)\s*초\s*$/);
+  if(s[0]!==i+1)return NaN;
+  const single=s[1].match(/^\s*(\d+(?:\.\d+)?)\s*초\s*$/);
+  const range=s[1].match(/^\s*(\d+(?:\.\d+)?)\s*초?\s*[~～–—-]\s*(\d+(?:\.\d+)?)\s*초\s*$/);
   return single?Number(single[1]):range?Number(range[2])-Number(range[1]):NaN;
  });
  const total=lengths.reduce((sum,n)=>sum+n,0);
