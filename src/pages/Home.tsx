@@ -18,6 +18,8 @@ import { WorkboardSidebar } from '../components/WorkboardSidebar';
 import { HistorySidebar } from '../components/HistorySidebar';
 import { WorkboardContent } from '../components/WorkboardContent';
 import { HistoryContent } from '../components/HistoryContent';
+import { BackgroundSettings } from '../components/BackgroundSettings';
+import { BackgroundChoice } from '../backgroundAssets';
 
 // Hooks
 import { useToast } from '../hooks/useToast';
@@ -30,7 +32,7 @@ import { useMediaGeneration } from '../hooks/useMediaGeneration';
 export default function App() {
   const { toast, showToast } = useToast();
   const { apiKeys } = useSettings();
-  const { history, viewingHistoryId, setViewingHistoryId, saveHistory, handleDeleteHistory, handleClearHistory } = useHistory();
+  const { history, viewingHistoryId, setViewingHistoryId, saveHistory, setBackgroundChoice, handleDeleteHistory, handleClearHistory } = useHistory();
   
   const [source,setSource]=useState<SourceEpisode|null>(null);
   const [workflowBusy,setWorkflowBusy]=useState(false);
@@ -73,7 +75,8 @@ export default function App() {
   } = useMediaGeneration(
     showToast, saveMediaToDB, targetId,
     setGeneratingImages, sceneImages, setSceneImages,
-    apiKeys, view==='history'?(history.find(h=>h.id===viewingHistoryId)?.characterId||selectedCharacter):selectedCharacter
+    apiKeys, view==='history'?(history.find(h=>h.id===viewingHistoryId)?.characterId||selectedCharacter):selectedCharacter,
+    history.find(h=>h.id===targetId)?.backgroundChoices
   );
 
   const handleGenerate = (duration: '15s' | '5s' = '15s') => {
@@ -83,6 +86,7 @@ export default function App() {
   };
 
   const locked=workflowBusy||editorBusy||Object.values(generatingImages).some(Boolean);
+  const backgroundSettings = (plan: string) => <BackgroundSettings result={plan} choices={history.find(h=>h.id===targetId)?.backgroundChoices || {}} images={sceneImages} disabled={locked || !targetId || isGenerating} onChange={(title:string,choice:BackgroundChoice)=>{try{if(targetId)setBackgroundChoice(targetId,title,choice);}catch{showToast('배경 선택을 저장하지 못했습니다. 저장 공간을 확인해주세요.','error');}}}/>;
   const selectHistory=(id:string|null)=>{setViewingHistoryId(id);if(id)remember({kind:'history',id});};
   const resumeEditor=(id:string)=>{setResumeId(id);setView('editor');remember({kind:'editor',id});};
   const openRecordEditor=(item:HistoryItem)=>{try{if(document.documentElement.dataset.oriEditorReady!=='1')throw Error('편집 화면을 준비 중입니다. 잠시 후 다시 눌러주세요.');setResumeId(undefined);window.dispatchEvent(new CustomEvent('orihani-editor-import',{detail:{version:1,key:item.editorKey||'history-'+item.id,episode:editorEpisode(item)}}));}catch(e){showToast((e as Error).message,'error');}};
@@ -163,6 +167,7 @@ export default function App() {
         {(view === 'scenario' || view === 'prompts') && (
           <section className="flex-1 p-4 md:p-6 lg:p-10 flex flex-col gap-6 overflow-y-auto bg-[#ffffff]">
             <div className="max-w-4xl w-full mx-auto flex flex-col gap-6 h-full">
+              {view === 'prompts' && backgroundSettings(result)}
               <WorkboardContent 
                 activeTab={view}
                 selectedCharacter={selectedCharacter}
@@ -184,6 +189,7 @@ export default function App() {
           <section className={`ori-history-content ${!viewingHistoryId?'ori-history-content-empty':''} flex-1 p-4 md:p-6 lg:p-10 flex flex-col gap-6 overflow-y-auto bg-[#ffffff]`}>
             <button disabled={locked} className="ori-history-back" onClick={()=>setViewingHistoryId(null)}>← 다른 기록 고르기</button>
             <div className="max-w-4xl w-full mx-auto flex flex-col gap-6">
+              {viewingHistoryId && backgroundSettings(history.find(h=>h.id===viewingHistoryId)?.result || '')}
               <HistoryContent key={viewingHistoryId}
                 draft={drafts.find(d=>d.id===recordDraftId(history.find(h=>h.id===viewingHistoryId)||{id:''} as HistoryItem))}
                 mediaReady={mediaReady}

@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { db } from '../utils/db';
 import { CHARACTERS } from "../constants";
 import { buildReferenceParts, loadReferenceImage, CharacterReference } from '../characterReference';
+import { BackgroundChoices, resolveBackground, backgroundInstruction, mayUsePreviousScene } from '../backgroundAssets';
 
 
 export function useMediaGeneration(
@@ -13,6 +14,7 @@ export function useMediaGeneration(
   setSceneImages: React.Dispatch<React.SetStateAction<Record<string, string>>>,
   apiKeys: { gemini: string; kling: string },
   selectedCharacter: string,
+  backgroundChoices: BackgroundChoices = {},
 ) {
   const targetRef=useRef(targetId);targetRef.current=targetId;
   const generatingRef=useRef(false);
@@ -27,6 +29,9 @@ export function useMediaGeneration(
     setGeneratingImages((prev) => ({ ...prev, [sceneTitle]: true }));
     try {
       const savedImages=targetId?(await db.get(targetId))?.images||{}:sceneImages;
+      const scenes = allScenes.map((scene, index) => index === sceneIdx ? { ...scene, prompt: promptText } : scene);
+      if (!scenes[sceneIdx]) scenes[sceneIdx] = { title: sceneTitle, prompt: promptText };
+      const background = resolveBackground(scenes, sceneIdx, fullPlanText, backgroundChoices);
       let matchedChars = CHARACTERS.filter((c) =>
         promptText.toLowerCase().includes(c.file.toLowerCase()),
       );
@@ -81,6 +86,7 @@ export function useMediaGeneration(
       if (sceneIdx > 0 && allScenes.length > 0) {
         // Find the most recently generated scene to use as a visual anchor
         for (let i = sceneIdx - 1; i >= 0; i--) {
+          if (!mayUsePreviousScene(scenes, sceneIdx, i, fullPlanText || '', backgroundChoices)) break;
           const prevSceneTitle = allScenes[i].title;
           const prevDataUrl = savedImages[prevSceneTitle];
           if (prevDataUrl) {
@@ -116,6 +122,13 @@ ${promptText}`;
       }
 
       if (!references.length) throw Error('캐릭터 원본 사진을 찾지 못했습니다. 생성을 중단했습니다.');
+      if (background) {
+        let url: string;
+        try { url = await loadReferenceImage(background.url); }
+        catch { throw Error(`${background.name} 배경 원본을 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.`); }
+        references.push({ url, role: 'background', label: background.name });
+        finalPrompt += '\n\n' + backgroundInstruction(background.id);
+      }
       if (previousImage) references.push({url: previousImage, role: 'scene'});
       const parts = buildReferenceParts(references, finalPrompt);
 

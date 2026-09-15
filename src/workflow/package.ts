@@ -1,5 +1,6 @@
 import { HistoryItem, SourceEpisode } from '../types';
 import { extractClips, extractOverview } from '../utils/extractors';
+import { isBackgroundChoice } from '../backgroundAssets';
 
 export const MAX_PACKAGE_BYTES = 48 * 1024 * 1024;
 const text = (v: unknown, max: number) => typeof v === 'string' && v.length <= max;
@@ -40,6 +41,14 @@ export function readPackage(raw: string): {format:'orihani-work';version:1;item:
   if(i.editorKey!==undefined){if(!text(i.editorKey,200)||!i.editorKey)throw Error('편집 연결 정보를 확인해주세요.');item.editorKey=i.editorKey;}
   if(i.customPrompt!==undefined){if(!text(i.customPrompt,40000))throw Error('제작 방향이 너무 깁니다.');item.customPrompt=i.customPrompt;}
   const names=new Set(extractClips(item.result).map(c=>c.imageTitle));const images:Record<string,string>={};
+  if(i.backgroundChoices!==undefined){
+    if(!i.backgroundChoices||typeof i.backgroundChoices!=='object'||Array.isArray(i.backgroundChoices))throw Error('배경 선택 형식을 확인해주세요.');
+    item.backgroundChoices={};
+    for(const [name,choice] of Object.entries(i.backgroundChoices)){
+      if(!names.has(name)||!isBackgroundChoice(choice))throw Error('장면의 배경 선택을 확인해주세요.');
+      item.backgroundChoices[name]=choice;
+    }
+  }
   if(!v.images||typeof v.images!=='object'||Array.isArray(v.images))throw Error('사진 목록이 없습니다.');
   for(const [name,url] of Object.entries(v.images)) {
     if(!names.has(name)||['__proto__','constructor','prototype'].includes(name)||!text(url,16000000)||!/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(url as string))throw Error('기획과 연결된 사진 형식을 확인해주세요.');

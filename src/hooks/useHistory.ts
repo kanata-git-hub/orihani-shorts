@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { HistoryItem } from '../types';
 import { db } from '../utils/db';
 import { sourceEpisode, recordDuration } from '../workflow/package';
+import { BackgroundChoice } from '../backgroundAssets';
 
 export function useHistory() {
   const [history,setHistory]=useState<HistoryItem[]>(()=>{try{return JSON.parse(localStorage.getItem('pov_director_history')||'[]');}catch{return [];}});
@@ -9,6 +10,7 @@ export function useHistory() {
   const [viewingHistoryId,setViewingHistoryId]=useState<string|null>(null);
   const persist=(next:HistoryItem[])=>{localStorage.setItem('pov_director_history',JSON.stringify(next));current.current=next;setHistory(next);};
   const saveHistory=(item:HistoryItem)=>persist([item,...current.current.filter(h=>h.id!==item.id)]);
+  const setBackgroundChoice=(id:string,title:string,choice:BackgroundChoice)=>persist(current.current.map(item=>item.id===id?{...item,backgroundChoices:{...item.backgroundChoices,[title]:choice}}:item));
   useEffect(()=>{
     const handler=(event:Event)=>{try{
       const p=(event as CustomEvent).detail;
@@ -27,5 +29,5 @@ export function useHistory() {
   },[]);
   const handleDeleteHistory=async(id:string,e:React.MouseEvent)=>{e.stopPropagation();persist(current.current.filter(h=>h.id!==id));if(viewingHistoryId===id)setViewingHistoryId(null);await db.delete(id).catch(console.warn);};
   const handleClearHistory=async()=>{persist([]);setViewingHistoryId(null);await db.clear().catch(console.warn);};
-  return {history,setHistory,viewingHistoryId,setViewingHistoryId,saveHistory,handleDeleteHistory,handleClearHistory};
+  return {history,setHistory,viewingHistoryId,setViewingHistoryId,saveHistory,setBackgroundChoice,handleDeleteHistory,handleClearHistory};
 }

@@ -1,3 +1,5 @@
+import type { BackgroundChoices } from './backgroundAssets';
+
 export interface Character {
   id: string;
   name: string;
@@ -16,6 +18,7 @@ export interface HistoryItem {
   customPrompt?: string;
   episode?: SourceEpisode;
   editorKey?: string;
+  backgroundChoices?: BackgroundChoices;
 }
 
 export interface SourceEpisode {
