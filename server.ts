@@ -6,6 +6,7 @@ import fs from "fs";
 import dotenv from "dotenv";
 import { clipDurations, timingInstruction, validateClipTiming } from "./src/utils/clipTiming";
 import { readSceneReference, planWithSceneReference } from './src/sceneReference';
+import { videoAudioInstruction, normalizeVideoPlan } from './src/videoPrompt';
 dotenv.config({ override: true });
 
 async function startServer() {
@@ -58,7 +59,7 @@ ${timing}`;
           model: "gemini-3.6-flash",
           contents: planWithSceneReference(plannerPrompt, sceneReference),
           config: { 
-            systemInstruction: `${agentPrompt}\n\n${timing}`,
+            systemInstruction: `${agentPrompt}\n\n${timing}\n\n${videoAudioInstruction}`,
             temperature: 1.0,
           },
         });
@@ -74,10 +75,9 @@ ${timing}
 
 Ensure the image prompts strictly follow the character reference instructions and environment details.
 For EACH clip, set backgroundAsset from the location actually visible in that clip: pantry = the clinic staff tea/break room (탕비실), treatment = the clinic treatment/acupuncture room (치료실), reception = the clinic reception/front desk/waiting area (접수대), none = every other location or uncertain setting. Read the narrative context, not isolated words in dialogue. Do not classify a home kitchen, an office break room, a restaurant, or an outdoor scene as a clinic room. Reuse the same asset for shots in the same room and change it when the location changes. All three clinic rooms share light warm wood furniture, cream walls and warm lighting. The supplied empty room original will be attached during image generation. Keep the story's actual locations; do not relocate unrelated scenes to the clinic.
-Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OUTPUT SPECS, CINEMATOGRAPHY, ENVIRONMENT, ACTION, STRICT RULES. DO NOT include a CHARACTER DESIGN section.
-If any character needs to speak, explicitly include a DIALOGUE section inside the video prompt in this exact format:
-DIALOGUE : [Character English Name] : "[Korean dialogue]"
-Use these specific English names: 오원장 = O-wonjang, 소미 = Somi, 덕이 = Deok-i. (e.g., DIALOGUE : O-wonjang : "야식 바다를 지나갈 때 절대 날 풀지 마라!")
+Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OUTPUT SPECS, CINEMATOGRAPHY, ENVIRONMENT, ACTION, DIALOGUE, AUDIO, STRICT RULES. Use a real newline between headings. DO NOT include a CHARACTER DESIGN section.
+Use these specific English names: 오원장 = O-wonjang, 소미 = Somi, 덕이 = Deok-i.
+${videoAudioInstruction}
 
 CRITICAL TITLE GUIDELINES:
 Create a catchy, extremely short YouTube Shorts style title combining Korean and English in a single line. Example format: "선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)". Keep it punchy and very short.
@@ -127,8 +127,9 @@ CRITICAL INSTAGRAM GUIDELINES:
           }
         });
 
-        validateClipTiming(converterResponse.text || '{}', duration);
-        res.json({ success: true, result: converterResponse.text });
+        const result=normalizeVideoPlan(converterResponse.text || '{}');
+        validateClipTiming(result, duration);
+        res.json({ success: true, result });
         return;
       } catch (error: any) {
         if (error?.status === 429) {

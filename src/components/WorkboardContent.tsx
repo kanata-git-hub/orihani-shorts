@@ -4,7 +4,7 @@ import { AlertCircle, Clapperboard, Copy, CheckCircle2, Download, RefreshCw, Ima
 import { CHARACTERS } from '../constants';
 import { extractOverview, extractClips } from '../utils/extractors';
 import { useToast } from '../hooks/useToast';
-import { videoPromptWithSceneReference } from '../sceneReference';
+import { videoPromptForCopy } from '../videoPrompt';
 
 interface WorkboardContentProps {
   activeTab: 'scenario' | 'prompts';
@@ -19,7 +19,6 @@ interface WorkboardContentProps {
   handleExportPlan: () => void;
   handleGenerateImage: (sceneTitle: string, promptText: string, sceneIdx: number, allScenes: any[], fullPlanText?: string) => void;
   onReferenceScene?:(title:string)=>void;
-  sceneReferenceActive?:boolean;
 }
 
 export function WorkboardContent({
@@ -33,7 +32,7 @@ export function WorkboardContent({
   generatingImages,
   handleSaveDraft,
   handleExportPlan,
-  handleGenerateImage, onReferenceScene, sceneReferenceActive=false
+  handleGenerateImage, onReferenceScene
 }: WorkboardContentProps) {
   const [showRawPrompt, setShowRawPrompt] = useState(false);
   const [copiedAllPrompts, setCopiedAllPrompts] = useState(false);
@@ -42,7 +41,7 @@ export function WorkboardContent({
   const { showToast } = useToast();
 
   const overview = extractOverview(result);
-  const clips = extractClips(result).map(clip=>({...clip,videoPrompt:videoPromptWithSceneReference(clip.videoPrompt,sceneReferenceActive)}));
+  const clips = extractClips(result).map(clip=>({...clip,videoPrompt:videoPromptForCopy(clip.videoPrompt)}));
 
 
   const handleCopyAllVideoPrompts = () => {

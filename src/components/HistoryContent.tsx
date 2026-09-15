@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { HistoryItem } from '../types';
 import { extractOverview, extractClips } from '../utils/extractors';
 import { useToast } from '../hooks/useToast';
-import { videoPromptWithSceneReference } from '../sceneReference';
+import { videoPromptForCopy } from '../videoPrompt';
 
 interface HistoryContentProps {
   viewingHistoryId: string | null;
@@ -21,7 +21,6 @@ interface HistoryContentProps {
   draft?:DraftSummary;
   mediaReady:boolean;
   onReferenceScene?:(title:string)=>void;
-  sceneReferenceActive?:boolean;
 }
 
 export function HistoryContent({
@@ -30,7 +29,7 @@ export function HistoryContent({
   viewingScenes,
   sceneImages,
   generatingImages,
-  handleGenerateImage, onEdit, onBusy, draft, mediaReady, onReferenceScene, sceneReferenceActive=false
+  handleGenerateImage, onEdit, onBusy, draft, mediaReady, onReferenceScene
 }: HistoryContentProps) {
   const [showRawPrompt, setShowRawPrompt] = useState(false);
   const [copiedAllPrompts, setCopiedAllPrompts] = useState(false);
@@ -53,7 +52,7 @@ export function HistoryContent({
   const result = viewingItem?.result || '';
   
   const overview = extractOverview(result);
-  const clips = extractClips(result).map(clip=>({...clip,videoPrompt:videoPromptWithSceneReference(clip.videoPrompt,sceneReferenceActive)}));
+  const clips = extractClips(result).map(clip=>({...clip,videoPrompt:videoPromptForCopy(clip.videoPrompt)}));
 
   const renderTabs = () => (
     <div className="flex border-b-2 border-[#552c24] mb-2 mt-4">
@@ -92,7 +91,7 @@ export function HistoryContent({
 
   return (
     <div className="flex-1 flex flex-col gap-6 pb-8">
-      {viewingItem&&<HistoryContinue key={viewingItem.id} item={viewingItem} images={sceneImages} generating={generatingImages} onGenerate={handleGenerateImage} onEdit={onEdit} onBusy={onBusy} draft={draft} mediaReady={mediaReady} onReferenceScene={onReferenceScene} sceneReferenceActive={sceneReferenceActive}/>}
+      {viewingItem&&<HistoryContinue key={viewingItem.id} item={viewingItem} images={sceneImages} generating={generatingImages} onGenerate={handleGenerateImage} onEdit={onEdit} onBusy={onBusy} draft={draft} mediaReady={mediaReady} onReferenceScene={onReferenceScene}/>}
       {renderTabs()}
 
       {/* Top: Scenario Overview */}

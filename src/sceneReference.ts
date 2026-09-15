@@ -45,8 +45,3 @@ export function planWithSceneReference(prompt: string, reference: SceneReference
     { inlineData: referenceData(reference.imageUrl) },
   ] };
 }
-
-export function videoPromptWithSceneReference(prompt:string, active:boolean):string {
-  if(!active||!prompt)return prompt;
-  return prompt + '\n\n[RECURRING PROP DESIGN — START FRAME PRIORITY]\nThe supplied start-frame image defines the exact design of recurring props. Preserve their silhouette, materials, colors, proportions and attached components throughout this clip. If an incidental prop description above conflicts with the visible start frame, keep the start-frame design and perform the current scripted action with it. Animate only the specified action and state changes; do not redesign the prop or add unpictured components. Character identity stays consistent with the bound character assets.';
-}

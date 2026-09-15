@@ -198,7 +198,6 @@ export default function App() {
                 handleExportPlan={handleExportPlan}
                 handleGenerateImage={handleGenerateImage}
                 onReferenceScene={useInAnotherEpisode}
-                sceneReferenceActive={!!sceneReference}
               />
             </div>
           </section>
@@ -221,7 +220,6 @@ export default function App() {
                 generatingImages={generatingImages}
                 handleGenerateImage={handleGenerateImage}
                 onReferenceScene={useInAnotherEpisode}
-                sceneReferenceActive={!!sceneReference}
               />
             </div>
           </section>
