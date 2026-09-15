@@ -3,6 +3,7 @@ import { db } from '../utils/db';
 import { CHARACTERS } from "../constants";
 import { buildReferenceParts, loadReferenceImage, CharacterReference } from '../characterReference';
 import { BackgroundChoices, resolveBackground, backgroundInstruction, mayUsePreviousScene } from '../backgroundAssets';
+import { readSceneReference, sceneReferenceInstruction } from '../sceneReference';
 
 
 export function useMediaGeneration(
@@ -28,7 +29,9 @@ export function useMediaGeneration(
     if(generatingRef.current)return false;generatingRef.current=true;
     setGeneratingImages((prev) => ({ ...prev, [sceneTitle]: true }));
     try {
-      const savedImages=targetId?(await db.get(targetId))?.images||{}:sceneImages;
+      const savedMedia=targetId?await db.get(targetId):null;
+      const savedImages=targetId?savedMedia?.images||{}:sceneImages;
+      const sceneReference=readSceneReference(savedMedia?.sceneReference);
       const scenes = allScenes.map((scene, index) => index === sceneIdx ? { ...scene, prompt: promptText } : scene);
       if (!scenes[sceneIdx]) scenes[sceneIdx] = { title: sceneTitle, prompt: promptText };
       const background = resolveBackground(scenes, sceneIdx, fullPlanText, backgroundChoices);
@@ -129,6 +132,11 @@ ${promptText}`;
         references.push({ url, role: 'background', label: background.name });
         finalPrompt += '\n\n' + backgroundInstruction(background.id);
       }
+      if (sceneReference) {
+        references.push({url:sceneReference.imageUrl,role:'episode'});
+        finalPrompt += '\n\n' + sceneReferenceInstruction();
+      }
+      // Keep the within-episode previous scene last, as labelled in its prompt.
       if (previousImage) references.push({url: previousImage, role: 'scene'});
       const parts = buildReferenceParts(references, finalPrompt);
 

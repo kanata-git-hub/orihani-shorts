@@ -1,3 +1,5 @@
+import { readSceneReference, type SceneReference } from '../sceneReference';
+
 export type MediaSummary = { imageTitles: string[] };
 export const MEDIA_CHANGED = 'orihani-media-summary';
 async function openDB() {
@@ -12,7 +14,7 @@ async function openDB() {
     r.onblocked = () => { blocked = true; reject(Error('다른 탭의 오리쇼츠를 닫고 다시 열어주세요. 사진 저장소를 준비 중입니다.')); };
   });
 }
-async function mediaOperation(kind: 'get' | 'set' | 'delete' | 'clear', key?: string, value?: any): Promise<any> {
+async function mediaOperation(kind: 'get' | 'set' | 'delete' | 'clear' | 'reference' | 'images', key?: string, value?: any): Promise<any> {
   const database = await openDB();
   let summary: MediaSummary | undefined;
   try { return await new Promise((resolve, reject) => {
@@ -22,9 +24,17 @@ async function mediaOperation(kind: 'get' | 'set' | 'delete' | 'clear', key?: st
     if (kind === 'clear') { media.clear(); index.clear(); }
     else if (kind === 'delete') { media.delete(key!); index.delete(key!); }
     else {
-      const r = kind === 'get' ? media.get(key!) : media.put(value, key!);
+      const r = kind === 'set' ? media.put(value, key!) : media.get(key!);
       r.onsuccess = () => {
-        result = kind === 'get' ? r.result : value;
+        result = kind === 'set' ? value : r.result;
+        if (kind === 'reference') {
+          result = { ...result, images:result?.images || {} };
+          if (value) result.sceneReference = value; else delete result.sceneReference;
+          media.put(result, key!);
+        } else if (kind === 'images') {
+          result = { ...result, images:{ ...result?.images, ...value } };
+          media.put(result, key!);
+        }
         summary = { imageTitles: Object.keys(result?.images || {}).filter(name => !!result.images[name]) };
         index.put(summary, key!);
       };
@@ -42,4 +52,10 @@ async function summaries(): Promise<Record<string, MediaSummary>> {
     tx.onerror = tx.onabort = () => reject(tx.error);
   }); } finally { database.close(); }
 }
-export const db = { get: (key: string) => mediaOperation('get', key), set: (key: string, value: any) => mediaOperation('set', key, value), delete: (key: string) => mediaOperation('delete', key), clear: () => mediaOperation('clear'), summaries };
+export const db = {
+  get: (key: string) => mediaOperation('get', key),
+  set: (key: string, value: any) => mediaOperation('set', key, value),
+  setImages: (key:string, images:Record<string,string>) => mediaOperation('images', key, images),
+  setSceneReference: (key:string, reference:SceneReference|null) => mediaOperation('reference', key, readSceneReference(reference)),
+  delete: (key: string) => mediaOperation('delete', key), clear: () => mediaOperation('clear'), summaries
+};

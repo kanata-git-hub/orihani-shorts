@@ -1,4 +1,6 @@
 import { SourceEpisode } from '../types';
+import { readSceneReference, type SceneReference } from '../sceneReference';
+import { db } from '../utils/db';
 import { useState } from "react";
 import { CHARACTERS, getSystemPrompt } from "../constants";
 
@@ -18,14 +20,15 @@ export function useGeneration(
     customPrompt: string,
     duration: '15s' | '5s' = '15s',
     episode?: SourceEpisode,
+    reference?: SceneReference | null,
   ) => {
     setIsGenerating(true);
     setResult("");
     setError(null);
-    const newId = Date.now().toString();
-    setCurrentWorkboardId(newId);
+    const newId = crypto.randomUUID();
 
     try {
+      const sceneReference=readSceneReference(reference);
       const character = CHARACTERS.find((c) => c.id === selectedCharacter);
       // Step 1 & 2: Call backend API
       showToast("기획 중입니다... (1/2)", "success");
@@ -38,7 +41,8 @@ export function useGeneration(
         body: JSON.stringify({
           character,
           customPrompt,
-          duration
+          duration,
+          ...(sceneReference?{sceneReference}:{}),
         })
       });
 
@@ -52,8 +56,8 @@ export function useGeneration(
       
       // Try to parse to ensure it's valid, if not it will throw
       JSON.parse(finalJson);
+      if(sceneReference)await db.setSceneReference(newId,sceneReference);
       
-      setResult(finalJson);
 
       saveHistory({
         id: newId,
@@ -62,11 +66,15 @@ export function useGeneration(
         result: finalJson,
         duration: duration==='5s'?5:15, customPrompt, ...(episode?{episode}:{}),
       });
+      setCurrentWorkboardId(newId);
+      setResult(finalJson);
       
       showToast("Plan generated successfully!", "success");
+      return true;
     } catch (err: any) {
       console.error(err);
       setError(err.message || "An error occurred while generating the plan.");
+      return false;
     } finally {
       setIsGenerating(false);
     }

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { HistoryItem } from '../types';
 import { extractOverview, extractClips } from '../utils/extractors';
 import { useToast } from '../hooks/useToast';
+import { videoPromptWithSceneReference } from '../sceneReference';
 
 interface HistoryContentProps {
   viewingHistoryId: string | null;
@@ -19,6 +20,8 @@ interface HistoryContentProps {
   onBusy:(v:boolean)=>void;
   draft?:DraftSummary;
   mediaReady:boolean;
+  onReferenceScene?:(title:string)=>void;
+  sceneReferenceActive?:boolean;
 }
 
 export function HistoryContent({
@@ -27,7 +30,7 @@ export function HistoryContent({
   viewingScenes,
   sceneImages,
   generatingImages,
-  handleGenerateImage, onEdit, onBusy, draft, mediaReady
+  handleGenerateImage, onEdit, onBusy, draft, mediaReady, onReferenceScene, sceneReferenceActive=false
 }: HistoryContentProps) {
   const [showRawPrompt, setShowRawPrompt] = useState(false);
   const [copiedAllPrompts, setCopiedAllPrompts] = useState(false);
@@ -50,7 +53,7 @@ export function HistoryContent({
   const result = viewingItem?.result || '';
   
   const overview = extractOverview(result);
-  const clips = extractClips(result);
+  const clips = extractClips(result).map(clip=>({...clip,videoPrompt:videoPromptWithSceneReference(clip.videoPrompt,sceneReferenceActive)}));
 
   const renderTabs = () => (
     <div className="flex border-b-2 border-[#552c24] mb-2 mt-4">
@@ -89,7 +92,7 @@ export function HistoryContent({
 
   return (
     <div className="flex-1 flex flex-col gap-6 pb-8">
-      {viewingItem&&<HistoryContinue key={viewingItem.id} item={viewingItem} images={sceneImages} generating={generatingImages} onGenerate={handleGenerateImage} onEdit={onEdit} onBusy={onBusy} draft={draft} mediaReady={mediaReady}/>}
+      {viewingItem&&<HistoryContinue key={viewingItem.id} item={viewingItem} images={sceneImages} generating={generatingImages} onGenerate={handleGenerateImage} onEdit={onEdit} onBusy={onBusy} draft={draft} mediaReady={mediaReady} onReferenceScene={onReferenceScene} sceneReferenceActive={sceneReferenceActive}/>}
       {renderTabs()}
 
       {/* Top: Scenario Overview */}
@@ -220,6 +223,7 @@ export function HistoryContent({
                 ) : (
                   <div className="flex flex-col gap-2">
                     <img src={sceneImages[clip.imageTitle]} alt={clip.imageTitle} className="w-full object-cover rounded aspect-[9/16] bg-gray-100 border-2 border-[#552c24]" referrerPolicy="no-referrer" />
+                    {onReferenceScene&&<button className="ori-reference-shortcut" disabled={!mediaReady||Object.values(generatingImages).some(Boolean)} onClick={()=>onReferenceScene(clip.imageTitle)}>다른 화에서 참고하기</button>}
                     <div className="flex justify-end gap-2">
                       <a href={sceneImages[clip.imageTitle]} download={`${clip.imageTitle}.png`} className="flex items-center gap-1 px-3 py-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a] text-xs font-bold uppercase transition-colors">
                         <Download size={14} /> 다운로드

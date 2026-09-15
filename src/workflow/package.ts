@@ -1,6 +1,7 @@
 import { HistoryItem, SourceEpisode } from '../types';
 import { extractClips, extractOverview } from '../utils/extractors';
 import { isBackgroundChoice } from '../backgroundAssets';
+import { readSceneReference, type SceneReference } from '../sceneReference';
 
 export const MAX_PACKAGE_BYTES = 48 * 1024 * 1024;
 const text = (v: unknown, max: number) => typeof v === 'string' && v.length <= max;
@@ -20,11 +21,11 @@ export function editorEpisode(item: HistoryItem): SourceEpisode {
   // Use explicit source narration only. A visual scenario is never guessed as narration.
   return {...source,scenario:source.scenario+'\n'+clips.map(c=>c.videoPrompt).join('\n')};
 }
-export function makePackage(item: HistoryItem, images: Record<string,string>) {
-  const value={format:'orihani-work',version:1,item,images};
+export function makePackage(item: HistoryItem, images: Record<string,string>, sceneReference?:SceneReference|null) {
+  const value={format:'orihani-work',version:1,item,images,...(sceneReference?{sceneReference}:{})};
   return JSON.stringify(readPackage(JSON.stringify(value)));
 }
-export function readPackage(raw: string): {format:'orihani-work';version:1;item:HistoryItem;images:Record<string,string>} {
+export function readPackage(raw: string): {format:'orihani-work';version:1;item:HistoryItem;images:Record<string,string>;sceneReference?:SceneReference} {
   if(raw.length>MAX_PACKAGE_BYTES)throw Error('작업 파일이 너무 큽니다. 48MB 이하 파일을 사용해주세요.');
   let v:any;try{v=JSON.parse(raw);}catch{throw Error('오리쇼츠에서 내보낸 작업 파일을 선택해주세요.');}
   const i=v?.item;
@@ -54,7 +55,8 @@ export function readPackage(raw: string): {format:'orihani-work';version:1;item:
     if(!names.has(name)||['__proto__','constructor','prototype'].includes(name)||!text(url,16000000)||!/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(url as string))throw Error('기획과 연결된 사진 형식을 확인해주세요.');
     images[name]=url as string;
   }
-  return {format:'orihani-work',version:1,item,images};
+  const sceneReference=readSceneReference(v.sceneReference);
+  return {format:'orihani-work',version:1,item,images,...(sceneReference?{sceneReference}:{})};
 }
 export function importIdentity(item:HistoryItem, existing:HistoryItem[]):HistoryItem {
   const same=existing.find(h=>h.id===item.id);
