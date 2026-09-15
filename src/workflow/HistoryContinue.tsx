@@ -6,10 +6,10 @@ import { imageFile, shareFile } from './share';
 import './workflow.css';
 import { DraftSummary, draftProgress } from '../editor/draft';
 import { db } from '../utils/db';
-import { videoPromptWithSceneReference } from '../sceneReference';
+import { videoPromptForCopy } from '../videoPrompt';
 
-export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy,draft,mediaReady,onReferenceScene,sceneReferenceActive=false}:{item:HistoryItem;images:Record<string,string>;generating:Record<string,boolean>;onGenerate:(title:string,prompt:string,i:number,scenes:any[],result?:string)=>Promise<boolean>;onEdit:()=>void;onBusy:(v:boolean)=>void;draft?:DraftSummary;mediaReady:boolean;onReferenceScene?:(title:string)=>void;sceneReferenceActive?:boolean}) {
-  const clips=extractClips(item.result).map(clip=>({...clip,videoPrompt:videoPromptWithSceneReference(clip.videoPrompt,sceneReferenceActive)})), scenes=extractScenes(item.result);
+export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy,draft,mediaReady,onReferenceScene}:{item:HistoryItem;images:Record<string,string>;generating:Record<string,boolean>;onGenerate:(title:string,prompt:string,i:number,scenes:any[],result?:string)=>Promise<boolean>;onEdit:()=>void;onBusy:(v:boolean)=>void;draft?:DraftSummary;mediaReady:boolean;onReferenceScene?:(title:string)=>void}) {
+  const clips=extractClips(item.result).map(clip=>({...clip,videoPrompt:videoPromptForCopy(clip.videoPrompt)})), scenes=extractScenes(item.result);
   const [chosenStep,setStep]=useState<'images'|'kling'|null>(null);
   const [index,setIndex]=useState(0),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
   const editLocked=busy||Object.values(generating).some(Boolean);

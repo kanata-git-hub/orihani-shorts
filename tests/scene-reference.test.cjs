@@ -28,9 +28,6 @@ test('both planning stages can receive the selected still while unlinked plannin
   assert.match(contents.parts[0].text,/not a required starting frame/);
   assert.equal(refs.planWithSceneReference(prompt,null),prompt);
  }
- const prompt='ACTION: Move the cart.';
- assert.equal(refs.videoPromptWithSceneReference(prompt,false),prompt);
- assert.match(refs.videoPromptWithSceneReference(prompt,true),/START FRAME PRIORITY/);
 });
 test('work files carry a self-contained selected still and older work files remain valid',()=>{
  const pack=pkg.readPackage(pkg.makePackage(item,{'image-4':png},snapshot));
