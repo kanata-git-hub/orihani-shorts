@@ -1,7 +1,7 @@
 export interface CharacterReference {
   url: string;
   label?: string;
-  role?: 'character' | 'scene' | 'background';
+  role?: 'character' | 'scene' | 'background' | 'episode';
 }
 
 export const MAX_REFERENCE_IMAGES = 14;
@@ -47,7 +47,9 @@ export function buildReferenceParts(references: (CharacterReference | string)[],
   const parts: any[] = [];
   for (const [i, refItem] of references.entries()) {
     const ref = typeof refItem === 'string' ? {url: refItem} : refItem;
-    parts.push({text: ref.role === 'scene'
+    parts.push({text: ref.role === 'episode'
+      ? '[USER-SELECTED EARLIER EPISODE STILL: recurring prop design only where required by the current scene. NOT a required starting frame or character design reference.]'
+      : ref.role === 'scene'
       ? '[PREVIOUS GENERATED SCENE: background/lighting/props only. NOT a character design reference.]'
       : ref.role === 'background'
       ? `[CANONICAL ROOM BACKGROUND: ${ref.label}. Highest priority for the room only. NOT a character design reference.]`

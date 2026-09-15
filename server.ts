@@ -5,6 +5,7 @@ import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 import dotenv from "dotenv";
 import { clipDurations, timingInstruction, validateClipTiming } from "./src/utils/clipTiming";
+import { readSceneReference, planWithSceneReference } from './src/sceneReference';
 dotenv.config({ override: true });
 
 async function startServer() {
@@ -35,6 +36,9 @@ async function startServer() {
       res.status(400).json({ error: '영상 길이는 5초 또는 15초여야 합니다.' });
       return;
     }
+    let sceneReference;
+    try { sceneReference=readSceneReference(req.body.sceneReference); }
+    catch(e) { res.status(400).json({error:(e as Error).message});return; }
     const timing = timingInstruction(duration);
     const maxRetries = 3;
     let attempt = 0;
@@ -52,7 +56,7 @@ ${timing}`;
 
         const plannerResponse = await ai.models.generateContent({
           model: "gemini-3.6-flash",
-          contents: plannerPrompt,
+          contents: planWithSceneReference(plannerPrompt, sceneReference),
           config: { 
             systemInstruction: `${agentPrompt}\n\n${timing}`,
             temperature: 1.0,
@@ -84,7 +88,7 @@ CRITICAL INSTAGRAM GUIDELINES:
 
         const converterResponse = await ai.models.generateContent({
           model: "gemini-3.6-flash",
-          contents: converterPrompt,
+          contents: planWithSceneReference(converterPrompt, sceneReference),
           config: {
             temperature: 0.7,
             responseMimeType: "application/json",

@@ -5,9 +5,11 @@ import { makePackage, recordDuration } from './package';
 import { imageFile, shareFile } from './share';
 import './workflow.css';
 import { DraftSummary, draftProgress } from '../editor/draft';
+import { db } from '../utils/db';
+import { videoPromptWithSceneReference } from '../sceneReference';
 
-export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy,draft,mediaReady}:{item:HistoryItem;images:Record<string,string>;generating:Record<string,boolean>;onGenerate:(title:string,prompt:string,i:number,scenes:any[],result?:string)=>Promise<boolean>;onEdit:()=>void;onBusy:(v:boolean)=>void;draft?:DraftSummary;mediaReady:boolean}) {
-  const clips=extractClips(item.result), scenes=extractScenes(item.result);
+export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy,draft,mediaReady,onReferenceScene,sceneReferenceActive=false}:{item:HistoryItem;images:Record<string,string>;generating:Record<string,boolean>;onGenerate:(title:string,prompt:string,i:number,scenes:any[],result?:string)=>Promise<boolean>;onEdit:()=>void;onBusy:(v:boolean)=>void;draft?:DraftSummary;mediaReady:boolean;onReferenceScene?:(title:string)=>void;sceneReferenceActive?:boolean}) {
+  const clips=extractClips(item.result).map(clip=>({...clip,videoPrompt:videoPromptWithSceneReference(clip.videoPrompt,sceneReferenceActive)})), scenes=extractScenes(item.result);
   const [chosenStep,setStep]=useState<'images'|'kling'|null>(null);
   const [index,setIndex]=useState(0),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
   const editLocked=busy||Object.values(generating).some(Boolean);
@@ -21,7 +23,7 @@ export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy
   const caption=item.episode?.caption||[extractOverview(item.result).instagramCaption,...(extractOverview(item.result).hashtags||[]).map((s:string)=>'#'+s)].filter(Boolean).join('\n');
   const title=caption.replace(/#[^\s#]+/g,'').trim();
   const shortsTitle=Array.from(caption).length<=100?caption:Array.from(title).slice(0,100).join('');
-  const exportFile=()=>action(async()=>{const raw=makePackage(item,images);const name=(extractOverview(item.result).title||'오리쇼츠').replace(/[\\/:*?"<>|]/g,'').slice(0,60);await shareFile(new File([raw],name+'.ori.json',{type:'application/json'}));setMessage('다른 기기에서 기록 → 작업 파일 가져오기로 열면 됩니다. 영상 파일과 편집 중인 음성은 별도로 보관해주세요.');});
+  const exportFile=()=>action(async()=>{const raw=makePackage(item,images,(await db.get(item.id))?.sceneReference);const name=(extractOverview(item.result).title||'오리쇼츠').replace(/[\\/:*?"<>|]/g,'').slice(0,60);await shareFile(new File([raw],name+'.ori.json',{type:'application/json'}));setMessage('다른 기기에서 기록 → 작업 파일 가져오기로 열면 됩니다. 영상 파일과 편집 중인 음성은 별도로 보관해주세요.');});
   return <article className="ori-workflow">
     <p className="ori-workflow-label">{duration}초 밈 · 이 기록에서 이어하기</p>
     {draft?<div className="ori-workflow-current"><strong>{draftProgress(draft).label}</strong><button disabled={editLocked} className="ori-workflow-primary" onClick={onEdit}>{draftProgress(draft).action}</button></div>:<button disabled={editLocked} className="ori-workflow-link" onClick={onEdit}>Kling 영상을 이미 받았다면 바로 편집</button>}
@@ -34,7 +36,7 @@ export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy
     <fieldset disabled={busy||Object.values(generating).some(Boolean)||!mediaReady||!clipCountValid}>
       {step==='images'&&<>
         <p>이미 있는 사진은 그대로 사용합니다. 새 사진 생성에는 기존 Gemini 비용이 발생합니다. 완료될 때까지 화면을 열어두세요.</p>
-        <div className="ori-workflow-pictures">{clips.map((c,i)=><div key={i}>{images[c.imageTitle]?<img src={images[c.imageTitle]} alt={`클립 ${i+1} 시작 사진`}/>:<span>사진 없음</span>}<span>Clip {i+1} · {lengths[i]}초</span></div>)}</div>
+        <div className="ori-workflow-pictures">{clips.map((c,i)=><div key={i}>{images[c.imageTitle]?<img src={images[c.imageTitle]} alt={`클립 ${i+1} 시작 사진`}/>:<span>사진 없음</span>}<span>Clip {i+1} · {lengths[i]}초</span>{images[c.imageTitle]&&onReferenceScene&&<button onClick={()=>onReferenceScene(c.imageTitle)}>다른 화에서 참고하기</button>}</div>)}</div>
         <button className="ori-workflow-primary" onClick={()=>missing.length?action(async()=>{for(let i=0;i<clips.length;i++){const c=clips[i];if(images[c.imageTitle])continue;setMessage(`사진 ${i+1}/${clips.length} 생성 중`);if(!await onGenerate(c.imageTitle,c.imagePrompt,i,scenes,item.result))throw Error(`사진 ${i+1} 생성을 완료하지 못했습니다. 이미 만든 사진은 보관했습니다.`);}setStep('kling');setMessage('사진이 준비되었습니다. Kling에서 사용할 자료를 확인하세요.');}):setStep('kling')}>{missing.length?`남은 사진 ${missing.length}장 만들기`:'사진 준비 완료 → Kling'}</button>
       </>}
       {step==='kling'&&<>
@@ -43,6 +45,7 @@ export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy
         {clips[index]&&<div className="ori-workflow-clip">
           <strong>{duration===5?(index===0?'시작 프레임 · 2초':'마지막 프레임 · 3초'):`${index+1}번 영상 · ${lengths[index]}초`}</strong>
           {images[clips[index].imageTitle]&&<img src={images[clips[index].imageTitle]} alt={`Clip ${index+1} 사진`}/>}
+          {images[clips[index].imageTitle]&&onReferenceScene&&<button className="ori-reference-shortcut" onClick={()=>onReferenceScene(clips[index].imageTitle)}>다른 화에서 참고하기</button>}
           <div className="ori-workflow-actions"><button disabled={!images[clips[index].imageTitle]} onClick={()=>action(async()=>{await shareFile(imageFile(images[clips[index].imageTitle],`clip-${index+1}`));})}>사진 저장·공유</button>
           <button disabled={!clips[index].videoPrompt} onClick={()=>action(()=>copy(`[CLIP ${index+1}]\n${clips[index].videoPrompt}`,`Clip ${index+1} 프롬프트`))}>프롬프트 복사</button></div>
           <details><summary>프롬프트 보기</summary><textarea readOnly value={clips[index].videoPrompt} rows={5} aria-label="Kling 프롬프트"/></details>

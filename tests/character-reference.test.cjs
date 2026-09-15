@@ -3,6 +3,7 @@ const root=path.resolve(__dirname,'..');
 const compile=(rel,imports={})=>{const m={exports:{}};const code=ts.transpileModule(fs.readFileSync(path.join(root,rel),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,esModuleInterop:true}}).outputText;new Function('require','module','exports',code)(name=>imports[name]||require(name),m,m.exports);return m.exports;};
 const policy=compile('src/characterReference.ts');
 const backgrounds=compile('src/backgroundAssets.ts',{'./utils/extractors':compile('src/utils/extractors.ts')});
+const episodeReference=compile('src/sceneReference.ts',{'./utils/extractors':compile('src/utils/extractors.ts'),'./characterReference':policy});
 const png='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
 const originals=Array.from({length:9},(_,i)=>({url:png,label:['오원장','소미','덕이'][Math.floor(i/3)]+' '+['Front','Side','Back'][i%3]}));
 test('all nine design sheets survive the previous-scene reference and override conflicting hand instructions',()=>{
@@ -28,7 +29,7 @@ test('failed and non-image reference downloads stop before generation',async()=>
 });
 if(fs.existsSync(path.join(root,'src/hooks/useMediaGeneration.ts')))test('meme generator sends named originals with a lower-priority previous scene and stops on missing assets',async()=>{
  const calls=[],toasts=[];const old=global.fetch;
- const {handleGenerateImage}=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{get:async()=>({images:{first:png}})}},'../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'오원장.png',imgs:['front.png','side.png','back.png']}]},'../characterReference':policy,'../backgroundAssets':backgrounds}).useMediaGeneration(msg=>toasts.push(msg),async()=>{},'record',()=>{},{},()=>{}, {},'owonjang');
+ const {handleGenerateImage}=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{get:async()=>({images:{first:png}})}},'../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'오원장.png',imgs:['front.png','side.png','back.png']}]},'../characterReference':policy,'../backgroundAssets':backgrounds,'../sceneReference':episodeReference}).useMediaGeneration(msg=>toasts.push(msg),async()=>{},'record',()=>{},{},()=>{}, {},'owonjang');
  try{global.fetch=async(url,options)=>{calls.push(url);return url==='/api/generate-image'?(calls.push(JSON.parse(options.body)),Response.json({result:png})):new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});};
  assert.equal(await handleGenerateImage('second','O-wonjang holding toothpaste',1,[{title:'first',prompt:'old'}]),true);
  const request=calls.find(x=>typeof x==='object');assert.equal(request.parts.filter(p=>p.inlineData).length,4);assert.match(request.parts.at(-1).text,/O-wonjang: pale warm cream/);
