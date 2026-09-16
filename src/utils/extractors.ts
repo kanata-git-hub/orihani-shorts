@@ -36,7 +36,8 @@ export const extractClips = (text: string) => {
         imagePrompt: c.imagePrompt || '',
         videoTitle: c.videoTitle || `CLIP ${i+1}`,
         videoPrompt: c.videoPrompt || '',
-        backgroundAsset: typeof c.backgroundAsset === 'string' ? c.backgroundAsset : undefined
+        backgroundAsset: typeof c.backgroundAsset === 'string' ? c.backgroundAsset : undefined,
+        locationId: typeof c.locationId === 'string' ? c.locationId : undefined
       }));
     }
   } catch (e) {
@@ -82,7 +83,7 @@ export const extractClips = (text: string) => {
 };
 
 export const extractScenes = (text: string) => {
-  return extractClips(text).map(c => ({ title: c.imageTitle, prompt: c.imagePrompt, videoPrompt: c.videoPrompt, backgroundAsset: 'backgroundAsset' in c ? c.backgroundAsset as string | undefined : undefined }));
+  return extractClips(text).map(c => ({ title: c.imageTitle, prompt: c.imagePrompt, videoPrompt: c.videoPrompt, backgroundAsset: 'backgroundAsset' in c ? c.backgroundAsset as string | undefined : undefined, locationId: 'locationId' in c ? c.locationId as string | undefined : undefined }));
 };
 
 export const extractVideoPrompt = (text: string) => {
