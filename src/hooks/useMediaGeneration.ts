@@ -86,8 +86,10 @@ export function useMediaGeneration(
 
       let previousImage: string | null = null;
       let prevSceneDesc = "";
+      let anchorIndex = -1;
       if (sceneIdx > 0 && allScenes.length > 0) {
-        // Find the most recently generated scene to use as a visual anchor
+        // Anchor the whole continuous location to its earliest available frame.
+        // Reusing each newest frame would accumulate background/layout drift.
         for (let i = sceneIdx - 1; i >= 0; i--) {
           if (!mayUsePreviousScene(scenes, sceneIdx, i, fullPlanText || '', backgroundChoices)) break;
           const prevSceneTitle = allScenes[i].title;
@@ -97,9 +99,12 @@ export function useMediaGeneration(
             if (match) {
               previousImage = prevDataUrl;
               prevSceneDesc = allScenes[i].prompt;
-              break;
+              anchorIndex = i;
             }
           }
+        }
+        if (!previousImage && mayUsePreviousScene(scenes, sceneIdx, sceneIdx - 1, fullPlanText || '', backgroundChoices)) {
+          throw Error('같은 장소의 앞 장면 이미지를 먼저 생성해주세요. 그 이미지를 기준으로 배경과 인물 배치를 이어갑니다.');
         }
       }
 
@@ -108,16 +113,18 @@ export function useMediaGeneration(
         finalPrompt = `[USER INSTRUCTION: You are generating a highly specific image. Character reference images are attached (labelled with their character names and views). Strictly follow the structured prompt below to match their designs. CRITICAL: NEVER generate any garbled, fake, or nonsense text (squiggles). If the prompt does not explicitly request specific English text, ensure screens, papers, and signs are completely blank. Do NOT generate any Korean text. NEVER include any logos or stock photo watermarks.]\n\nPrompt Details:\n${promptText}`;
       } else {
         finalPrompt = `[USER INSTRUCTION: You are generating Scene ${sceneIdx + 1} of a continuous sequence. 
-I have provided character reference images, and additionally, the VERY LAST image provided is the PREVIOUS generated scene's image.
+I have provided character reference images, and additionally, the VERY LAST image provided is Scene ${anchorIndex + 1}, the established spatial anchor for this continuous location.
 
-Your task is to generate the current scene while maintaining EXACT visual continuity with the PREVIOUS scene. 
-- Keep the exact same room, background, lighting, and object placements as the previous scene (unless the prop is explicitly moved in the prompt).
+Your task is to generate the current scene within the EXACT SAME physical set established in that anchor image.
+- Preserve the visible wall, cabinet, window and doorway arrangement, floor direction, lighting direction, and prop design and placement. Generic room descriptions in the new prompt describe this existing set; they do not authorize replacing its furniture or layout.
+- Preserve each character's established left/right position, relative distance, eyeline and position around the props, unless the current scripted action explicitly moves them.
+- For static shots, preserve the established camera position and viewing direction. For a requested close-up, tighten the framing from the same side of the action axis. Change viewpoint only when the current shot explicitly calls for it, keeping the same physical room layout.
 - Preserve each character from its ORIGINAL sheets; correct accidental changes in the previous scene's hands, colors or anatomy.
-- Strictly follow the new structured prompt for the character's pose, facial expression, and actions.
+- The anchor fixes the set and spatial arrangement, not an earlier pose or emotion. Follow the current structured prompt for the current starting pose, facial expression and scripted prop state.
 CRITICAL: NEVER generate any garbled, fake, or nonsense text (squiggles). If the prompt does not explicitly request specific English text, ensure screens, papers, and signs are completely blank. Do NOT generate any Korean text. NEVER include any logos or stock photo watermarks.
 
 ${fullPlanText ? `Here is the master plan for the video to give you narrative context:\n---\n${fullPlanText}\n---\n` : ""}
-Previous Generated Scene Description (For continuity reference):
+Established Location Anchor Description (spatial continuity only):
 ${prevSceneDesc}
 
 Current Scene Structured Prompt (WHAT YOU MUST GENERATE NOW):

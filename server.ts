@@ -74,6 +74,7 @@ ${plannerText}
 ${timing}
 
 Ensure the image prompts strictly follow the character reference instructions and environment details.
+For EACH clip, set a short locationId identifying its actual physical room or place (for example clinic-office). Reuse the EXACT same locationId across consecutive shots in that place, including reaction shots and close-ups, even when backgroundAsset is none. Change locationId only for an actual location change; use different IDs for two different offices or rooms of the same type. Establish the furniture/window layout, prop placement, character left/right positions and camera axis in the first shot. Subsequent shots preserve that staging and change only the scripted action, expression or requested framing. A new clip or a new speaker is not a new set or an automatic reverse angle.
 For EACH clip, set backgroundAsset from the location actually visible in that clip: pantry = the clinic staff tea/break room (탕비실), treatment = the clinic treatment/acupuncture room (치료실), reception = the clinic reception/front desk/waiting area (접수대), none = every other location or uncertain setting. Read the narrative context, not isolated words in dialogue. Do not classify a home kitchen, an office break room, a restaurant, or an outdoor scene as a clinic room. Reuse the same asset for shots in the same room and change it when the location changes. All three clinic rooms share light warm wood furniture, cream walls and warm lighting. The supplied empty room original will be attached during image generation. Keep the story's actual locations; do not relocate unrelated scenes to the clinic.
 Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OUTPUT SPECS, CINEMATOGRAPHY, ENVIRONMENT, ACTION, DIALOGUE, AUDIO, STRICT RULES. Use a real newline between headings. DO NOT include a CHARACTER DESIGN section.
 Use these specific English names: 오원장 = O-wonjang, 소미 = Somi, 덕이 = Deok-i.
@@ -115,10 +116,11 @@ CRITICAL INSTAGRAM GUIDELINES:
                       imageTitle: { type: "STRING", description: "Image scene title" },
                       imagePrompt: { type: "STRING", description: "English prompt for image generation" },
                       backgroundAsset: { type: "STRING", enum: ["pantry", "treatment", "reception", "none"], description: "Canonical clinic room visible in this clip, or none for other locations" },
+                      locationId: { type: "STRING", description: "Stable physical location ID, identical across shots in the same place; independent of backgroundAsset" },
                       videoTitle: { type: "STRING", description: "Video clip title" },
                       videoPrompt: { type: "STRING", description: "English prompt for video generation" }
                     },
-                    required: ["title", "imageTitle", "imagePrompt", "backgroundAsset", "videoTitle", "videoPrompt"]
+                    required: ["title", "imageTitle", "imagePrompt", "backgroundAsset", "locationId", "videoTitle", "videoPrompt"]
                   }
                 }
               },

@@ -18,7 +18,7 @@ Draw only the characters required by this scene. The ORIGINAL front/side/back ch
 Keep the duck mascots' arms as simple smooth rounded/tapered single-piece wing tips, exactly as in their own sheets. No added fingers, thumbs, knuckles, nails, feather grooves, layered feathers or fuzzy plumage. Preserve the original subtle surface texture.
 ${colors}
 For holding or pressing a prop, bend the existing rounded wing tip or brace the object between the tips; adapt the pose rather than inventing fingers. This rule overrides conflicting action descriptions and examples.
-Previous generated scenes are for background, lighting and prop continuity ONLY. Correct their accidental anatomy/color changes using the ORIGINAL character sheets, even if the scene text requests identical appearance. Never transfer one character's colors to another.
+Previous generated scenes are for background, lighting, prop continuity and spatial arrangement ONLY. Correct their accidental anatomy/color changes using the ORIGINAL character sheets, even if the scene text requests identical appearance. Never transfer one character's colors to another.
 Carry these identity rules into each image/video prompt. Before output, check both visible wing tips against that character's original sheets.`;
 }
 
@@ -50,7 +50,7 @@ export function buildReferenceParts(references: (CharacterReference | string)[],
     parts.push({text: ref.role === 'episode'
       ? '[USER-SELECTED EARLIER EPISODE STILL: recurring prop design only where required by the current scene. NOT a required starting frame or character design reference.]'
       : ref.role === 'scene'
-      ? '[PREVIOUS GENERATED SCENE: background/lighting/props only. NOT a character design reference.]'
+      ? '[PREVIOUS GENERATED SCENE: established room, lighting, props and character positions. NOT a character design reference; current action controls pose and expression.]'
       : ref.role === 'background'
       ? `[CANONICAL ROOM BACKGROUND: ${ref.label}. Highest priority for the room only. NOT a character design reference.]`
       : `[ORIGINAL CHARACTER DESIGN SHEET: ${ref.label || `reference ${i + 1}`}. Highest priority for identity, limb shape and colors.]`});

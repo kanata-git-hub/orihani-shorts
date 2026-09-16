@@ -8,7 +8,7 @@ export const BACKGROUND_ASSETS = [
 export type BackgroundId = typeof BACKGROUND_ASSETS[number]['id'];
 export type BackgroundChoice = BackgroundId | 'auto' | 'none';
 export type BackgroundChoices = Record<string, BackgroundChoice>;
-export interface BackgroundScene { title: string; prompt: string; videoPrompt?: string; backgroundAsset?: string }
+export interface BackgroundScene { title: string; prompt: string; videoPrompt?: string; backgroundAsset?: string; locationId?: string }
 export const isBackgroundChoice = (v: unknown): v is BackgroundChoice => typeof v === 'string' && ['auto', 'none', ...BACKGROUND_ASSETS.map(a => a.id)].includes(v);
 
 const patterns: [BackgroundId, RegExp][] = [
@@ -18,6 +18,11 @@ const patterns: [BackgroundId, RegExp][] = [
 ];
 const otherPlace = /집|자취방|침실|거실|지하철|거리|야외|골프장|회사|사무실|게임방|화장실|\b(?:home|bedroom|living\s*room|subway|street|outdoor|office|bathroom|restaurant|cafe|stadium|forest|beach|mountain)\b/i;
 const samePlace = /같은\s*(?:장소|방|공간|배경)|동일한\s*(?:장소|방|공간|배경)|\bsame\s+(?:room|location|setting|background|environment)\b/i;
+
+function environmentOf(scene: BackgroundScene) {
+  // Saved prompts may have headings on one line or escaped newlines.
+  return scene.videoPrompt?.replace(/\\n/g, '\n').match(/\bENVIRONMENT\s*:\s*([\s\S]*?)(?=(?:ACTION|DIALOGUE|AUDIO|VOCALS|PERFORMANCE|STRICT RULES|CINEMATOGRAPHY|OUTPUT SPECS|REFERENCE INSTRUCTION)\s*(?:\([^)]*\))?\s*:|$)/i)?.[1]?.trim() || '';
+}
 
 function detect(text: string): { id?: BackgroundId; explicit: boolean } {
   // Dialogue and negative lists do not identify the room being shown.
@@ -35,7 +40,7 @@ export function resolveBackground(scenes: BackgroundScene[], index: number, plan
   if (choice && choice !== 'auto' && isBackgroundChoice(choice)) return BACKGROUND_ASSETS.find(a => a.id === choice);
   if (scene.backgroundAsset === 'none') return undefined;
   if (scene.backgroundAsset && scene.backgroundAsset !== 'auto' && isBackgroundChoice(scene.backgroundAsset)) return BACKGROUND_ASSETS.find(a => a.id === scene.backgroundAsset);
-  const environment = scene.videoPrompt?.match(/(?:^|\n)\s*ENVIRONMENT\s*:\s*([\s\S]*?)(?=\n\s*[A-Z][A-Z _()/-]+\s*:|$)/i)?.[1] || '';
+  const environment = environmentOf(scene);
   for (const text of [environment, scene.prompt]) {
     const match = detect(text);
     if (match.explicit) return BACKGROUND_ASSETS.find(a => a.id === match.id);
@@ -46,12 +51,50 @@ export function resolveBackground(scenes: BackgroundScene[], index: number, plan
   return BACKGROUND_ASSETS.find(a => a.id === match.id);
 }
 
+const otherRooms: [string, RegExp][] = [
+  ['clinic-office', /원장실|진료실|\b(?:doctor'?s?|clinic|korean medicine)\s+(?:office|consultation\s*room)\b/i],
+  ['bedroom', /침실|\bbedroom\b/i],
+  ['living-room', /거실|\bliving\s*room\b/i],
+  ['bathroom', /화장실|\bbathroom\b/i],
+  ['office', /회사|사무실|\boffice\b/i],
+  ['home', /집|자취방|\bhome\b/i],
+  ['subway', /지하철|\bsubway\b/i],
+  ['street', /거리|\bstreet\b/i],
+  ['outdoors', /야외|\boutdoor(?:s)?\b/i],
+  ['cafe', /카페|\bcafe\b/i],
+  ['restaurant', /식당|\brestaurant\b/i],
+  ['beach', /해변|\bbeach\b/i],
+  ['forest', /숲|\bforest\b/i],
+  ['mountain', /산속|\bmountain\b/i],
+  ['stadium', /경기장|\bstadium\b/i],
+  ['golf', /골프장/],
+  ['gaming-room', /게임방/],
+];
+
+function continuityLocation(scenes: BackgroundScene[], index: number, plan: string, choices: BackgroundChoices): string {
+  const scene = scenes[index];
+  const background = resolveBackground(scenes, index, plan, choices);
+  const locationId = scene.locationId?.trim();
+  // Asset selection and narrative location are separate: 'none' is not a location change.
+  if (background) return `asset:${background.id}:${locationId || ''}`;
+  if (locationId) return `location:${locationId}`;
+  const text = environmentOf(scene) || scene.prompt.replace(/^(?:DIALOGUE|STRICT RULES|REFERENCE INSTRUCTION)[^\n]*/gmi, '');
+  // Legacy plans have no locationId. Recognize repeated locations without requiring an asset.
+  const room = otherRooms.find(([, pattern]) => pattern.test(text));
+  if (room) return `legacy:${room[0]}`;
+  if (samePlace.test(text) && index > 0) return continuityLocation(scenes, index - 1, plan, choices);
+  if (detect(text).explicit || environmentOf(scene)) return `unresolved:${index}`;
+  return index > 0 ? continuityLocation(scenes, index - 1, plan, choices) : 'unspecified';
+}
+
 export function mayUsePreviousScene(scenes: BackgroundScene[], index: number, previousIndex: number, plan: string, choices: BackgroundChoices) {
-  // Canonical room originals take precedence over generated frames, including old frames
-  // whose room metadata was never saved. A changed room cannot leak into the next shot.
-  if (resolveBackground(scenes, index, plan, choices) || resolveBackground(scenes, previousIndex, plan, choices)) return false;
-  const current = scenes[index];
-  return !detect(current?.prompt || '').explicit && !detect(current?.videoPrompt || '').explicit;
+  if (previousIndex < 0 || previousIndex >= index || !scenes[index] || !scenes[previousIndex]) return false;
+  // Check every intervening cut: A -> B -> A must start a new continuous run.
+  const location = continuityLocation(scenes, previousIndex, plan, choices);
+  for (let i = previousIndex + 1; i <= index; i++) {
+    if (continuityLocation(scenes, i, plan, choices) !== location) return false;
+  }
+  return true;
 }
 
 export function backgroundInstruction(id: BackgroundId) {

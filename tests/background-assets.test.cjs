@@ -61,10 +61,32 @@ test('generation uses blank labels even when the approved original contains mark
     assert.doesNotMatch(instruction,/machinery|NOT a character sheet/);
   }
 });
-test('room changes and canonical room images exclude stale generated scene references',()=>{
+test('room changes exclude earlier locations while shots in the same canonical room stay connected',()=>{
   assert.equal(bg.mayUsePreviousScene([scene('탕비실'),scene('치료실')],1,0,'',{}),false);
   assert.equal(bg.mayUsePreviousScene([scene('탕비실'),scene('home bedroom')],1,0,'',{}),false);
   assert.equal(bg.mayUsePreviousScene([scene('old'),scene('close-up duck')],1,0,'',{}),true);
+  assert.equal(bg.mayUsePreviousScene([scene('탕비실'),scene('탕비실')],1,0,'',{}),true);
+  assert.equal(bg.mayUsePreviousScene([scene('탕비실'),scene('치료실'),scene('탕비실')],2,0,'',{}),false);
+});
+test('saved office scenes retain continuity without a canonical background, including flattened prompts',()=>{
+  const environments=["A warm, cozy doctor's office in a traditional Korean Medicine Clinic with wooden herbal cabinets and soft warm interior lighting.",'Same cozy clinic office interior with warm ambient lighting.','Warm clinic office background softly blurred.',"Warm doctor's office in Korean Medicine Clinic."];
+  const scenes=environments.map((environment,i)=>scene('O-wonjang and Deok-i beside a white digital scale.',{title:`Scene ${i+1}`,backgroundAsset:'none',videoPrompt:`CINEMATOGRAPHY: Static.ENVIRONMENT: ${environment}ACTION: Look down.DIALOGUE: O-wonjang: "집에 가자."`}));
+  for(let i=1;i<scenes.length;i++)assert.equal(bg.mayUsePreviousScene(scenes,i,0,'',{}),true);
+  assert.equal(bg.mayUsePreviousScene([scene('원장실 체중계'),scene('원장실에서 체중계를 내려다본다')],1,0,'',{}),true);
+  assert.equal(bg.mayUsePreviousScene([scene('home bedroom'),scene("doctor's office")],1,0,'',{}),false);
+});
+test('new location IDs survive extraction and distinguish separate rooms of the same type',()=>{
+  const scenes=extractors.extractScenes(JSON.stringify({clips:[
+    {imageTitle:'one',imagePrompt:'close-up',backgroundAsset:'none',locationId:'room-a'},
+    {imageTitle:'two',imagePrompt:'another expression',backgroundAsset:'none',locationId:'room-a'},
+    {imageTitle:'three',imagePrompt:'same style',backgroundAsset:'none',locationId:'room-b'},
+    {imageTitle:'four',imagePrompt:'return',backgroundAsset:'none',locationId:'room-a'},
+  ]}));
+  assert.equal(scenes[0].locationId,'room-a');
+  assert.equal(bg.mayUsePreviousScene(scenes,1,0,'',{}),true);
+  assert.equal(bg.mayUsePreviousScene(scenes,2,1,'',{}),false);
+  assert.equal(bg.mayUsePreviousScene(scenes,3,0,'',{}),false);
+  assert.equal(bg.mayUsePreviousScene(scenes,1,0,'',{'one':'pantry','two':'treatment'}),false);
 });
 test('manual selections survive work-file export/import and reject invalid values',()=>{
   const item={id:'test',timestamp:1,characterId:'owonjang',duration:5,result:JSON.stringify({title:'Test',clips:[{imageTitle:'Scene 1',imagePrompt:'탕비실',videoPrompt:'x'},{imageTitle:'Scene 2',imagePrompt:'치료실',videoPrompt:'y'}]}),backgroundChoices:{'Scene 1':'reception','Scene 2':'none'}};
@@ -100,5 +122,38 @@ test('generation sends the selected original alongside character sheets and fail
     global.fetch=async(url,options)=>{calls.push({url});return url.startsWith('/backgrounds/')?new Response('missing',{status:404}):new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});};
     assert.equal(await handleGenerateImage('Scene 2','치료실',1,scenes),false);
     assert.ok(!calls.some(c=>c.url==='/api/generate-image'));
+  }finally{global.fetch=old;}
+});
+
+test('actual generation attaches the first same-room image instead of accumulating later frame drift',async()=>{
+  const old=global.fetch,calls=[],toasts=[];
+  const drifted='data:image/png;base64,BBBB';
+  let images={'Scene 1':png,'Scene 2':drifted};
+  const useMedia=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{get:async()=>({images})}},'../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'doctor.png',imgs:['front.png','side.png','back.png']}]}});
+  const {handleGenerateImage}=useMedia.useMediaGeneration(msg=>toasts.push(msg),async()=>{},'record',()=>{},{},()=>{},{},'owonjang');
+  const scenes=[1,2,3,4].map(i=>scene('O-wonjang and Deok-i in the clinic office.',{title:`Scene ${i}`,backgroundAsset:'none',videoPrompt:'ENVIRONMENT: Warm clinic office.\nACTION: Look down.'}));
+  try{
+    global.fetch=async(url,options)=>{calls.push({url,body:options?.body});return url==='/api/generate-image'?Response.json({result:png}):new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});};
+    for(const index of [1,2,3]){
+      calls.length=0;
+      assert.equal(await handleGenerateImage(scenes[index].title,scenes[index].prompt,index,scenes),true);
+      const parts=JSON.parse(calls.find(c=>c.url==='/api/generate-image').body).parts;
+      assert.equal(parts.filter(p=>p.inlineData).length,4);
+      assert.match(parts.at(-3).text,/PREVIOUS GENERATED SCENE/);
+      assert.equal(parts.at(-2).inlineData.data,png.split(',')[1]);
+      assert.ok(!parts.some(p=>p.inlineData?.data==='BBBB'));
+      assert.match(parts.at(-1).text,/Scene 1, the established spatial anchor/);
+      assert.match(parts.at(-1).text,/left\/right position/);
+      assert.match(parts.at(-1).text,/same side of the action axis/);
+      assert.match(parts.at(-1).text,/current starting pose/);
+    }
+    images={};calls.length=0;
+    assert.equal(await handleGenerateImage('Scene 2',scenes[1].prompt,1,scenes),false);
+    assert.ok(!calls.some(c=>c.url==='/api/generate-image'));
+    assert.match(toasts.at(-1),/앞 장면 이미지를 먼저/);
+    // A real location change may start a new set without an earlier image.
+    scenes[1]={...scenes[1],prompt:'Home bedroom',videoPrompt:'ENVIRONMENT: Home bedroom.'};calls.length=0;
+    assert.equal(await handleGenerateImage('Scene 2',scenes[1].prompt,1,scenes),true);
+    assert.ok(!JSON.parse(calls.find(c=>c.url==='/api/generate-image').body).parts.some(p=>p.text?.startsWith('[PREVIOUS GENERATED SCENE')));
   }finally{global.fetch=old;}
 });
