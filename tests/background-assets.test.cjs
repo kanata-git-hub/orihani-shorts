@@ -143,8 +143,8 @@ test('actual generation attaches the first same-room image instead of accumulati
       assert.equal(parts.at(-2).inlineData.data,png.split(',')[1]);
       assert.ok(!parts.some(p=>p.inlineData?.data==='BBBB'));
       assert.match(parts.at(-1).text,/Scene 1, the established spatial anchor/);
-      assert.match(parts.at(-1).text,/left\/right position/);
-      assert.match(parts.at(-1).text,/same side of the action axis/);
+      assert.match(parts.at(-1).text,/left\/right relationship/);
+      assert.match(parts.at(-1).text,/coherent screen direction/);
       assert.match(parts.at(-1).text,/current starting pose/);
     }
     images={};calls.length=0;
@@ -155,5 +155,43 @@ test('actual generation attaches the first same-room image instead of accumulati
     scenes[1]={...scenes[1],prompt:'Home bedroom',videoPrompt:'ENVIRONMENT: Home bedroom.'};calls.length=0;
     assert.equal(await handleGenerateImage('Scene 2',scenes[1].prompt,1,scenes),true);
     assert.ok(!JSON.parse(calls.find(c=>c.url==='/api/generate-image').body).parts.some(p=>p.text?.startsWith('[PREVIOUS GENERATED SCENE')));
+  }finally{global.fetch=old;}
+});
+
+test('regenerating saved cuts keeps the room image but sends only current performance and camera instructions',async()=>{
+  const old=global.fetch,requests=[];
+  const originalPrompt='O-wonjang in the clinic office, gazing up at Deok-i with an ANCHOR_ONLY_BEAMING_SMILE. Wide shot.';
+  const currentPrompts=[
+    'STARTING STATE: O-wonjang in the clinic office looks down at the scale display, head slightly tilted, puzzled expression. CAMERA: Static medium shot focused on O-wonjang. SET: Same room.',
+    'STARTING STATE: Deok-i in the clinic office starts with a small smile and his head angled toward the display. CAMERA: Static close-up on Deok-i; the doctor is outside the crop. SET: Same room.',
+  ];
+  const scenes=[originalPrompt,...currentPrompts].map((prompt,i)=>scene(prompt,{title:`Scene ${i+1}`,backgroundAsset:'none',videoPrompt:'ENVIRONMENT: Warm clinic office.'}));
+  // Saved pre-fix plans have no locationId and can contain old poses and future outcomes.
+  const plan=JSON.stringify({location:'원장실',scenario:'LATER_OUTCOME: a duck puts away the scale.',clips:scenes.map(s=>({imageTitle:s.title,imagePrompt:s.prompt,videoPrompt:s.videoPrompt,backgroundAsset:s.backgroundAsset}))});
+  const useMedia=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{get:async()=>({images:{'Scene 1':png}})}},'../constants':{CHARACTERS:[
+    {id:'owonjang',name:'오원장',file:'doctor.png',imgs:['doctor-front.png','doctor-side.png','doctor-back.png']},
+    {id:'deoki',name:'덕이',file:'duck.png',imgs:['duck-front.png','duck-side.png','duck-back.png']},
+  ]}});
+  const {handleGenerateImage}=useMedia.useMediaGeneration(()=>{},async()=>{},'saved-record',()=>{},{},()=>{},{},'owonjang');
+  try{
+    global.fetch=async(url,options)=>{
+      if(url==='/api/generate-image'){requests.push(JSON.parse(options.body));return Response.json({result:png});}
+      return new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});
+    };
+    for(let i=1;i<scenes.length;i++){
+      assert.equal(await handleGenerateImage(scenes[i].title,scenes[i].prompt,i,scenes,plan),true);
+      const parts=requests.at(-1).parts;
+      const text=parts.filter(p=>p.text).map(p=>p.text).join('\n');
+      assert.ok(text.includes(currentPrompts[i-1]));
+      assert.ok(!text.includes(originalPrompt));
+      assert.ok(!text.includes(currentPrompts[i===1?1:0]));
+      assert.doesNotMatch(text,/ANCHOR_ONLY_BEAMING_SMILE|LATER_OUTCOME|relative distance, eyeline|preserve the established camera position/);
+      assert.equal(parts.at(-2).inlineData.data,png.split(',')[1]);
+      assert.match(parts.at(-3).text,/physical set/);
+      assert.match(text,/current shot below has priority for gaze target/i);
+      assert.match(text,/static or locked camera stays still WITHIN this clip/i);
+      assert.match(text,/current starting pose and expression/i);
+      assert.match(text,/ORIGINAL CHARACTER DESIGN/);
+    }
   }finally{global.fetch=old;}
 });

@@ -85,7 +85,6 @@ export function useMediaGeneration(
       }
 
       let previousImage: string | null = null;
-      let prevSceneDesc = "";
       let anchorIndex = -1;
       if (sceneIdx > 0 && allScenes.length > 0) {
         // Anchor the whole continuous location to its earliest available frame.
@@ -98,7 +97,6 @@ export function useMediaGeneration(
             const match = prevDataUrl.match(/^data:([^;]+);base64,(.+)$/);
             if (match) {
               previousImage = prevDataUrl;
-              prevSceneDesc = allScenes[i].prompt;
               anchorIndex = i;
             }
           }
@@ -112,22 +110,20 @@ export function useMediaGeneration(
       if (!previousImage) {
         finalPrompt = `[USER INSTRUCTION: You are generating a highly specific image. Character reference images are attached (labelled with their character names and views). Strictly follow the structured prompt below to match their designs. CRITICAL: NEVER generate any garbled, fake, or nonsense text (squiggles). If the prompt does not explicitly request specific English text, ensure screens, papers, and signs are completely blank. Do NOT generate any Korean text. NEVER include any logos or stock photo watermarks.]\n\nPrompt Details:\n${promptText}`;
       } else {
-        finalPrompt = `[USER INSTRUCTION: You are generating Scene ${sceneIdx + 1} of a continuous sequence. 
-I have provided character reference images, and additionally, the VERY LAST image provided is Scene ${anchorIndex + 1}, the established spatial anchor for this continuous location.
+        finalPrompt = `[USER INSTRUCTION: Generate the START FRAME of Scene ${sceneIdx + 1} using the current shot instructions below.
+The VERY LAST image is Scene ${anchorIndex + 1}, the established spatial anchor for this continuous location. Its role is set continuity; the current shot controls performance and camera.
 
-Your task is to generate the current scene within the EXACT SAME physical set established in that anchor image.
-- Preserve the visible wall, cabinet, window and doorway arrangement, floor direction, lighting direction, and prop design and placement. Generic room descriptions in the new prompt describe this existing set; they do not authorize replacing its furniture or layout.
-- Preserve each character's established left/right position, relative distance, eyeline and position around the props, unless the current scripted action explicitly moves them.
-- For static shots, preserve the established camera position and viewing direction. For a requested close-up, tighten the framing from the same side of the action axis. Change viewpoint only when the current shot explicitly calls for it, keeping the same physical room layout.
-- Preserve each character from its ORIGINAL sheets; correct accidental changes in the previous scene's hands, colors or anatomy.
-- The anchor fixes the set and spatial arrangement, not an earlier pose or emotion. Follow the current structured prompt for the current starting pose, facial expression and scripted prop state.
+[SET CONTINUITY]
+Preserve the same physical room: wall, cabinet, window and doorway arrangement, floor materials, lighting and prop design. Generic room descriptions refer to this existing set. Use the established character left/right relationship and positions around props as spatial context, updating positions when the current action calls for movement. Maintain coherent screen direction while composing the requested shot within this room.
+
+[CURRENT SHOT PRIORITY: PERFORMANCE AND CAMERA]
+The current shot below has priority for gaze target, head direction, body angle, wing/limb pose, facial expression and current prop state. Render these requested differences visibly using the characters' existing anatomy, even when the room and standing positions stay the same. Continuity instructions such as 'same scene' or 'consistent characters' preserve the set and character design; performance comes from the current shot.
+Use the current shot's camera angle, shot size, subject and framing. A static or locked camera stays still WITHIN this clip; it does not require the preceding clip's framing or camera position. A close-up may crop out another character while preserving the physical room and spatial relationships. Apply only the changes requested by the current shot.
+Depict the current starting pose and expression. Leave later actions and their outcomes for the video rather than showing a later outcome in this start frame.
+Character identity, eye/bill geometry, anatomy, costume and colors come from the ORIGINAL character sheets. The current shot supplies their acting, including gaze and expression.
 CRITICAL: NEVER generate any garbled, fake, or nonsense text (squiggles). If the prompt does not explicitly request specific English text, ensure screens, papers, and signs are completely blank. Do NOT generate any Korean text. NEVER include any logos or stock photo watermarks.
 
-${fullPlanText ? `Here is the master plan for the video to give you narrative context:\n---\n${fullPlanText}\n---\n` : ""}
-Established Location Anchor Description (spatial continuity only):
-${prevSceneDesc}
-
-Current Scene Structured Prompt (WHAT YOU MUST GENERATE NOW):
+Current Scene Structured Prompt (PERFORMANCE, CAMERA AND STARTING STATE):
 ${promptText}`;
       }
 
