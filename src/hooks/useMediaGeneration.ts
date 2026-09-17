@@ -4,6 +4,7 @@ import { CHARACTERS } from "../constants";
 import { buildReferenceParts, loadReferenceImage, CharacterReference } from '../characterReference';
 import { BackgroundChoices, resolveBackground, backgroundInstruction, mayUsePreviousScene } from '../backgroundAssets';
 import { readSceneReference, sceneReferenceInstruction } from '../sceneReference';
+import { shotDirectionInstruction } from '../shotDirection';
 
 
 export function useMediaGeneration(
@@ -102,7 +103,7 @@ export function useMediaGeneration(
           }
         }
         if (!previousImage && mayUsePreviousScene(scenes, sceneIdx, sceneIdx - 1, fullPlanText || '', backgroundChoices)) {
-          throw Error('같은 장소의 앞 장면 이미지를 먼저 생성해주세요. 그 이미지를 기준으로 배경과 인물 배치를 이어갑니다.');
+          throw Error('같은 장소의 앞 장면 이미지를 먼저 생성해주세요. 그 이미지를 기준으로 배경 디자인을 이어갑니다.');
         }
       }
 
@@ -114,7 +115,7 @@ export function useMediaGeneration(
 The VERY LAST image is Scene ${anchorIndex + 1}, the established spatial anchor for this continuous location. Its role is set continuity; the current shot controls performance and camera.
 
 [SET CONTINUITY]
-Preserve the same physical room: wall, cabinet, window and doorway arrangement, floor materials, lighting and prop design. Generic room descriptions refer to this existing set. Use the established character left/right relationship and positions around props as spatial context, updating positions when the current action calls for movement. Maintain coherent screen direction while composing the requested shot within this room.
+Preserve this physical set's architecture, fixed landmarks, materials and prop design. The current shot determines what is visible from its camera; landmarks outside its crop remain off-screen. Scripted weather, light, motion and object states may change. Generic room descriptions refer to this existing set. Use the established character left/right relationship and positions around props as spatial context, updating positions when the current action calls for movement. Maintain coherent screen direction while composing the requested shot within this room.
 
 [CURRENT SHOT PRIORITY: PERFORMANCE AND CAMERA]
 The current shot below has priority for gaze target, head direction, body angle, wing/limb pose, facial expression and current prop state. Render these requested differences visibly using the characters' existing anatomy, even when the room and standing positions stay the same. Continuity instructions such as 'same scene' or 'consistent characters' preserve the set and character design; performance comes from the current shot.
@@ -141,6 +142,11 @@ ${promptText}`;
       }
       // Keep the within-episode previous scene last, as labelled in its prompt.
       if (previousImage) references.push({url: previousImage, role: 'scene'});
+      // Keep the typed shot through history/extraction to the actual image request.
+      // A manually edited prompt is authoritative over the original shot metadata.
+      if (promptText === allScenes[sceneIdx]?.prompt) {
+        finalPrompt += '\n\n' + shotDirectionInstruction(scenes[sceneIdx]?.shot);
+      }
       const parts = buildReferenceParts(references, finalPrompt);
 
       const response = await fetch('/api/generate-image', {

@@ -17,6 +17,43 @@ const scene = (prompt, extra={}) => ({ title:'Scene 1',prompt,...extra });
 const resolve = (prompt, plan='', extra={}) => bg.resolveBackground([scene(prompt, extra)],0,plan)?.id;
 const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
 
+test('cinematic worlds do not inherit a clinic asset and explicit scene cuts reset reference continuity',()=>{
+  const plan=JSON.stringify({location:'탕비실'});
+  for(const text of ['A stormy ocean','On a ship deck','A galaxy in outer space']) assert.equal(resolve(text,plan),undefined);
+  const scenes=extractors.extractScenes(JSON.stringify({clips:[
+    {imageTitle:'a',imagePrompt:'cosmic sofa',backgroundAsset:'none',locationId:'sofa',sceneTransition:'new-scene'},
+    {imageTitle:'b',imagePrompt:'ordinary sofa',backgroundAsset:'none',locationId:'sofa',sceneTransition:'new-scene'},
+    {imageTitle:'c',imagePrompt:'closer',backgroundAsset:'none',locationId:'sofa',sceneTransition:'reframe'},
+  ]}));
+  assert.equal(bg.mayUsePreviousScene(scenes,1,0,plan,{}),false);
+  assert.equal(bg.mayUsePreviousScene(scenes,2,0,plan,{}),false);
+  assert.equal(bg.mayUsePreviousScene(scenes,2,1,plan,{}),true);
+  assert.equal(resolve('new visual world',plan,{sceneTransition:'new-scene'}),undefined);
+});
+
+test('typed composition reaches image generation without changing legacy or manually edited prompts',async()=>{
+  const old=global.fetch,requests=[];
+  const shot={size:'close-up',angle:'low side angle',focus:'Deok-i face and reaching wing; doctor outside crop',startState:'Leaning toward the handle'};
+  const scenes=extractors.extractScenes(JSON.stringify({clips:[
+    {imageTitle:'one',imagePrompt:'Deok-i wide shot',locationId:'gate',backgroundAsset:'none',sceneTransition:'new-scene'},
+    {imageTitle:'two',imagePrompt:'Deok-i reaches',locationId:'gate',backgroundAsset:'none',sceneTransition:'reframe',shot},
+    {imageTitle:'three',imagePrompt:'Deok-i in a new visual world',locationId:'gate',backgroundAsset:'none',sceneTransition:'new-scene',shot:{...shot,size:'extreme-wide'}},
+  ]}));
+  const useMedia=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{get:async()=>({images:{one:png}})}},'../constants':{CHARACTERS:[{id:'deoki',name:'덕이',file:'duck.png',imgs:['front.png','side.png','back.png']} ]}});
+  const api=useMedia.useMediaGeneration(()=>{},async()=>{},'record',()=>{},{},()=>{},{},'deoki');
+  try{
+    global.fetch=async(url,options)=>{if(url==='/api/generate-image'){requests.push(JSON.parse(options.body));return Response.json({result:png});}return new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});};
+    assert.equal(await api.handleGenerateImage('two',scenes[1].prompt,1,scenes),true);
+    assert.match(requests.at(-1).parts.at(-1).text,/Shot size: close-up/);
+    assert.match(requests.at(-1).parts.at(-1).text,/doctor outside crop/);
+    assert.equal(await api.handleGenerateImage('two','User edited wide framing',1,scenes),true);
+    assert.doesNotMatch(requests.at(-1).parts.at(-1).text,/Shot size: close-up/);
+    assert.equal(await api.handleGenerateImage('three',scenes[2].prompt,2,scenes),true);
+    assert.ok(!requests.at(-1).parts.some(p=>p.text?.startsWith('[PREVIOUS GENERATED SCENE')));
+    assert.match(requests.at(-1).parts.at(-1).text,/Shot size: extreme-wide/);
+  }finally{global.fetch=old;}
+});
+
 test('Korean and English clinic rooms select the expected original', () => {
   for (const [text,id] of [['탕비실에서 약과를 먹는다','pantry'],['A cozy clinic tea room','pantry'],['치료실 침대','treatment'],['acupuncture room','treatment'],['접수대 뒤','reception'],['A clinic reception desk','reception']]) assert.equal(resolve(text),id);
 });

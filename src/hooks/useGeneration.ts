@@ -42,6 +42,7 @@ export function useGeneration(
           character,
           customPrompt,
           duration,
+          ...(episode ? {sourceEpisode: episode} : {}),
           ...(sceneReference?{sceneReference}:{}),
         })
       });
