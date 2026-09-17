@@ -7,6 +7,9 @@ import dotenv from "dotenv";
 import { clipDurations, timingInstruction, validateClipTiming } from "./src/utils/clipTiming";
 import { readSceneReference, planWithSceneReference } from './src/sceneReference';
 import { videoAudioInstruction, normalizeVideoPlan } from './src/videoPrompt';
+import { readSourceEpisode, sourceConversionInstruction } from './src/sourceEpisode';
+import { SHOT_SIZES, SCENE_TRANSITIONS, shotConversionInstruction } from './src/shotDirection';
+import { episodePrompt } from './src/workflow/weekly';
 dotenv.config({ override: true });
 
 async function startServer() {
@@ -37,8 +40,11 @@ async function startServer() {
       res.status(400).json({ error: '영상 길이는 5초 또는 15초여야 합니다.' });
       return;
     }
-    let sceneReference;
-    try { sceneReference=readSceneReference(req.body.sceneReference); }
+    let sceneReference, sourceEpisode;
+    try {
+      sceneReference=readSceneReference(req.body.sceneReference);
+      sourceEpisode=readSourceEpisode(req.body.sourceEpisode, duration, customPrompt);
+    }
     catch(e) { res.status(400).json({error:(e as Error).message});return; }
     const timing = timingInstruction(duration);
     const maxRetries = 3;
@@ -55,23 +61,30 @@ User Idea/Twist: ${customPrompt || "Impress me with a fun, VERY diverse, and cre
 Duration: ${duration}
 ${timing}`;
 
-        const plannerResponse = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
-          contents: planWithSceneReference(plannerPrompt, sceneReference),
-          config: { 
-            systemInstruction: `${agentPrompt}\n\n${timing}\n\n${videoAudioInstruction}`,
-            temperature: 1.0,
-          },
-        });
+        let plannerText = sourceEpisode ? episodePrompt(sourceEpisode) : "";
+        if (!sourceEpisode) {
+          const plannerResponse = await ai.models.generateContent({
+            model: "gemini-3.6-flash",
+            contents: planWithSceneReference(plannerPrompt, sceneReference),
+            config: {
+              systemInstruction: `${agentPrompt}\n\n${timing}\n\n${videoAudioInstruction}`,
+              temperature: 1.0,
+            },
+          });
 
-        const plannerText = plannerResponse.text || "";
+          plannerText = plannerResponse.text || "";
+        }
 
         const converterPrompt = `You are an expert prompt converter. Based on the following Korean video plan, convert it into a structured JSON format containing the title, location, full scenario (Korean), Instagram Reels caption (Korean & English), exactly 5 hashtags, and English prompts for both images (initial frames) and video generation for each clip.
+
+${sourceEpisode ? sourceConversionInstruction : "Preserve the completed plan below; this step converts rather than re-plans it."}
 
 Korean Plan:
 ${plannerText}
 
 ${timing}
+
+${shotConversionInstruction}
 
 Ensure the image prompts strictly follow the character reference instructions and environment details.
 For EACH clip, set a short locationId identifying its actual physical room or place (for example clinic-office). Reuse the EXACT same locationId across consecutive shots in that place, including reaction shots and close-ups, even when backgroundAsset is none. Change locationId only for an actual location change; use different IDs for two different offices or rooms of the same type. Establish the furniture/window layout, prop design and physical character locations in the first shot. Later shots use the same set and maintain coherent character left/right relationships, updating locations when the script moves someone. Plan each shot's gaze target, head/body direction, limb pose, expression, prop state and camera framing from its CURRENT scripted beat. Static/locked describes camera motion within one clip, not identical framing across clips. A new speaker alone does not require reversing the camera.
@@ -82,9 +95,10 @@ Use these specific English names: 오원장 = O-wonjang, 소미 = Somi, 덕이 =
 ${videoAudioInstruction}
 
 CRITICAL TITLE GUIDELINES:
-Create a catchy, extremely short YouTube Shorts style title combining Korean and English in a single line. Example format: "선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)". Keep it punchy and very short.
+For a supplied finished screenplay, preserve its Korean-only title and episode number. Otherwise create a catchy, extremely short YouTube Shorts style title combining Korean and English in a single line. Example format: "선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)". Keep it punchy and very short.
 
 CRITICAL INSTAGRAM GUIDELINES:
+For a supplied finished screenplay, preserve the supplied caption and five hashtags. The defaults below apply only to original free-form plans.
 1. Caption: Create an extremely short, punchy one-line caption combining Korean and English. It MUST be a single line. Example format: "선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)". Do NOT write long paragraphs or separate sentences.
 2. Hashtags: Provide EXACTLY 5 hashtags in this exact order: '#[Core Topic 1 in Korean]', '#[Core Topic 1 in English]', '#Humor', '#Relatable', and '#유머'.`;
 
@@ -118,10 +132,21 @@ CRITICAL INSTAGRAM GUIDELINES:
                       imagePrompt: { type: "STRING", description: "English prompt for image generation" },
                       backgroundAsset: { type: "STRING", enum: ["pantry", "treatment", "reception", "none"], description: "Canonical clinic room visible in this clip, or none for other locations" },
                       locationId: { type: "STRING", description: "Stable physical location ID, identical across shots in the same place; independent of backgroundAsset" },
+                      sceneTransition: { type: "STRING", enum: [...SCENE_TRANSITIONS], description: "continuous action, same-set reframe, or new-scene for location/time/visual-world changes" },
+                      shot: {
+                        type: "OBJECT",
+                        properties: {
+                          size: { type: "STRING", enum: [...SHOT_SIZES] },
+                          angle: { type: "STRING", description: "Current camera angle in English" },
+                          focus: { type: "STRING", description: "Visible subject, crop and depth; keep source framing" },
+                          startState: { type: "STRING", description: "Visible beginning pose, object state and composition before the clip's action" },
+                        },
+                        required: ["size", "angle", "focus", "startState"],
+                      },
                       videoTitle: { type: "STRING", description: "Video clip title" },
                       videoPrompt: { type: "STRING", description: "English prompt for video generation" }
                     },
-                    required: ["title", "imageTitle", "imagePrompt", "backgroundAsset", "locationId", "videoTitle", "videoPrompt"]
+                    required: ["title", "imageTitle", "imagePrompt", "backgroundAsset", "locationId", "sceneTransition", "shot", "videoTitle", "videoPrompt"]
                   }
                 }
               },
@@ -130,7 +155,15 @@ CRITICAL INSTAGRAM GUIDELINES:
           }
         });
 
-        const result=normalizeVideoPlan(converterResponse.text || '{}');
+        const converted = JSON.parse(converterResponse.text || '{}');
+        if (sourceEpisode) {
+          converted.title = sourceEpisode.title.replace(/^\[에피소드\s*\d+\]\s*/, '');
+          converted.scenario = sourceEpisode.scenario;
+          converted.instagramCaption = sourceEpisode.caption;
+          const tags = sourceEpisode.caption.match(/#[^\s#]+/g);
+          if (tags?.length === 5) converted.hashtags = tags.map((tag: string) => tag.slice(1));
+        }
+        const result=normalizeVideoPlan(JSON.stringify(converted));
         validateClipTiming(result, duration);
         res.json({ success: true, result });
         return;

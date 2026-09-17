@@ -1,3 +1,4 @@
+import { readShotDirection, readSceneTransition } from '../shotDirection';
 import { MemeCaption } from '../types';
 
 export const extractOverview = (text: string) => {
@@ -37,7 +38,9 @@ export const extractClips = (text: string) => {
         videoTitle: c.videoTitle || `CLIP ${i+1}`,
         videoPrompt: c.videoPrompt || '',
         backgroundAsset: typeof c.backgroundAsset === 'string' ? c.backgroundAsset : undefined,
-        locationId: typeof c.locationId === 'string' ? c.locationId : undefined
+        locationId: typeof c.locationId === 'string' ? c.locationId : undefined,
+        shot: readShotDirection(c.shot),
+        sceneTransition: readSceneTransition(c.sceneTransition)
       }));
     }
   } catch (e) {
@@ -83,7 +86,7 @@ export const extractClips = (text: string) => {
 };
 
 export const extractScenes = (text: string) => {
-  return extractClips(text).map(c => ({ title: c.imageTitle, prompt: c.imagePrompt, videoPrompt: c.videoPrompt, backgroundAsset: 'backgroundAsset' in c ? c.backgroundAsset as string | undefined : undefined, locationId: 'locationId' in c ? c.locationId as string | undefined : undefined }));
+  return extractClips(text).map(c => ({ title: c.imageTitle, prompt: c.imagePrompt, videoPrompt: c.videoPrompt, backgroundAsset: 'backgroundAsset' in c ? c.backgroundAsset as string | undefined : undefined, locationId: 'locationId' in c ? c.locationId as string | undefined : undefined, shot: 'shot' in c ? c.shot : undefined, sceneTransition: 'sceneTransition' in c ? c.sceneTransition : undefined }));
 };
 
 export const extractVideoPrompt = (text: string) => {

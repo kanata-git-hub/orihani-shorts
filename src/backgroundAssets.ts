@@ -1,4 +1,5 @@
 import { extractOverview } from './utils/extractors';
+import type { ShotDirection } from './shotDirection';
 
 export const BACKGROUND_ASSETS = [
   { id: 'pantry', name: '탕비실', url: '/backgrounds/pantry.png', description: '밝은 원목과 크림색 벽, 차와 약과가 있는 탕비실' },
@@ -8,7 +9,7 @@ export const BACKGROUND_ASSETS = [
 export type BackgroundId = typeof BACKGROUND_ASSETS[number]['id'];
 export type BackgroundChoice = BackgroundId | 'auto' | 'none';
 export type BackgroundChoices = Record<string, BackgroundChoice>;
-export interface BackgroundScene { title: string; prompt: string; videoPrompt?: string; backgroundAsset?: string; locationId?: string }
+export interface BackgroundScene { title: string; prompt: string; videoPrompt?: string; backgroundAsset?: string; locationId?: string; shot?: ShotDirection; sceneTransition?: 'continuous' | 'reframe' | 'new-scene' }
 export const isBackgroundChoice = (v: unknown): v is BackgroundChoice => typeof v === 'string' && ['auto', 'none', ...BACKGROUND_ASSETS.map(a => a.id)].includes(v);
 
 const patterns: [BackgroundId, RegExp][] = [
@@ -16,7 +17,7 @@ const patterns: [BackgroundId, RegExp][] = [
   ['treatment', /치료실|침구실|추나실|\b(?:treatment\s*(?:room|area)|acupuncture\s*(?:room|area))\b/i],
   ['reception', /접수대|접수실|대기실|\b(?:reception(?:\s*(?:desk|area))?|front\s*desk|waiting\s*(?:room|area))\b/i],
 ];
-const otherPlace = /집|자취방|침실|거실|지하철|거리|야외|골프장|회사|사무실|게임방|화장실|\b(?:home|bedroom|living\s*room|subway|street|outdoor|office|bathroom|restaurant|cafe|stadium|forest|beach|mountain)\b/i;
+const otherPlace = /집|자취방|침실|거실|지하철|거리|야외|골프장|회사|사무실|게임방|화장실|\b(?:home|bedroom|living\s*room|subway|street|outdoor|office|bathroom|restaurant|cafe|stadium|forest|beach|mountain|ocean|sea|ship|deck|cliff|sky|clouds?|desert|galaxy|space)\b/i;
 const samePlace = /같은\s*(?:장소|방|공간|배경)|동일한\s*(?:장소|방|공간|배경)|\bsame\s+(?:room|location|setting|background|environment)\b/i;
 
 function environmentOf(scene: BackgroundScene) {
@@ -45,6 +46,7 @@ export function resolveBackground(scenes: BackgroundScene[], index: number, plan
     const match = detect(text);
     if (match.explicit) return BACKGROUND_ASSETS.find(a => a.id === match.id);
   }
+  if (scene.sceneTransition === 'new-scene') return undefined;
   if (index > 0 && samePlace.test(environment + '\n' + scene.prompt)) return resolveBackground(scenes, index - 1, plan, choices);
   // Only the overall location is a safe fallback. Never scan dialogue or the whole story.
   const match = detect(extractOverview(plan).location);
@@ -92,7 +94,7 @@ export function mayUsePreviousScene(scenes: BackgroundScene[], index: number, pr
   // Check every intervening cut: A -> B -> A must start a new continuous run.
   const location = continuityLocation(scenes, previousIndex, plan, choices);
   for (let i = previousIndex + 1; i <= index; i++) {
-    if (continuityLocation(scenes, i, plan, choices) !== location) return false;
+    if (scenes[i].sceneTransition === 'new-scene' || continuityLocation(scenes, i, plan, choices) !== location) return false;
   }
   return true;
 }

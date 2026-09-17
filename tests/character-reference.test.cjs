@@ -1,6 +1,6 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript');
 const root=path.resolve(__dirname,'..');
-const compile=(rel,imports={})=>{const m={exports:{}};const code=ts.transpileModule(fs.readFileSync(path.join(root,rel),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,esModuleInterop:true}}).outputText;new Function('require','module','exports',code)(name=>imports[name]||require(name),m,m.exports);return m.exports;};
+const compile=(rel,imports={})=>{const m={exports:{}};const code=ts.transpileModule(fs.readFileSync(path.join(root,rel),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,esModuleInterop:true}}).outputText;new Function('require','module','exports',code)(name=>imports[name]||(name.startsWith('.')?compile(path.join(path.dirname(rel),name)+'.ts',imports):require(name)),m,m.exports);return m.exports;};
 const policy=compile('src/characterReference.ts');
 const backgrounds=compile('src/backgroundAssets.ts',{'./utils/extractors':compile('src/utils/extractors.ts')});
 const episodeReference=compile('src/sceneReference.ts',{'./utils/extractors':compile('src/utils/extractors.ts'),'./characterReference':policy});

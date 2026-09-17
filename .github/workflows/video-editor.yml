@@ -33,4 +33,5 @@ jobs:
       - run: node --test tests/background-assets.test.cjs
       - run: node --test tests/scene-reference.test.cjs
       - run: node --test tests/video-prompt.test.cjs
+      - run: node --test tests/story-direction.test.cjs
       - run: npm run build
