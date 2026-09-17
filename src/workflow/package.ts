@@ -1,7 +1,7 @@
 import { HistoryItem, SourceEpisode } from '../types';
 import { extractClips, extractOverview } from '../utils/extractors';
 import { isBackgroundChoice } from '../backgroundAssets';
-import { readSceneReference, type SceneReference } from '../sceneReference';
+import { readSceneReference, readClipReferences, type ClipReferences, type SceneReference } from '../sceneReference';
 
 export const MAX_PACKAGE_BYTES = 48 * 1024 * 1024;
 const text = (v: unknown, max: number) => typeof v === 'string' && v.length <= max;
@@ -21,11 +21,11 @@ export function editorEpisode(item: HistoryItem): SourceEpisode {
   // Use explicit source narration only. A visual scenario is never guessed as narration.
   return {...source,scenario:source.scenario+'\n'+clips.map(c=>c.videoPrompt).join('\n')};
 }
-export function makePackage(item: HistoryItem, images: Record<string,string>, sceneReference?:SceneReference|null) {
-  const value={format:'orihani-work',version:1,item,images,...(sceneReference?{sceneReference}:{})};
+export function makePackage(item: HistoryItem, images: Record<string,string>, sceneReference?:SceneReference|null, clipReferences?:ClipReferences) {
+  const value={format:'orihani-work',version:1,item,images,...(sceneReference?{sceneReference}:{}),...(clipReferences?{clipReferences}:{})};
   return JSON.stringify(readPackage(JSON.stringify(value)));
 }
-export function readPackage(raw: string): {format:'orihani-work';version:1;item:HistoryItem;images:Record<string,string>;sceneReference?:SceneReference} {
+export function readPackage(raw: string): {format:'orihani-work';version:1;item:HistoryItem;images:Record<string,string>;sceneReference?:SceneReference;clipReferences?:ClipReferences} {
   if(raw.length>MAX_PACKAGE_BYTES)throw Error('작업 파일이 너무 큽니다. 48MB 이하 파일을 사용해주세요.');
   let v:any;try{v=JSON.parse(raw);}catch{throw Error('오리쇼츠에서 내보낸 작업 파일을 선택해주세요.');}
   const i=v?.item;
@@ -56,7 +56,8 @@ export function readPackage(raw: string): {format:'orihani-work';version:1;item:
     images[name]=url as string;
   }
   const sceneReference=readSceneReference(v.sceneReference);
-  return {format:'orihani-work',version:1,item,images,...(sceneReference?{sceneReference}:{})};
+  const clipReferences=readClipReferences(v.clipReferences,item);
+  return {format:'orihani-work',version:1,item,images,...(sceneReference?{sceneReference}:{}),...(Object.keys(clipReferences).length?{clipReferences}:{})};
 }
 export function importIdentity(item:HistoryItem, existing:HistoryItem[]):HistoryItem {
   const same=existing.find(h=>h.id===item.id);

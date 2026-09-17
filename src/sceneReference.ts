@@ -12,6 +12,43 @@ export type SceneReference = {
   imageUrl: string;
 };
 
+export type ClipReferences = Record<string, SceneReference>;
+
+export function readClipReferences(value: unknown, item?: HistoryItem): ClipReferences {
+  if (value == null) return {};
+  if (typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length > 100) {
+    throw Error('장면별 소품 참고 정보를 읽지 못했습니다.');
+  }
+  const clips = item ? extractClips(item.result) : undefined;
+  const entries = Object.entries(value).map(([title, raw]) => {
+    if (!title.trim() || title.length > 500 || ['__proto__','constructor','prototype'].includes(title)) {
+      throw Error('소품을 참고할 장면을 다시 선택해주세요.');
+    }
+    const reference = readSceneReference(raw);
+    if (!reference) throw Error('참고 장면의 사진을 다시 선택해주세요.');
+    if (clips) {
+      const index = clips.findIndex(clip => clip.imageTitle === title);
+      if (index < 0) throw Error('소품을 참고할 장면이 이 기획에 없습니다.');
+      if (reference.sourceId === item!.id && (reference.sceneNumber > index ||
+          clips[reference.sceneNumber - 1]?.imageTitle !== reference.sceneTitle)) {
+        throw Error('현재 화에서는 앞서 나온 장면의 사진을 선택해주세요.');
+      }
+    }
+    return [title, reference] as const;
+  });
+  return Object.fromEntries(entries);
+}
+
+export function captureClipReference(item: HistoryItem, targetTitle: string, source: HistoryItem, sourceTitle: string, images: Record<string,string>) {
+  return readClipReferences({[targetTitle]:captureSceneReference(source, sourceTitle, images)}, item)[targetTitle];
+}
+
+export function clipReferenceInstruction(reference: SceneReference, sceneNumber: number): string {
+  return `[USER-SELECTED PROP REFERENCE FOR SCENE ${sceneNumber} ONLY]
+The separately labelled PROP DESIGN STILL is source scene ${reference.sceneNumber}. Use it only for the appearance of recurring props that are required in the CURRENT scene: their silhouette, materials, colors, proportions and attached components. This selected prop design takes priority over incidental prop descriptions and other generated stills, including the set anchor and an episode-wide reference.
+Do not copy this still's room, background, camera, lighting, character pose or facial expression. Do not insert characters or objects absent from the current script. The CURRENT shot controls the location, framing, performance and starting state; a box may open or close, food may be eaten, and a prop may move as scripted. This is a prop design reference, not an instruction to continue the source scene. Original character sheets remain authoritative for character identity, anatomy and colors.`;
+}
+
 export function readSceneReference(value: unknown): SceneReference | null {
   if (value == null) return null;
   const v = value as SceneReference;

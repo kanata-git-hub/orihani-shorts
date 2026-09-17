@@ -1,7 +1,7 @@
 export interface CharacterReference {
   url: string;
   label?: string;
-  role?: 'character' | 'scene' | 'background' | 'episode';
+  role?: 'character' | 'scene' | 'background' | 'episode' | 'prop';
 }
 
 export const MAX_REFERENCE_IMAGES = 14;
@@ -47,7 +47,9 @@ export function buildReferenceParts(references: (CharacterReference | string)[],
   const parts: any[] = [];
   for (const [i, refItem] of references.entries()) {
     const ref = typeof refItem === 'string' ? {url: refItem} : refItem;
-    parts.push({text: ref.role === 'episode'
+    parts.push({text: ref.role === 'prop'
+      ? '[USER-SELECTED PROP DESIGN STILL: preserve only recurring prop appearance required by the CURRENT scene. NOT its background, camera, character pose, starting state or character design.]'
+      : ref.role === 'episode'
       ? '[USER-SELECTED EARLIER EPISODE STILL: recurring prop design only where required by the current scene. NOT a required starting frame or character design reference.]'
       : ref.role === 'scene'
       ? '[PREVIOUS GENERATED SCENE: physical set, prop design and spatial context. NOT a character design reference. CURRENT shot controls gaze, pose, expression, prop state, camera framing and scripted light/weather changes.]'

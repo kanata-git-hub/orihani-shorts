@@ -3,7 +3,7 @@ import { db } from '../utils/db';
 import { CHARACTERS } from "../constants";
 import { buildReferenceParts, loadReferenceImage, CharacterReference } from '../characterReference';
 import { BackgroundChoices, resolveBackground, backgroundInstruction, mayUsePreviousScene } from '../backgroundAssets';
-import { readSceneReference, sceneReferenceInstruction } from '../sceneReference';
+import { readSceneReference, sceneReferenceInstruction, readClipReferences, clipReferenceInstruction } from '../sceneReference';
 import { shotDirectionInstruction } from '../shotDirection';
 
 
@@ -33,6 +33,7 @@ export function useMediaGeneration(
       const savedMedia=targetId?await db.get(targetId):null;
       const savedImages=targetId?savedMedia?.images||{}:sceneImages;
       const sceneReference=readSceneReference(savedMedia?.sceneReference);
+      const propReference=readClipReferences(savedMedia?.clipReferences)[sceneTitle];
       const scenes = allScenes.map((scene, index) => index === sceneIdx ? { ...scene, prompt: promptText } : scene);
       if (!scenes[sceneIdx]) scenes[sceneIdx] = { title: sceneTitle, prompt: promptText };
       const background = resolveBackground(scenes, sceneIdx, fullPlanText, backgroundChoices);
@@ -139,6 +140,10 @@ ${promptText}`;
       if (sceneReference) {
         references.push({url:sceneReference.imageUrl,role:'episode'});
         finalPrompt += '\n\n' + sceneReferenceInstruction();
+      }
+      if (propReference) {
+        references.push({url:propReference.imageUrl,role:'prop'});
+        finalPrompt += '\n\n' + clipReferenceInstruction(propReference,sceneIdx+1);
       }
       // Keep the within-episode previous scene last, as labelled in its prompt.
       if (previousImage) references.push({url: previousImage, role: 'scene'});
