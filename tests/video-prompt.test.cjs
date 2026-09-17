@@ -7,10 +7,28 @@ function compile(rel,mocks={}){
  new Function('require','module','exports',code)(name=>mocks[name]||(name.endsWith('.css')?{}:name.startsWith('.')?compile(path.posix.normalize(path.posix.join(path.posix.dirname(rel),name))+'.ts'):require(name)),m,m.exports);
  if(!Object.keys(mocks).length)cache.set(rel,m.exports);return m.exports;
 }
-const {videoPromptForCopy:prepare,normalizeVideoPlan,SILENT_CLIP_AUDIO}=compile('src/videoPrompt.ts');
+const {videoPromptForCopy:prepare,normalizeVideoPlan,SILENT_CLIP_AUDIO,bindClipStartFrame}=compile('src/videoPrompt.ts');
 const quiet='REFERENCE INSTRUCTION: @image1 = Scene 1 start frame reference.\nOUTPUT SPECS: 4s, vertical 9:16.\nACTION: Deok-i pushes a vacuum cleaner across the floor.\nAUDIO: A steady vacuum motor and soft wheel sounds.\nSTRICT RULES: Solid contact with the floor.';
 const speaking='[CLIP 3]REFERENCE INSTRUCTION: @image3 = Scene 3 start frame reference.OUTPUT SPECS: 3s, vertical 9:16.CINEMATOGRAPHY: Medium shot.ENVIRONMENT: Warm wooden clinic reception.ACTION: Somi opens the door, nods and delivers line.DIALOGUE : Somi : "문 열었어요. 들어오세요."STRICT RULES: Keep the doorway stable.';
 const legacy='[RECURRING PROP DESIGN — START FRAME PRIORITY]The supplied start-frame image defines the exact design of recurring props. Preserve their silhouette, materials, colors, proportions and attached components throughout this clip. If an incidental prop description above conflicts with the visible start frame, keep the start-frame design and perform the current scripted action with it. Animate only the specified action and state changes; do not redesign the prop or add unpictured components. Character identity stays consistent with the bound character assets.';
+
+test('new clip references replace invented identities while preserving action, speech and silent audio',()=>{
+ const original='REFERENCE INSTRUCTION: Keep Deok-i a white duck.\n'+speaking;
+ const bound=bindClipStartFrame(original,3);
+ assert.doesNotMatch(bound,/white duck/);
+ assert.match(bound,/@image3 = Scene 3 start frame reference/);
+ assert.equal((bound.match(/REFERENCE INSTRUCTION:/g)||[]).length,1);
+ assert.match(bound,/문 열었어요. 들어오세요./);
+ assert.match(bound,/Somi opens the door, nods and delivers line/);
+ assert.ok(!prepare(bound).includes(SILENT_CLIP_AUDIO));
+ const silent=bindClipStartFrame(prepare(quiet),2);
+ assert.equal(prepare(silent).split(SILENT_CLIP_AUDIO).length-1,1);
+});
+test('specific audio labels do not turn a silent clip into a supposed spoken line',()=>{
+ const actual='ACTION: Deok-i pushes a gate.\nDIALOGUE: None\n\nSpecific audio: Friction on stone.\nSTRICT RULES: No voices.';
+ assert.ok(prepare(actual).includes(SILENT_CLIP_AUDIO));
+ assert.match(prepare(actual),/Friction on stone/);
+});
 
 test('wordless older clips receive ambience/effects-only and no voices without losing their action or sound details',()=>{
  const out=prepare(quiet);assert.ok(out.startsWith(quiet));assert.match(out,/DIALOGUE: None/);assert.ok(out.includes(SILENT_CLIP_AUDIO));

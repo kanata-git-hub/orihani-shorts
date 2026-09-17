@@ -6,7 +6,8 @@ import fs from "fs";
 import dotenv from "dotenv";
 import { clipDurations, timingInstruction, validateClipTiming } from "./src/utils/clipTiming";
 import { readSceneReference, planWithSceneReference } from './src/sceneReference';
-import { videoAudioInstruction, normalizeVideoPlan } from './src/videoPrompt';
+import { videoAudioInstruction, normalizeVideoPlan, bindClipStartFrame } from './src/videoPrompt';
+import { characterReferencePolicy } from './src/characterReference';
 import { readSourceEpisode, sourceConversionInstruction } from './src/sourceEpisode';
 import { SHOT_SIZES, SCENE_TRANSITIONS, shotConversionInstruction } from './src/shotDirection';
 import { episodePrompt } from './src/workflow/weekly';
@@ -86,6 +87,8 @@ ${timing}
 
 ${shotConversionInstruction}
 
+Preserve physical conditions exactly: a closed door is not necessarily locked. Do not invent locks or new obstacles. Describe hinge motion toward or away from the visible character instead of ambiguous inward/outward directions.
+
 Ensure the image prompts strictly follow the character reference instructions and environment details.
 For EACH clip, set a short locationId identifying its actual physical room or place (for example clinic-office). Reuse the EXACT same locationId across consecutive shots in that place, including reaction shots and close-ups, even when backgroundAsset is none. Change locationId only for an actual location change; use different IDs for two different offices or rooms of the same type. Establish the furniture/window layout, prop design and physical character locations in the first shot. Later shots use the same set and maintain coherent character left/right relationships, updating locations when the script moves someone. Plan each shot's gaze target, head/body direction, limb pose, expression, prop state and camera framing from its CURRENT scripted beat. Static/locked describes camera motion within one clip, not identical framing across clips. A new speaker alone does not require reversing the camera.
 In EACH imagePrompt, explicitly describe the current STARTING STATE (gaze target, head/body direction, pose, expression and prop state), CAMERA (shot size, angle and framing), and SET (the established room). Write the actual visible starting state rather than 'same pose as before'. Make scripted performance differences readable with the existing character design. Keep actions and reactions that happen later in the clip in videoPrompt; preserve their beginning state in imagePrompt. Consistency applies to identity and set design, while the current scene controls performance and composition.
@@ -106,7 +109,8 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
           model: "gemini-3.6-flash",
           contents: planWithSceneReference(converterPrompt, sceneReference),
           config: {
-            temperature: 0.7,
+            systemInstruction: characterReferencePolicy(),
+            temperature: sourceEpisode ? 0.2 : 0.7,
             responseMimeType: "application/json",
             responseSchema: {
               type: "OBJECT",
@@ -156,6 +160,9 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
         });
 
         const converted = JSON.parse(converterResponse.text || '{}');
+        if (Array.isArray(converted.clips)) converted.clips = converted.clips.map((clip: any, i: number) => ({
+          ...clip, videoPrompt: bindClipStartFrame(clip.videoPrompt || '', i + 1),
+        }));
         if (sourceEpisode) {
           converted.title = sourceEpisode.title.replace(/^\[에피소드\s*\d+\]\s*/, '');
           converted.scenario = sourceEpisode.scenario;
