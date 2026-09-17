@@ -14,11 +14,11 @@ export function characterReferencePolicy(labels: string[] = ['owonjang', 'somi',
     /덕이|deok[- ]?i/.test(names) && 'Deok-i: keep his own ORIGINAL yellow arms/wing tips; do not recolor him cream.',
   ].filter(Boolean).join('\n');
   return `[ORIGINAL CHARACTER DESIGN — HIGHEST VISUAL PRIORITY]
-Draw only the characters required by this scene. The ORIGINAL front/side/back character sheets control the ENTIRE design: face, glasses, silhouette, costume, exact colors and limb surface.
+Draw only the characters required by this scene. The ORIGINAL front/side/back character sheets control the base design: face, glasses, silhouette, costume, exact colors and limb surface. Explicitly scripted temporary costume accessories may sit over that base design; do not replace the character's anatomy or identity.
 Keep the duck mascots' arms as simple smooth rounded/tapered single-piece wing tips, exactly as in their own sheets. No added fingers, thumbs, knuckles, nails, feather grooves, layered feathers or fuzzy plumage. Preserve the original subtle surface texture.
 ${colors}
 For holding or pressing a prop, bend the existing rounded wing tip or brace the object between the tips; adapt the pose rather than inventing fingers. This rule overrides conflicting action descriptions and examples.
-Previous generated scenes provide the physical set, lighting, prop design and spatial context. The CURRENT shot controls gaze, head/body direction, limb pose, facial expression, prop state and camera framing. Original sheets define eye/bill geometry and character design; use that design to perform the current expression. Correct accidental anatomy/color changes in generated scenes using the ORIGINAL character sheets. Never transfer one character's colors to another.
+Previous generated scenes provide the physical set, prop design and spatial context. The CURRENT shot controls gaze, head/body direction, limb pose, facial expression, prop state, camera framing and scripted light/weather changes. Original sheets define eye/bill geometry and character design; use that design to perform the current expression. Correct accidental anatomy/color changes in generated scenes using the ORIGINAL character sheets. Never transfer one character's colors to another.
 Carry these identity rules into each image/video prompt. Before output, check both visible wing tips against that character's original sheets.`;
 }
 
@@ -50,7 +50,7 @@ export function buildReferenceParts(references: (CharacterReference | string)[],
     parts.push({text: ref.role === 'episode'
       ? '[USER-SELECTED EARLIER EPISODE STILL: recurring prop design only where required by the current scene. NOT a required starting frame or character design reference.]'
       : ref.role === 'scene'
-      ? '[PREVIOUS GENERATED SCENE: physical set, lighting, prop design and spatial context. NOT a character design reference. CURRENT shot controls gaze, pose, expression, prop state and camera framing.]'
+      ? '[PREVIOUS GENERATED SCENE: physical set, prop design and spatial context. NOT a character design reference. CURRENT shot controls gaze, pose, expression, prop state, camera framing and scripted light/weather changes.]'
       : ref.role === 'background'
       ? `[CANONICAL ROOM BACKGROUND: ${ref.label}. Highest priority for the room only. NOT a character design reference.]`
       : `[ORIGINAL CHARACTER DESIGN SHEET: ${ref.label || `reference ${i + 1}`}. Highest priority for identity, limb shape and colors.]`});
