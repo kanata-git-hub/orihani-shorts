@@ -1,4 +1,4 @@
-import { readSceneReference, type SceneReference } from '../sceneReference';
+import { readSceneReference, readClipReferences, type SceneReference } from '../sceneReference';
 
 export type MediaSummary = { imageTitles: string[] };
 export const MEDIA_CHANGED = 'orihani-media-summary';
@@ -14,7 +14,7 @@ async function openDB() {
     r.onblocked = () => { blocked = true; reject(Error('다른 탭의 오리쇼츠를 닫고 다시 열어주세요. 사진 저장소를 준비 중입니다.')); };
   });
 }
-async function mediaOperation(kind: 'get' | 'set' | 'delete' | 'clear' | 'reference' | 'images', key?: string, value?: any): Promise<any> {
+async function mediaOperation(kind: 'get' | 'set' | 'delete' | 'clear' | 'reference' | 'clipReference' | 'images', key?: string, value?: any): Promise<any> {
   const database = await openDB();
   let summary: MediaSummary | undefined;
   try { return await new Promise((resolve, reject) => {
@@ -30,6 +30,11 @@ async function mediaOperation(kind: 'get' | 'set' | 'delete' | 'clear' | 'refere
         if (kind === 'reference') {
           result = { ...result, images:result?.images || {} };
           if (value) result.sceneReference = value; else delete result.sceneReference;
+          media.put(result, key!);
+        } else if (kind === 'clipReference') {
+          result = { ...result, images:result?.images || {}, clipReferences:{...result?.clipReferences} };
+          if (value.reference) result.clipReferences[value.title] = value.reference;
+          else delete result.clipReferences[value.title];
           media.put(result, key!);
         } else if (kind === 'images') {
           result = { ...result, images:{ ...result?.images, ...value } };
@@ -57,5 +62,10 @@ export const db = {
   set: (key: string, value: any) => mediaOperation('set', key, value),
   setImages: (key:string, images:Record<string,string>) => mediaOperation('images', key, images),
   setSceneReference: (key:string, reference:SceneReference|null) => mediaOperation('reference', key, readSceneReference(reference)),
+  setClipReference: (key:string, title:string, reference:SceneReference|null) => {
+    if (!title.trim() || title.length > 500 || ['__proto__','constructor','prototype'].includes(title)) throw Error('소품을 참고할 장면을 다시 선택해주세요.');
+    const checked = reference ? readClipReferences({[title]:reference})[title] : null;
+    return mediaOperation('clipReference',key,{title,reference:checked});
+  },
   delete: (key: string) => mediaOperation('delete', key), clear: () => mediaOperation('clear'), summaries
 };

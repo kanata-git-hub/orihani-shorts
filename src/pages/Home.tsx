@@ -21,7 +21,8 @@ import { HistoryContent } from '../components/HistoryContent';
 import { BackgroundSettings } from '../components/BackgroundSettings';
 import { BackgroundChoice } from '../backgroundAssets';
 import { SceneReferenceSettings } from '../components/SceneReferenceSettings';
-import { captureSceneReference, type SceneReference } from '../sceneReference';
+import { ClipReferenceSettings } from '../components/ClipReferenceSettings';
+import { captureSceneReference, readClipReferences, type SceneReference } from '../sceneReference';
 
 // Hooks
 import { useToast } from '../hooks/useToast';
@@ -71,7 +72,7 @@ export default function App() {
     generatingImages, setGeneratingImages,
     sceneImages, setSceneImages,
     saveMediaToDB,
-    targetId, mediaReady, sceneReference, saveSceneReference
+    targetId, mediaReady, sceneReference, saveSceneReference, clipReferences, saveClipReference
   } = useMedia(view === 'history' ? 'history' : 'workboard', currentWorkboardId, viewingHistoryId);
 
   const {
@@ -101,11 +102,19 @@ export default function App() {
     }catch(e){showToast((e as Error).message,'error');}
   };
   const referenceSettings=()=>targetId&&<SceneReferenceSettings key={targetId} history={history} excludeId={targetId} value={sceneReference} disabled={locked||!mediaReady} hasImages={Object.keys(sceneImages).length>0} onChange={async reference=>{setReferenceBusy(true);try{await saveSceneReference(reference);}finally{setReferenceBusy(false);}}}/>;
+  const clipReferenceSettings=()=>{
+    const item=history.find(h=>h.id===targetId);
+    return item&&<ClipReferenceSettings key={item.id} item={item} history={history} images={sceneImages} value={clipReferences} disabled={locked||!mediaReady} onGenerate={(title,index)=>{const scenes=extractScenes(item.result);return handleGenerateImage(title,scenes[index].prompt,index,scenes,item.result);}} onChange={async(title,reference)=>{
+      setReferenceBusy(true);
+      try{if(reference)readClipReferences({[title]:reference},item);await saveClipReference(title,reference);}
+      finally{setReferenceBusy(false);}
+    }}/>;
+  };
   const backgroundSettings = (plan: string) => <BackgroundSettings result={plan} choices={history.find(h=>h.id===targetId)?.backgroundChoices || {}} images={sceneImages} disabled={locked || !targetId || isGenerating} onChange={(title:string,choice:BackgroundChoice)=>{try{if(targetId)setBackgroundChoice(targetId,title,choice);}catch{showToast('배경 선택을 저장하지 못했습니다. 저장 공간을 확인해주세요.','error');}}}/>;
   const selectHistory=(id:string|null)=>{setViewingHistoryId(id);if(id)remember({kind:'history',id});};
   const resumeEditor=(id:string)=>{setResumeId(id);setView('editor');remember({kind:'editor',id});};
   const openRecordEditor=(item:HistoryItem)=>{try{if(document.documentElement.dataset.oriEditorReady!=='1')throw Error('편집 화면을 준비 중입니다. 잠시 후 다시 눌러주세요.');setResumeId(undefined);window.dispatchEvent(new CustomEvent('orihani-editor-import',{detail:{version:1,key:item.editorKey||'history-'+item.id,episode:editorEpisode(item)}}));}catch(e){showToast((e as Error).message,'error');}};
-  const importWork=async(file:File)=>{try{if(file.size>MAX_PACKAGE_BYTES)throw Error('작업 파일은 48MB 이하로 넣어주세요.');const pack=readPackage(await file.text());const item=importIdentity(pack.item,history);await db.set(item.id,{images:pack.images,...(pack.sceneReference?{sceneReference:pack.sceneReference}:{})});saveHistory(item);selectHistory(item.id);showToast('기획·사진·대본을 가져왔습니다.');}catch(e){showToast((e as Error).message,'error');}};
+  const importWork=async(file:File)=>{try{if(file.size>MAX_PACKAGE_BYTES)throw Error('작업 파일은 48MB 이하로 넣어주세요.');const pack=readPackage(await file.text());const item=importIdentity(pack.item,history);const importedRefs=Object.fromEntries(Object.entries(pack.clipReferences||{}).map(([title,ref])=>[title,ref.sourceId===pack.item.id?{...ref,sourceId:item.id}:ref]));await db.set(item.id,{images:pack.images,...(pack.sceneReference?{sceneReference:pack.sceneReference}:{}),clipReferences:importedRefs});saveHistory(item);selectHistory(item.id);showToast('기획·사진·대본을 가져왔습니다.');}catch(e){showToast((e as Error).message,'error');}};
   const currentScenes = extractScenes(result);
   const viewingScenes = viewingHistoryId ? extractScenes(history.find(h => h.id === viewingHistoryId)?.result || '') : [];
 
@@ -184,6 +193,7 @@ export default function App() {
           <section className="flex-1 p-4 md:p-6 lg:p-10 flex flex-col gap-6 overflow-y-auto bg-[#ffffff]">
             <div className="max-w-4xl w-full mx-auto flex flex-col gap-6 h-full">
               {!isGenerating&&result&&referenceSettings()}
+              {view === 'prompts' && clipReferenceSettings()}
               {view === 'prompts' && backgroundSettings(result)}
               <WorkboardContent 
                 activeTab={view}
@@ -208,6 +218,7 @@ export default function App() {
             <button disabled={locked} className="ori-history-back" onClick={()=>setViewingHistoryId(null)}>← 다른 기록 고르기</button>
             <div className="max-w-4xl w-full mx-auto flex flex-col gap-6">
               {referenceSettings()}
+              {clipReferenceSettings()}
               {viewingHistoryId && backgroundSettings(history.find(h=>h.id===viewingHistoryId)?.result || '')}
               <HistoryContent key={viewingHistoryId}
                 draft={drafts.find(d=>d.id===recordDraftId(history.find(h=>h.id===viewingHistoryId)||{id:''} as HistoryItem))}

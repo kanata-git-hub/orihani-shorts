@@ -1,18 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { db } from '../utils/db';
-import { readSceneReference, type SceneReference } from '../sceneReference';
+import { readSceneReference, readClipReferences, type ClipReferences, type SceneReference } from '../sceneReference';
 
 export function useMedia(view: 'workboard' | 'history', currentWorkboardId: string | null, viewingHistoryId: string | null) {
   const [generatingImages, setGeneratingImages] = useState<Record<string, boolean>>({});
   const [sceneImages, setSceneImages] = useState<Record<string, string>>({});
   const [loadedId,setLoadedId]=useState<string|null>(null);
   const [sceneReference,setSceneReference]=useState<SceneReference|null>(null);
+  const [clipReferences,setClipReferences]=useState<ClipReferences>({});
 
   const targetId = view === 'workboard' ? currentWorkboardId : viewingHistoryId;
   const targetRef=useRef(targetId);targetRef.current=targetId;
 
   useEffect(() => {
-    let active=true;setSceneImages({});setSceneReference(null);setLoadedId(null);
+    let active=true;setSceneImages({});setSceneReference(null);setClipReferences({});setLoadedId(null);
     const loadMedia = async () => {
       if (!targetId) {
         setSceneImages({});
@@ -25,6 +26,7 @@ export function useMedia(view: 'workboard' | 'history', currentWorkboardId: stri
         if (data) {
           setSceneImages(data.images || {});
           setSceneReference(data.sceneReference || null);
+          setClipReferences(readClipReferences(data.clipReferences));
         } else {
           setSceneImages({});
         }
@@ -50,12 +52,22 @@ export function useMedia(view: 'workboard' | 'history', currentWorkboardId: stri
     if(targetRef.current===targetId)setSceneReference(checked);
   };
 
+  const saveClipReference=async(title:string,reference:SceneReference|null)=>{
+    if(!targetId)throw Error('소품을 참고할 기획을 먼저 선택해주세요.');
+    const checked=reference?readClipReferences({[title]:reference})[title]:null;
+    await db.setClipReference(targetId,title,checked);
+    if(targetRef.current===targetId)setClipReferences(previous=>{
+      const next={...previous};if(checked)next[title]=checked;else delete next[title];return next;
+    });
+  };
+
   return {
     generatingImages, setGeneratingImages,
     sceneImages:loadedId===targetId?sceneImages:{}, setSceneImages,
     saveMediaToDB,
     targetId,
     sceneReference:loadedId===targetId?sceneReference:null, saveSceneReference,
+    clipReferences:loadedId===targetId?clipReferences:{}, saveClipReference,
     mediaReady: !!targetId && loadedId === targetId
   };
 }
