@@ -9,9 +9,9 @@ export const MAX_REFERENCE_IMAGES = 14;
 export function characterReferencePolicy(labels: string[] = ['owonjang', 'somi', 'deoki']) {
   const names = labels.join(' ').toLowerCase();
   const colors = [
-    /오원장|o[- ]?wonjang/.test(names) && 'O-wonjang: pale warm cream arm/wing tips matching his head in the ORIGINAL sheets; never saturated yellow or orange hands.',
-    /소미|간호사|somi|nurse/.test(names) && 'Somi: pale cream arms/wing tips matching her ORIGINAL sheets; never borrow Deok-i\'s yellow hands.',
-    /덕이|deok[- ]?i/.test(names) && 'Deok-i: keep his own ORIGINAL yellow arms/wing tips; do not recolor him cream.',
+    /오원장|o[- ]?wonjang/.test(names) && 'O-wonjang: pale warm cream head, body and arm/wing tips from the ORIGINAL sheets, round glasses, white doctor coat over a light-blue shirt; never saturated yellow or orange hands.',
+    /소미|간호사|somi|nurse/.test(names) && 'Somi: pale cream head, body and arms/wing tips from her ORIGINAL sheets, off-white nurse top and navy pants; never borrow Deok-i\'s yellow hands.',
+    /덕이|deok[- ]?i/.test(names) && 'Deok-i: keep his own ORIGINAL yellow head, body and arms/wing tips, orange bill and feet; do not recolor him white or cream.',
   ].filter(Boolean).join('\n');
   return `[ORIGINAL CHARACTER DESIGN — HIGHEST VISUAL PRIORITY]
 Draw only the characters required by this scene. The ORIGINAL front/side/back character sheets control the base design: face, glasses, silhouette, costume, exact colors and limb surface. Explicitly scripted temporary costume accessories may sit over that base design; do not replace the character's anatomy or identity.

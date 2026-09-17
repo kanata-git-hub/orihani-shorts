@@ -19,9 +19,20 @@ These audio requirements apply even when older examples omit dialogue/audio sect
 // inside a quoted spoken line as a new field.
 function fields(prompt:string) {
   const quoted = [...prompt.matchAll(/"[^"\n]*"|“[^”]*”|「[^」]*」/g)].map(m=>[m.index!,m.index!+m[0].length]);
-  const headings = [...prompt.matchAll(/(REFERENCE INSTRUCTION|OUTPUT SPECS|CINEMATOGRAPHY|ENVIRONMENT|ACTION|DIALOGUES?|DIALOG|NARRATION|VOICE[ -]?OVER|AUDIO|SFX|SOUND EFFECTS|MUSIC|VOCALS|PERFORMANCE|STRICT RULES)(?:\s*\([^\n)]*\))?\s*\*{0,2}\s*[:：]\s*\*{0,2}/gi)]
+  const headings = [...prompt.matchAll(/(?:Specific\s+)?(REFERENCE INSTRUCTION|OUTPUT SPECS|CINEMATOGRAPHY|ENVIRONMENT|ACTION|DIALOGUES?|DIALOG|NARRATION|VOICE[ -]?OVER|AUDIO|SFX|SOUND EFFECTS|MUSIC|VOCALS|PERFORMANCE|STRICT RULES)(?:\s*\([^\n)]*\))?\s*\*{0,2}\s*[:：]\s*\*{0,2}/gi)]
     .filter(m=>(!/[\w]/.test(prompt[m.index!-1]||'')||m[1]===m[1].toUpperCase())&&!quoted.some(([start,end])=>m.index!>start&&m.index!<end));
-  return headings.map((m,i)=>({name:m[1].toUpperCase(),value:prompt.slice(m.index!+m[0].length,headings[i+1]?.index??prompt.length).trim()}));
+  return headings.map((m,i)=>({name:m[1].toUpperCase(),value:prompt.slice(m.index!+m[0].length,headings[i+1]?.index??prompt.length).trim(),start:m.index!,end:headings[i+1]?.index??prompt.length}));
+}
+
+// New generated clips bind to their actual starting image. A model-written
+// reference field must not override the original assets with invented colors.
+export function bindClipStartFrame(raw: string, scene: number): string {
+  const prompt = raw.replace(/\\r\\n|\\n/g, '\n');
+  let body = prompt;
+  for (const section of fields(prompt).filter(s => s.name === 'REFERENCE INSTRUCTION').reverse()) {
+    body = body.slice(0,section.start) + body.slice(section.end);
+  }
+  return `REFERENCE INSTRUCTION: @image${scene} = Scene ${scene} start frame reference. Preserve the character identities and colors shown in this frame and their bound original character assets.\n\n${body.trim()}`;
 }
 
 function noLine(value:string) {

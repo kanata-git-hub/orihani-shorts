@@ -24,9 +24,12 @@ test('selected weekly screenplay bypasses ideation and reaches conversion unchan
  assert.equal(s.response.statusCode,200);assert.equal(s.calls.length,1);
  assert.ok(s.calls[0].contents.includes(source.scenario));assert.ok(s.calls[0].contents.includes(source.korean));
  assert.match(s.calls[0].contents,/AUTHORITATIVE FINISHED SCREENPLAY/);
+ assert.match(s.calls[0].config.systemInstruction,/Deok-i: keep his own ORIGINAL yellow/);
+ assert.equal(s.calls[0].config.temperature,0.2);
  const plan=JSON.parse(s.response.body.result);assert.equal(plan.scenario,source.scenario);
  assert.equal(plan.title,'4화 퇴근의 문 (하찮은 오리 일상)');assert.deepEqual(plan.hashtags,['퇴근','하찮은오리일상','오원장','애니메이션','유머']);
  assert.equal(plan.clips[1].shot.size,'close-up');
+ assert.match(plan.clips[1].videoPrompt,/@image2 = Scene 2 start frame reference/);
 });
 test('free-form ideas still plan and then convert; mismatched source fails before any model call',async()=>{
  const s=server();await s.run({duration:'15s',customPrompt:'a new idea'});assert.equal(s.calls.length,2);assert.equal(s.response.statusCode,200);
