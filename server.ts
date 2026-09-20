@@ -1,4 +1,4 @@
-import { requireUser } from './serverSecurity.ts';
+import { requireUser } from './serverSecurity';
 import express from "express";
 import { editorRouter } from "./server/editor/routes";
 import path from "path";
