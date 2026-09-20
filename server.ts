@@ -1,3 +1,4 @@
+import { requireUser } from './serverSecurity.ts';
 import express from "express";
 import { editorRouter } from "./server/editor/routes";
 import path from "path";
@@ -22,6 +23,7 @@ async function startServer() {
   if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw Error('올바른 포트 번호가 필요합니다.');
 
   app.use('/api/editor', editorRouter);
+  app.use(['/api/generate', '/api/generate-image'], requireUser);
   app.use(express.json({ limit: '50mb' }));
 
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });

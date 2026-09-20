@@ -8,3 +8,5 @@ coverage/
 !.env.example
 
 .editor-test/
+
+server-dist/

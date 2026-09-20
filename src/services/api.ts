@@ -1,5 +1,6 @@
+import { authFetch } from '../authFetch';
 export async function generateVideoPlan(character: any, customPrompt: string, duration: string) {
-  const response = await fetch('/api/generate', {
+  const response = await authFetch('/api/generate', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -21,7 +22,7 @@ export async function generateVideoPlan(character: any, customPrompt: string, du
 }
 
 export async function generateImageFromPrompt(parts: any[]) {
-  const response = await fetch('/api/generate-image', {
+  const response = await authFetch('/api/generate-image', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

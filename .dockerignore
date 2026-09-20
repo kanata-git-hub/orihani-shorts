@@ -4,3 +4,8 @@ dist
 
 .editor-test
 tests
+
+.git
+server-dist
+.env.*
+*.log

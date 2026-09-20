@@ -1,3 +1,4 @@
+import { authFetch } from '../authFetch';
 import { SourceEpisode } from '../types';
 import { readSceneReference, type SceneReference } from '../sceneReference';
 import { db } from '../utils/db';
@@ -33,7 +34,7 @@ export function useGeneration(
       // Step 1 & 2: Call backend API
       showToast("기획 중입니다... (1/2)", "success");
       
-      const response = await fetch('/api/generate', {
+      const response = await authFetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

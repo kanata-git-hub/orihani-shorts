@@ -7,7 +7,7 @@ function compile(rel, mocks = {}) {
   if (cache.has(rel) && !Object.keys(mocks).length) return cache.get(rel);
   const m = { exports: {} };
   const code = ts.transpileModule(fs.readFileSync(path.join(root, rel), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText;
-  new Function('require', 'module', 'exports', code)(name => mocks[name] || (name.startsWith('.') ? compile(path.posix.normalize(path.posix.join(path.posix.dirname(rel), name)) + '.ts') : require(name)), m, m.exports);
+  new Function('require', 'module', 'exports', code)(name => name.endsWith('/authFetch') ? {authFetch:(...args)=>fetch(...args)} : mocks[name] || (name.startsWith('.') ? compile(path.posix.normalize(path.posix.join(path.posix.dirname(rel), name)) + '.ts') : require(name)), m, m.exports);
   if (!Object.keys(mocks).length) cache.set(rel, m.exports);
   return m.exports;
 }
