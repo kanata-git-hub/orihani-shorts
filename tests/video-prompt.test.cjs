@@ -4,7 +4,7 @@ function compile(rel,mocks={}){
  if(!Object.keys(mocks).length&&cache.has(rel))return cache.get(rel);
  const m={exports:{}};
  const code=ts.transpileModule(fs.readFileSync(path.join(root,rel),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
- new Function('require','module','exports',code)(name=>mocks[name]||(name.endsWith('.css')?{}:name.startsWith('.')?compile(path.posix.normalize(path.posix.join(path.posix.dirname(rel),name))+'.ts'):require(name)),m,m.exports);
+ new Function('require','module','exports',code)(name=>name.endsWith('/authFetch')?{authFetch:(...args)=>fetch(...args)}:mocks[name]||(name.endsWith('.css')?{}:name.startsWith('.')?compile(path.posix.normalize(path.posix.join(path.posix.dirname(rel),name))+'.ts'):require(name)),m,m.exports);
  if(!Object.keys(mocks).length)cache.set(rel,m.exports);return m.exports;
 }
 const {videoPromptForCopy:prepare,normalizeVideoPlan,SILENT_CLIP_AUDIO,bindClipStartFrame}=compile('src/videoPrompt.ts');

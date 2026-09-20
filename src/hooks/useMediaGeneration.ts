@@ -1,3 +1,4 @@
+import { authFetch } from '../authFetch';
 import { useRef } from 'react';
 import { db } from '../utils/db';
 import { CHARACTERS } from "../constants";
@@ -154,7 +155,7 @@ ${promptText}`;
       }
       const parts = buildReferenceParts(references, finalPrompt);
 
-      const response = await fetch('/api/generate-image', {
+      const response = await authFetch('/api/generate-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

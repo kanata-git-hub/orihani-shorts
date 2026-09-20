@@ -5,7 +5,7 @@ const root=path.resolve(__dirname,'..');
 function compile(rel,mocks={},runtime={}){
  const m={exports:{}};
  const code=ts.transpileModule(fs.readFileSync(path.join(root,rel),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,esModuleInterop:true}}).outputText;
- new Function('require','module','exports','process','console',code)(name=>Object.hasOwn(mocks,name)?mocks[name]:name.startsWith('.')?compile(path.posix.normalize(path.posix.join(path.posix.dirname(rel),name))+'.ts',mocks,runtime):require(name),m,m.exports,runtime.process||process,runtime.console||console);
+ new Function('require','module','exports','process','console',code)(name=>name.endsWith('/authFetch')?{authFetch:(...args)=>fetch(...args)}:Object.hasOwn(mocks,name)?mocks[name]:name.startsWith('.')?compile(path.posix.normalize(path.posix.join(path.posix.dirname(rel),name)).replace(/\.ts$/, '')+'.ts',mocks,runtime):require(name),m,m.exports,runtime.process||process,runtime.console||console);
  return m.exports;
 }
 const {episodePrompt}=compile('src/workflow/weekly.ts');
