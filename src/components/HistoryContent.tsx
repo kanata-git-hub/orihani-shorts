@@ -2,7 +2,8 @@ import { HistoryContinue } from '../workflow/HistoryContinue';
 import type { DraftSummary } from '../editor/draft';
 import ReactMarkdown from 'react-markdown';
 import { Clapperboard, Copy, CheckCircle2, Download, RefreshCw, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { WorkspaceTabs } from './WorkspaceTabs';
 import { HistoryItem } from '../types';
 import { extractOverview, extractClips } from '../utils/extractors';
 import { useToast } from '../hooks/useToast';
@@ -21,6 +22,9 @@ interface HistoryContentProps {
   draft?:DraftSummary;
   mediaReady:boolean;
   onReferenceScene?:(title:string)=>void;
+  referenceSettings?: ReactNode;
+  clipReferenceSettings?: ReactNode;
+  backgroundSettings?: ReactNode;
 }
 
 export function HistoryContent({
@@ -29,7 +33,8 @@ export function HistoryContent({
   viewingScenes,
   sceneImages,
   generatingImages,
-  handleGenerateImage, onEdit, onBusy, draft, mediaReady, onReferenceScene
+  handleGenerateImage, onEdit, onBusy, draft, mediaReady, onReferenceScene,
+  referenceSettings, clipReferenceSettings, backgroundSettings
 }: HistoryContentProps) {
   const [showRawPrompt, setShowRawPrompt] = useState(false);
   const [copiedAllPrompts, setCopiedAllPrompts] = useState(false);
@@ -90,8 +95,12 @@ export function HistoryContent({
   };
 
   return (
-    <div className="flex-1 flex flex-col gap-6 pb-8">
-      {viewingItem&&<HistoryContinue key={viewingItem.id} item={viewingItem} images={sceneImages} generating={generatingImages} onGenerate={handleGenerateImage} onEdit={onEdit} onBusy={onBusy} draft={draft} mediaReady={mediaReady} onReferenceScene={onReferenceScene}/>}
+    <WorkspaceTabs label="기록 작업" defaultTab="content" tabs={[
+      { id: 'reference', label: '다른 화 참고', content: referenceSettings },
+      { id: 'props', label: '장면별 소품', content: clipReferenceSettings },
+      { id: 'background', label: '배경 에셋', content: backgroundSettings },
+      { id: 'kling', label: 'Kling 영상 대기', content: viewingItem&&<HistoryContinue key={viewingItem.id} item={viewingItem} images={sceneImages} generating={generatingImages} onGenerate={handleGenerateImage} onEdit={onEdit} onBusy={onBusy} draft={draft} mediaReady={mediaReady} onReferenceScene={onReferenceScene}/> },
+      { id: 'content', label: '기획·시각화', content: <div className="flex-1 flex flex-col gap-6 pb-8">
       {renderTabs()}
 
       {/* Top: Scenario Overview */}
@@ -238,6 +247,7 @@ export function HistoryContent({
            })()}
          </div>
       )}
-    </div>
+    </div> },
+    ]}/>
   );
 }

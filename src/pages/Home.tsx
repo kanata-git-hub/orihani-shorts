@@ -18,6 +18,7 @@ import { WorkboardSidebar } from '../components/WorkboardSidebar';
 import { HistorySidebar } from '../components/HistorySidebar';
 import { WorkboardContent } from '../components/WorkboardContent';
 import { HistoryContent } from '../components/HistoryContent';
+import { WorkspaceTabs } from '../components/WorkspaceTabs';
 import { BackgroundSettings } from '../components/BackgroundSettings';
 import { BackgroundChoice } from '../backgroundAssets';
 import { SceneReferenceSettings } from '../components/SceneReferenceSettings';
@@ -140,6 +141,21 @@ export default function App() {
     showToast("Plan saved to History successfully!");
   };
 
+  const workboardContent = <WorkboardContent
+    activeTab={view === 'prompts' ? 'prompts' : 'scenario'}
+    selectedCharacter={selectedCharacter}
+    result={result}
+    isGenerating={isGenerating}
+    error={error}
+    currentScenes={currentScenes}
+    sceneImages={sceneImages}
+    generatingImages={generatingImages}
+    handleSaveDraft={handleSaveDraft}
+    handleExportPlan={handleExportPlan}
+    handleGenerateImage={handleGenerateImage}
+    onReferenceScene={useInAnotherEpisode}
+  />;
+
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-[#f5f2ed] font-sans text-[#552c24] overflow-hidden md:border-8 md:border-[#552c24]">
       {toast && (
@@ -190,37 +206,31 @@ export default function App() {
         )}
 
         {(view === 'scenario' || view === 'prompts') && (
-          <section className="flex-1 p-4 md:p-6 lg:p-10 flex flex-col gap-6 overflow-y-auto bg-[#ffffff]">
-            <div className="max-w-4xl w-full mx-auto flex flex-col gap-6 h-full">
-              {!isGenerating&&result&&referenceSettings()}
-              {view === 'prompts' && clipReferenceSettings()}
-              {view === 'prompts' && backgroundSettings(result)}
-              <WorkboardContent 
-                activeTab={view}
-                selectedCharacter={selectedCharacter}
-                result={result}
-                isGenerating={isGenerating}
-                error={error}
-                currentScenes={currentScenes}
-                sceneImages={sceneImages}
-                generatingImages={generatingImages}
-                handleSaveDraft={handleSaveDraft}
-                handleExportPlan={handleExportPlan}
-                handleGenerateImage={handleGenerateImage}
-                onReferenceScene={useInAnotherEpisode}
-              />
+          <section data-workspace-scroll className="flex-1 min-w-0 p-4 md:p-6 lg:p-10 flex flex-col gap-6 overflow-y-auto bg-[#ffffff]">
+            <div className="max-w-4xl w-full mx-auto flex flex-col gap-6">
+              {view === 'prompts' && !isGenerating && result ? (
+                <WorkspaceTabs key={currentWorkboardId} label="시각화 작업" defaultTab="clips" tabs={[
+                  { id: 'reference', label: '다른 화 참고', content: referenceSettings() },
+                  { id: 'props', label: '장면별 소품', content: clipReferenceSettings() },
+                  { id: 'background', label: '배경 에셋', content: backgroundSettings(result) },
+                  { id: 'clips', label: '클립·이미지', content: workboardContent },
+                ]}/>
+              ) : <>
+                {!isGenerating && result && referenceSettings()}
+                {workboardContent}
+              </>}
             </div>
           </section>
         )}
 
         {view === 'history' && (
-          <section className={`ori-history-content ${!viewingHistoryId?'ori-history-content-empty':''} flex-1 p-4 md:p-6 lg:p-10 flex flex-col gap-6 overflow-y-auto bg-[#ffffff]`}>
+          <section data-workspace-scroll className={`ori-history-content ${!viewingHistoryId?'ori-history-content-empty':''} flex-1 min-w-0 p-4 md:p-6 lg:p-10 flex flex-col gap-6 overflow-y-auto bg-[#ffffff]`}>
             <button disabled={locked} className="ori-history-back" onClick={()=>setViewingHistoryId(null)}>← 다른 기록 고르기</button>
             <div className="max-w-4xl w-full mx-auto flex flex-col gap-6">
-              {referenceSettings()}
-              {clipReferenceSettings()}
-              {viewingHistoryId && backgroundSettings(history.find(h=>h.id===viewingHistoryId)?.result || '')}
               <HistoryContent key={viewingHistoryId}
+                referenceSettings={referenceSettings()}
+                clipReferenceSettings={clipReferenceSettings()}
+                backgroundSettings={viewingHistoryId && backgroundSettings(history.find(h=>h.id===viewingHistoryId)?.result || '')}
                 draft={drafts.find(d=>d.id===recordDraftId(history.find(h=>h.id===viewingHistoryId)||{id:''} as HistoryItem))}
                 mediaReady={mediaReady}
                 onEdit={()=>{const item=history.find(h=>h.id===viewingHistoryId);if(item)openRecordEditor(item);}} onBusy={setWorkflowBusy}
