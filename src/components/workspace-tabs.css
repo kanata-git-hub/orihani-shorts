@@ -1,0 +1,78 @@
+.ori-workspace-tabs {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ori-workspace-tablist {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #e8dfd1;
+  border-radius: 14px;
+  box-shadow: 0 3px 10px #552c2410;
+}
+
+.ori-workspace-tablist-five {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.ori-workspace-tablist-five button {
+  grid-column: span 2;
+}
+
+.ori-workspace-tablist-five button:nth-child(n + 4) {
+  grid-column: span 3;
+}
+
+.ori-workspace-tablist button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 4px;
+  border: 1px solid #e8dfd1;
+  border-radius: 9px;
+  background: #f9f7f4;
+  color: #552c24;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.ori-workspace-tablist button[aria-selected="true"] {
+  background: #552c24;
+  border-color: #552c24;
+  color: #ffcd4a;
+}
+
+.ori-workspace-tablist button:focus-visible,
+.ori-workspace-panel:focus-visible {
+  outline: 3px solid #b88649;
+  outline-offset: 2px;
+}
+
+.ori-workspace-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Keep each panel mounted so changing tabs preserves selections and ongoing work. */
+.ori-workspace-panel[hidden] {
+  display: none !important;
+}
+
+@media (min-width: 1024px) {
+  .ori-workspace-tablist { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ori-workspace-tablist-five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .ori-workspace-tablist-five button,
+  .ori-workspace-tablist-five button:nth-child(n + 4) { grid-column: auto; }
+}
