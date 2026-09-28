@@ -1,10 +1,14 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript');
 const root=path.resolve(__dirname,'..'),cache=new Map();
+function localModule(rel,name){
+ const base=path.posix.normalize(path.posix.join(path.posix.dirname(rel),name));
+ return ['.ts','.tsx'].map(ext=>base+ext).find(file=>fs.existsSync(path.join(root,file)))||base+'.ts';
+}
 function compile(rel,mocks={}){
  if(!Object.keys(mocks).length&&cache.has(rel))return cache.get(rel);
  const m={exports:{}};
  const code=ts.transpileModule(fs.readFileSync(path.join(root,rel),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
- new Function('require','module','exports',code)(name=>name.endsWith('/authFetch')?{authFetch:(...args)=>fetch(...args)}:mocks[name]||(name.endsWith('.css')?{}:name.startsWith('.')?compile(path.posix.normalize(path.posix.join(path.posix.dirname(rel),name))+'.ts'):require(name)),m,m.exports);
+ new Function('require','module','exports',code)(name=>name.endsWith('/authFetch')?{authFetch:(...args)=>fetch(...args)}:mocks[name]||(name.endsWith('.css')?{}:name.startsWith('.')?compile(localModule(rel,name)):require(name)),m,m.exports);
  if(!Object.keys(mocks).length)cache.set(rel,m.exports);return m.exports;
 }
 const {videoPromptForCopy:prepare,normalizeVideoPlan,SILENT_CLIP_AUDIO,bindClipStartFrame}=compile('src/videoPrompt.ts');
@@ -77,7 +81,8 @@ test('the actual workboard, history and Kling copy buttons use the same correcte
  const hookMocks={react:{useState:value=>[value==='scenario'?'prompts':value,noop],useEffect:noop},'../hooks/useToast':{useToast:()=>({showToast:noop})},'../constants':{CHARACTERS:[]},'react-markdown':{default:noop},'./share':{imageFile:noop,shareFile:noop},'../workflow/HistoryContinue':{HistoryContinue:noop}};
  const item={id:'synthetic',timestamp:1,characterId:'owonjang',duration:15,result:JSON.stringify({title:'검사',clips:[quiet,speaking,quiet,speaking].map((videoPrompt,i)=>({title:`장면 ${i+1}`,imageTitle:`image${i}`,imagePrompt:'Duck',videoPrompt}))})};
  const images=Object.fromEntries([0,1,2,3].map(i=>['image'+i,'data:image/png;base64,AAAA']));
- const flatten=node=>Array.isArray(node)?node.flatMap(flatten):node&&typeof node==='object'?[node,...flatten(node.props?.children)]:[];
+ // Workspace panels are passed as tab content; inspect the initially active panel too.
+ const flatten=node=>Array.isArray(node)?node.flatMap(flatten):node&&typeof node==='object'?[node,...flatten(node.props?.children),...flatten(node.props?.tabs?.find(tab=>tab.id===node.props.defaultTab)?.content)]:[];
  const label=node=>Array.isArray(node)?node.map(label).join(''):node&&typeof node==='object'?label(node.props?.children):typeof node==='string'||typeof node==='number'?String(node):'';
  try{
   for(const name of ['WorkboardContent','HistoryContent']){
