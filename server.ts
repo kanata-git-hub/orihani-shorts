@@ -5,6 +5,7 @@ import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 import dotenv from "dotenv";
+import { createHash } from 'node:crypto';
 import { clipDurations, timingInstruction, validateClipTiming } from "./src/utils/clipTiming";
 import { readSceneReference, planWithSceneReference } from './src/sceneReference';
 import { videoAudioInstruction, normalizeVideoPlan, bindClipStartFrame } from './src/videoPrompt';
@@ -41,6 +42,12 @@ async function startServer() {
 
   app.post("/api/generate", async (req, res) => {
     const { character, customPrompt, duration } = req.body;
+    // Comparison uses the same authenticated conversion path and exact input.
+    // It never runs the creative planner, reviewer, repair, or image generator.
+    const comparisonModel = req.body.comparisonModel;
+    if (comparisonModel !== undefined && !['gemini-3.8-flash', 'gemini-3.1-pro-preview'].includes(comparisonModel)) {
+      res.status(400).json({ error: '지원하지 않는 비교 모델입니다.' }); return;
+    }
     if (duration !== '5s' && duration !== '15s') {
       res.status(400).json({ error: '영상 길이는 5초 또는 15초여야 합니다.' });
       return;
@@ -51,6 +58,9 @@ async function startServer() {
       sourceEpisode=readSourceEpisode(req.body.sourceEpisode, duration, customPrompt);
     }
     catch(e) { res.status(400).json({error:(e as Error).message});return; }
+    if (comparisonModel && !sourceEpisode) {
+      res.status(400).json({ error: '모델 비교에는 완성된 원본 대본이 필요합니다.' }); return;
+    }
     const timing = timingInstruction(duration);
     const maxRetries = 3;
     let attempt = 0;
@@ -118,8 +128,8 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
         // One bounded repair. Never silently pass a failed contract on to paid
         // image generation or retry the entire creative planner on review failure.
         for (let pass = 0; pass < 2; pass++) {
-        const converterResponse = await ai.models.generateContent({
-          model: PROMPT_MODEL,
+        const converterRequest = {
+          model: comparisonModel || PROMPT_MODEL,
           contents: planWithSceneReference(converterPrompt + (repairNotes.length ? `\n\nCorrect these production errors while preserving the screenplay:\n${JSON.stringify(repairNotes)}` : ''), sceneReference),
           config: {
             systemInstruction: characterReferencePolicy(),
@@ -171,7 +181,32 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
               required: ["title", "location", "scenario", "instagramCaption", "hashtags", "propBible", "clips"]
             }
           }
-        });
+        };
+        const started = Date.now();
+        const converterResponse = await ai.models.generateContent(converterRequest);
+
+        if (comparisonModel) {
+          const elapsedMs = Date.now() - started;
+          const raw = converterResponse.text || '';
+          let compiled, validationError;
+          try {
+            compiled = compileProductionPlan(JSON.parse(raw));
+            compiled.promptModel = comparisonModel;
+            compiled.clips = compiled.clips.map((clip: any, i: number) => ({
+              ...clip, videoPrompt: bindClipStartFrame(clip.videoPrompt, i + 1),
+            }));
+            compiled = JSON.parse(normalizeVideoPlan(JSON.stringify(compiled)));
+            validateClipTiming(JSON.stringify(compiled), duration);
+          } catch (error) { validationError = (error as Error).message; compiled = undefined; }
+          res.json({ success: true, comparison: {
+            model: comparisonModel, providerModel: converterResponse.modelVersion,
+            elapsedMs, createdAt: new Date().toISOString(),
+            inputHash: createHash('sha256').update(JSON.stringify({contents: converterRequest.contents, config: converterRequest.config})).digest('hex'),
+            usage: converterResponse.usageMetadata, raw, compiled, validationError,
+            modelCalls: 1, automaticRepair: false,
+          }});
+          return;
+        }
 
         try {
           converted = compileProductionPlan(JSON.parse(converterResponse.text || '{}'));
@@ -208,6 +243,9 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
         res.json({ success: true, result });
         return;
       } catch (error: any) {
+        if (comparisonModel) {
+          res.status(error?.status === 429 ? 429 : 500).json({ error: error.message }); return;
+        }
         if (error?.status === 429) {
           attempt++;
           const waitTime = Math.pow(2, attempt) * 1000;

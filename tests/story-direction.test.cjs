@@ -11,11 +11,11 @@ function compile(rel,mocks={},runtime={}){
 const {episodePrompt}=compile('src/workflow/weekly.ts');
 const source={duration:15,title:'[에피소드 4] 4화 퇴근의 문 (하찮은 오리 일상)',scenario:'[장면 1 (4초)]\n거대한 성문을 미는 덕이.\n[장면 2 (4초)]\n낮은 측면 구도.\n[장면 3 (3초)]\n문이 열린다.\n[장면 4 (4초)]\n현실의 출입문.',korean:'[장면 1]\n(무대사)\n[장면 4]\n소미 대사: 당기는 문이에요.',caption:'4화 퇴근의 문\n#퇴근 #하찮은오리일상 #오원장 #애니메이션 #유머',thumbnail:'4화 퇴근의 문'};
 const result={title:'rewritten',scenario:'rewritten',propBible:[],clips:[4,4,3,4].map((s,i)=>({imageTitle:`Scene ${i+1}`,imagePrompt:'current image',frame:{environment:'Cloud gate',visibleCharacters:['Deok-i'],props:[],action:'Push once.',endState:'Gate stays closed.',continuityFromPrevious:i?'Same set.':'Opening shot'},videoPrompt:`OUTPUT SPECS: ${s}s, vertical 9:16.\nACTION: Push.\nDIALOGUE: None.`,locationId:'gate',backgroundAsset:'none',sceneTransition:i===3?'new-scene':'reframe',shot:{size:i===1?'close-up':'wide',angle:'low angle',focus:'Deok-i and gate',startState:'Leaning forward'}}))};
-function server(reviews=[]){
+function server(reviews=[],output){
  const routes={},calls=[];
  const app={use(){},post(route,handler){routes[route]=handler;},get(){},listen(){}};
  const express=()=>app;express.json=()=>{};express.static=()=>{};
- compile('server.ts',{'express':express,'./server/editor/routes':{editorRouter:{}},'dotenv':{config(){}},'@google/genai':{GoogleGenAI:class{models={generateContent:async request=>{calls.push(request);if(request.config?.responseSchema?.properties?.issues)return {text:JSON.stringify({issues:reviews.shift()||[]})};return {text:request.config?.responseMimeType?JSON.stringify(result):'FREE FORM PLAN'};}};}}},{process:{...process,env:{NODE_ENV:'production'},argv:[],cwd:()=>root},console:{log(){}}});
+ compile('server.ts',{'express':express,'./server/editor/routes':{editorRouter:{}},'dotenv':{config(){}},'@google/genai':{GoogleGenAI:class{models={generateContent:async request=>{calls.push(request);if(output instanceof Error)throw output;if(request.config?.responseSchema?.properties?.issues)return {text:JSON.stringify({issues:reviews.shift()||[]})};return {text:output??(request.config?.responseMimeType?JSON.stringify(result):'FREE FORM PLAN'),modelVersion:request.model,usageMetadata:{totalTokenCount:123}};}};}}},{process:{...process,env:{NODE_ENV:'production'},argv:[],cwd:()=>root},console:{log(){}}});
  const response={statusCode:200,status(n){this.statusCode=n;return this;},json(v){this.body=v;return this;}};
  return {calls,response,run:body=>routes['/api/generate']({body},response)};
 }
@@ -69,4 +69,35 @@ test('conversion and review use 3.8, repair a concrete contradiction once and fa
  await rejected.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source});
  assert.equal(rejected.calls.length,4);assert.equal(rejected.response.statusCode,500);
  assert.equal(rejected.response.body.result,undefined);assert.match(rejected.response.body.error,/Wrong roof opening/);
+});
+
+test('comparison sends identical production input/config to both models exactly once without review or repair',async()=>{
+ const pairs=[];
+ for(const comparisonModel of ['gemini-3.8-flash','gemini-3.1-pro-preview']){
+  const s=server();await s.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source,comparisonModel});
+  assert.equal(s.response.statusCode,200);assert.equal(s.calls.length,1);
+  const c=s.response.body.comparison;
+  assert.equal(c.model,comparisonModel);assert.equal(c.providerModel,comparisonModel);
+  assert.equal(c.compiled.promptModel,comparisonModel);assert.equal(c.modelCalls,1);assert.equal(c.automaticRepair,false);
+  assert.equal(c.raw,JSON.stringify(result));assert.equal(c.usage.totalTokenCount,123);
+  assert.equal(s.response.body.result,undefined);pairs.push(s);
+ }
+ assert.deepEqual(pairs[0].calls[0].contents,pairs[1].calls[0].contents);
+ assert.deepEqual(pairs[0].calls[0].config,pairs[1].calls[0].config);
+ assert.equal(pairs[0].response.body.comparison.inputHash,pairs[1].response.body.comparison.inputHash);
+ const ordinary=server();await ordinary.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source});
+ assert.deepEqual(pairs[0].calls[0].config,ordinary.calls[0].config);
+ assert.deepEqual(pairs[0].calls[0].contents,ordinary.calls[0].contents);
+});
+
+test('comparison rejects missing source or arbitrary models before charging; preserves invalid raw results and never retries 429',async()=>{
+ const input={duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source,comparisonModel:'gemini-3.8-flash'};
+ for(const body of [{...input,comparisonModel:'unapproved-model'},{...input,sourceEpisode:undefined}]){
+  const s=server();await s.run(body);assert.equal(s.response.statusCode,400);assert.equal(s.calls.length,0);
+ }
+ const malformed=server([], '{broken');await malformed.run(input);
+ assert.equal(malformed.calls.length,1);assert.equal(malformed.response.body.comparison.raw,'{broken');
+ assert.ok(malformed.response.body.comparison.validationError);assert.equal(malformed.response.body.comparison.compiled,undefined);
+ const rate=server([],Object.assign(Error('Rate limited'),{status:429}));await rate.run(input);
+ assert.equal(rate.calls.length,1);assert.equal(rate.response.statusCode,429);
 });

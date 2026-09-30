@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { SourceEpisode } from '../types';
 import { auth } from '../lib/firebase';
 import { parseWeekly } from './weekly';
+import { PromptComparison } from './PromptComparison';
 import './workflow.css';
 export function WeeklyScript({onChoose}:{onChoose:(episode:SourceEpisode,character:string)=>void}) {
   const [raw,setRaw]=useState(''),[episodes,setEpisodes]=useState<ReturnType<typeof parseWeekly>>([]),[index,setIndex]=useState(0),[message,setMessage]=useState('');
@@ -31,6 +32,7 @@ export function WeeklyScript({onChoose}:{onChoose:(episode:SourceEpisode,charact
     <p role="status" aria-live="polite">{message}</p>
     {!!episodes.length&&<><label>만들 에피소드<select value={index} onChange={e=>{interrupt();const n=Number(e.target.value);setIndex(n);selectedTitle.current=episodes[n].title;}}>{episodes.map((e,i)=><option key={i} value={i}>{e.title}</option>)}</select></label><p>{episodes[index].scenario}</p><button className="ori-workflow-primary" onClick={()=>{interrupt();const e=episodes[index];onChoose(e,e.characters[0]||'owonjang');setMessage('아래 기획에 넣었습니다. 주인공을 확인하고 영상 기획 생성을 누르세요.');}}>이 에피소드로 기획 준비</button></>}
     <button disabled={loading} onClick={()=>void latest(true)}>{loading?'최신 대본 확인 중…':'최신 대본 다시 확인'}</button>
+    {!!episodes.length&&<PromptComparison episodes={episodes}/>}
     <details><summary>이전 대본·파일을 직접 가져오기</summary>
       <a className="ori-workflow-link" href="https://drive.google.com/drive/folders/1O2wOWOLyAXmq96aXOExX0fecwK7jZbq-" target="_blank" rel="noopener noreferrer">주간 대본 폴더 열기</a>
       <label>주간 대본 파일<input type="file" accept=".md,.txt,text/plain,text/markdown" onChange={async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;interrupt();const request=revision.current;if(file.size>300000){setMessage('대본은 300KB 이하 텍스트 파일로 넣어주세요.');return;}try{const text=await file.text();if(request===revision.current)load(text);}catch{if(request===revision.current)setMessage('대본 파일을 읽지 못했습니다.');}}}/></label>
