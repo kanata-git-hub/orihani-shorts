@@ -2,7 +2,7 @@ import { readShotDirection, shotDirectionInstruction } from './shotDirection';
 
 // Text planning and image rendering are different models. Keep the image model
 // unchanged; upgrade the converter/reviewer without silently buying Pro images.
-export const PROMPT_MODEL = 'gemini-3.8-flash';
+export const PROMPT_MODEL = 'gemini-3.1-pro-preview';
 export const PRODUCTION_VERSION = 1;
 const string = { type: 'STRING' };
 const array = (items: any) => ({ type: 'ARRAY', items });
@@ -97,11 +97,15 @@ ${designs.join('\n\n') || 'No story props in this crop.'}
 Retain the fixed scale, attachment points and distinct parts. Apply the written START states even if a reference photo shows a different state or accidental missing part. Do not copy reference geometry that conflicts with this explicit blueprint. Offscreen/occluded parts stay outside the crop; do not remove them physically. Do not add openings or components. This is the instant before the described clip unfolds.`;
     text(clip.videoPrompt, '영상 프롬프트');
     const action = `Start: ${shot!.startState}\n${frame.props.map(p => `${p.id}: ${p.placement}; ${p.parts.map(s => `${s.id} ${s.state}`).join('; ')}`).join('\n')}\nDuring this clip: ${frame.action}\nEnd: ${frame.endState}`;
-    // New converter outputs use real, line-separated headings. Keep exact audio
-    // and dialogue rather than asking a second prose writer to paraphrase them.
+    // Pro can double-escape heading separators inside otherwise valid JSON.
+    // Normalize only known heading boundaries; never unescape dialogue or prose.
+    const headingBoundary = /(?:\\r\\n|\\n)[ \t]*(?=(?:REFERENCE INSTRUCTION|OUTPUT SPECS|CINEMATOGRAPHY|ENVIRONMENT|ACTION|DIALOGUE|AUDIO|VOCALS|PERFORMANCE|STRICT RULES)(?:[ \t]*\([^\r\n)]*\))?[ \t]*:)/g;
+    const normalizedVideoPrompt = clip.videoPrompt.replace(headingBoundary, '\n');
+    // Keep exact audio and dialogue rather than asking a second prose writer
+    // to paraphrase them. Missing ACTION still fails the contract.
     const actionSection = /^ACTION\s*:[\s\S]*?(?=^[A-Z][A-Z _-]*(?:\s*\([^\n)]*\))?\s*:|$(?![\s\S]))/m;
-    if (!actionSection.test(clip.videoPrompt)) fail('영상 ACTION 항목 누락');
-    const videoPrompt = clip.videoPrompt.replace(actionSection, `ACTION: ${action}\n`);
+    if (!actionSection.test(normalizedVideoPrompt)) fail('영상 ACTION 항목 누락');
+    const videoPrompt = normalizedVideoPrompt.replace(actionSection, `ACTION: ${action}\n`);
     return { ...clip, imagePrompt, videoPrompt };
   });
   return { ...plan, clips, productionVersion: PRODUCTION_VERSION, promptModel: PROMPT_MODEL };

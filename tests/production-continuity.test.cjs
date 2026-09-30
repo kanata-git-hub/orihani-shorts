@@ -38,6 +38,20 @@ test('part omission, unplanned roof holes, duplicate ids and unknown props are r
  p=housePlan();p.propBible.push(p.propBible[0]);assert.throws(()=>compileProductionPlan(p),/중복/);
  p=housePlan();p.clips[1].frame.props[0].id='new-bigger-house';assert.throws(()=>compileProductionPlan(p),/정의되지 않은 소품/);
 });
+test('double-escaped Pro heading separators compile without changing dialogue or accepting missing ACTION',()=>{
+ const p=housePlan();
+ p.clips[3].videoPrompt=p.clips[3].videoPrompt.replace('이제 아무도 못 들어와요.', '이제 아무도 못 들어와요.\\n그대로');
+ const original=p.clips.map((c,i)=>c.videoPrompt=c.videoPrompt.replace(/\n/g,i%2?'\\r\\n  ':'\\n '));
+ const compiled=compileProductionPlan(p);
+ for(const [i,c] of compiled.clips.entries()){
+  assert.match(c.videoPrompt,new RegExp('During this clip: ACTION_ONLY_'+i));
+  assert.match(c.videoPrompt,/\nAUDIO: Room tone\.\nSTRICT RULES:/);
+  assert.equal(p.clips[i].videoPrompt,original[i]);
+ }
+ assert.ok(compiled.clips[3].videoPrompt.includes('DIALOGUE: Deok-i: "이제 아무도 못 들어와요.\\n그대로"'));
+ const missing=housePlan();missing.clips[0].videoPrompt=missing.clips[0].videoPrompt.replace('ACTION:', 'ACT:').replace(/\n/g,'\\n ');
+ assert.throws(()=>compileProductionPlan(missing),/영상 ACTION 항목 누락/);
+});
 test('close-up preserves offscreen parts without dragging all cast into the frame; no-prop scenes are valid',()=>{
  const p=housePlan(),close=compileProductionPlan(p).clips[2];
  assert.match(close.imagePrompt,/Shot size: close-up/);assert.match(close.imagePrompt,/Visible cast: Somi\./);

@@ -57,14 +57,15 @@ test('server retains authoritative reference connections even when the converter
  assert.equal(rejected.response.statusCode,400);assert.equal(rejected.calls.length,0);
 });
 
-test('conversion and review use 3.8, repair a concrete contradiction once and fail closed if it persists',async()=>{
+test('conversion and review use 3.1 Pro, repair a concrete contradiction once and fail closed if it persists',async()=>{
  const repaired=server([['Front wall is already down in the start image.'],[]]);
  await repaired.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source});
  assert.equal(repaired.response.statusCode,200);assert.equal(repaired.calls.length,4);
- assert.ok(repaired.calls.every(c=>c.model==='gemini-3.8-flash'));
+ assert.ok(repaired.calls.every(c=>c.model==='gemini-3.1-pro-preview'));
  assert.match(repaired.calls[2].contents,/Front wall is already down/);
  const plan=JSON.parse(repaired.response.body.result);
  assert.equal(plan.productionVersion,1);assert.match(plan.clips[0].imagePrompt,/SINGLE START FRAME/);
+ assert.equal(plan.promptModel,'gemini-3.1-pro-preview');
  const rejected=server([['Wrong roof opening'],['Wrong roof opening']]);
  await rejected.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source});
  assert.equal(rejected.calls.length,4);assert.equal(rejected.response.statusCode,500);
@@ -88,6 +89,18 @@ test('comparison sends identical production input/config to both models exactly 
  const ordinary=server();await ordinary.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source});
  assert.deepEqual(pairs[0].calls[0].config,ordinary.calls[0].config);
  assert.deepEqual(pairs[0].calls[0].contents,ordinary.calls[0].contents);
+});
+
+test('Pro escaped heading output reaches review without a paid formatting repair',async()=>{
+ const escaped=structuredClone(result);
+ escaped.clips.forEach(c=>c.videoPrompt=c.videoPrompt.replace(/\n/g,'\\n '));
+ const s=server([],JSON.stringify(escaped));
+ await s.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source});
+ assert.equal(s.response.statusCode,200);assert.equal(s.calls.length,2);
+ assert.ok(s.calls.every(c=>c.model==='gemini-3.1-pro-preview'));
+ const plan=JSON.parse(s.response.body.result);
+ assert.match(plan.clips[0].videoPrompt,/\nACTION:/);
+ assert.match(plan.clips[0].videoPrompt,/\nDIALOGUE:/);
 });
 
 test('comparison rejects missing source or arbitrary models before charging; preserves invalid raw results and never retries 429',async()=>{
