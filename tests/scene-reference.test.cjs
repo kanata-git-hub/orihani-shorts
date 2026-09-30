@@ -171,3 +171,70 @@ test('the visible current-episode picker connects scene two to scene four and di
  buttons.find(n=>text(n)==='장면 2의 소품 참고').props.onClick();
  assert.equal(saved.length,1);assert.equal(saved[0].title,'image-4');assert.equal(saved[0].reference.imageUrl,later);
 });
+
+test('screenplay JSON links survive extraction and a work-file round trip; backward-only validation is strict',()=>{
+ const {parseReferencePlans}=compile('src/referencePlan.ts');
+ const {extractScenes}=compile('src/utils/extractors.ts');
+ const plans=[{background:null,props:[]},{background:1,props:[{scene:1,objects:['상자집']}]},{background:1,props:[{scene:1,objects:['상자집']}]},{background:1,props:[{scene:1,objects:['상자집']},{scene:3,objects:['선풍기']}]}];
+ const scenario=plans.map((p,i)=>`[장면 ${i+1} (${[4,4,3,4][i]}초)]\nreferencePlan: ${JSON.stringify(p)}\n동작`).join('\n');
+ assert.deepEqual(parseReferencePlans(scenario),plans);
+ const planned={...item,result:JSON.stringify({...JSON.parse(item.result),scenario})};
+ const restored=pkg.readPackage(pkg.makePackage(planned,{'image-1':png,'image-3':later}));
+ assert.deepEqual(extractScenes(restored.item.result)[3].referencePlan,plans[3]);
+ for(const invalid of [scenario.replace('"background":1','"background":2'),scenario.replace('"scene":3','"scene":4'),scenario.replace('"선풍기"','""'),scenario.replace('referencePlan:','badPlan:'),scenario+'\nreferencePlan: {}']) assert.throws(()=>parseReferencePlans(invalid));
+ assert.equal(parseReferencePlans('[장면 1 (4초)]\n기존 대본'),undefined);
+ const bad={...JSON.parse(item.result),scenario:scenario.replace('"scene":3','"scene":4')};
+ assert.match(extractScenes(JSON.stringify(bad))[3].referencePlanError,/referencePlan/);
+});
+
+test('automatic sources attach exact named props, deduplicate set/prop image, use regenerated source and respect manual overrides',async()=>{
+ const plan=compile('src/referencePlan.ts');
+ const sources=[{background:null,props:[]},{background:1,props:[{scene:1,objects:['상자집']}]},{background:1,props:[{scene:1,objects:['상자집']}]},{background:1,props:[{scene:1,objects:['상자집']},{scene:3,objects:['선풍기']}]}];
+ const scenes=sources.map((referencePlan,i)=>({title:`image-${i+1}`,prompt:'O-wonjang at home',backgroundAsset:'none',locationId:'home',referencePlan}));
+ let media={images:{'image-1':png,'image-3':later}},request,errors=[];
+ const old=global.fetch;
+ const hook=()=>compile('src/hooks/useMediaGeneration.ts',{
+  react:{useRef:v=>({current:v})},'../utils/db':{db:{get:async()=>media}},
+  '../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'owonjang.png',imgs:[png,png,png]}]},
+ }).useMediaGeneration(m=>errors.push(m),async()=>{},item.id,()=>{},{'image-3':png},()=>{},{},'owonjang');
+ try{
+  global.fetch=async(url,options)=>{request=JSON.parse(options.body);return Response.json({result:png});};
+  assert.equal(await hook().handleGenerateImage('image-4',scenes[3].prompt,3,scenes),true);
+  assert.equal(request.parts.filter(p=>p.inlineData).length,5); // 3 originals + 2 distinct sources
+  assert.match(request.parts.filter(p=>p.text).map(p=>p.text).join('\n'),/Scene 1: physical set.*상자집/);
+  let pos=request.parts.findIndex(p=>p.text?.includes('Scene 3: ONLY these recurring prop designs: 선풍기'));
+  assert.equal(request.parts[pos+1].inlineData.data,later.split(',')[1]);
+  assert.match(request.parts.at(-1).text,/earlier START frame, NOT the previous clip's final frame/);
+  media.images['image-3']=png;
+  await hook().handleGenerateImage('image-4',scenes[3].prompt,3,scenes);
+  pos=request.parts.findIndex(p=>p.text?.includes('Scene 3: ONLY'));
+  assert.equal(request.parts[pos+1].inlineData.data,png.split(',')[1]);
+  delete media.images['image-3'];request=undefined;
+  assert.equal(await hook().handleGenerateImage('image-4',scenes[3].prompt,3,scenes),false);
+  assert.equal(request,undefined);assert.match(errors.at(-1),/장면 3 사진을 먼저/);
+  // Missing automatic prop image is irrelevant once the user overrides props.
+  media.clipReferences={'image-4':refs.captureClipReference(item,'image-4',item,'image-2',{'image-2':later})};
+  assert.equal(await hook().handleGenerateImage('image-4',scenes[3].prompt,3,scenes),true);
+  assert.ok(!request.parts.some(p=>p.text?.includes('Scene 3: ONLY')));
+  assert.ok(request.parts.some(p=>p.text?.startsWith('[USER-SELECTED PROP')));
+  assert.match(request.parts.find(p=>p.text?.startsWith('[SCRIPT REFERENCE')).text,/physical set/);
+  assert.ok(!request.parts.find(p=>p.text?.startsWith('[SCRIPT REFERENCE')).text.includes('상자집'));
+  // Explicit none does not silently fall back to the preceding room.
+  scenes[3].referencePlan={background:null,props:[]};media.clipReferences={};
+  await hook().handleGenerateImage('image-4',scenes[3].prompt,3,scenes);
+  assert.equal(request.parts.filter(p=>p.inlineData).length,3);
+  scenes[3].referencePlan={background:4,props:[]};request=undefined;
+  assert.equal(await hook().handleGenerateImage('image-4',scenes[3].prompt,3,scenes),false);assert.equal(request,undefined);
+ }finally{global.fetch=old;}
+});
+
+test('automatic links display ready/waiting sources without selecting them; missing inputs disable generation',()=>{
+ let state=0;const values=[3,false,item.id,'',{},false,false,''];
+ const plan={...item,result:JSON.stringify({...JSON.parse(item.result),clips:JSON.parse(item.result).clips.map((c,i)=>({...c,referencePlan:i===3?{background:1,props:[{scene:3,objects:['선풍기']}]}:{background:null,props:[]}}))})};
+ const Component=compile('src/components/ClipReferenceSettings.tsx',{react:{useState:()=>[values[state++],()=>{}],useEffect:()=>{}},'../workflow/workflow.css':{}}).ClipReferenceSettings;
+ const tree=Component({item:plan,history:[],images:{'image-1':png},value:{},onChange:async()=>{throw Error('must not save a manual reference');},onGenerate:async()=>true});
+ const nodes=[];const walk=n=>{if(!n||typeof n!=='object')return;if(Array.isArray(n)){n.forEach(walk);return;}nodes.push(n);walk(n.props?.children);};walk(tree);
+ const text=n=>typeof n==='string'||typeof n==='number'?String(n):Array.isArray(n)?n.map(text).join(''):n?.props?text(n.props.children):'';
+ assert.match(text(tree),/장면 1: 배경 · 준비됨/);assert.match(text(tree),/장면 3: 선풍기 · 사진 대기/);
+ assert.equal(nodes.find(n=>n.type==='button'&&text(n)==='장면 4 사진 만들기').props.disabled,true);
+});

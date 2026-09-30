@@ -5,6 +5,7 @@ import { CHARACTERS } from "../constants";
 import { buildReferenceParts, loadReferenceImage, CharacterReference } from '../characterReference';
 import { BackgroundChoices, resolveBackground, backgroundInstruction, mayUsePreviousScene } from '../backgroundAssets';
 import { readSceneReference, sceneReferenceInstruction, readClipReferences, clipReferenceInstruction } from '../sceneReference';
+import { readReferencePlan, referenceSources, plannedReferenceLabel, plannedReferenceInstruction } from '../referencePlan';
 import { shotDirectionInstruction } from '../shotDirection';
 
 
@@ -37,6 +38,11 @@ export function useMediaGeneration(
       const propReference=readClipReferences(savedMedia?.clipReferences)[sceneTitle];
       const scenes = allScenes.map((scene, index) => index === sceneIdx ? { ...scene, prompt: promptText } : scene);
       if (!scenes[sceneIdx]) scenes[sceneIdx] = { title: sceneTitle, prompt: promptText };
+      if (scenes[sceneIdx].referencePlanError) throw Error(scenes[sceneIdx].referencePlanError);
+      const referencePlan = readReferencePlan(scenes[sceneIdx].referencePlan, sceneIdx+1);
+      const plannedSources = referencePlan ? referenceSources(referencePlan, scenes, savedImages, !!propReference) : [];
+      const missing = plannedSources.filter(s => !s.imageUrl);
+      if (missing.length) throw Error(`장면 ${missing.map(s=>s.scene).join(', ')} 사진을 먼저 만들어주세요. 대본의 참고 연결에 필요한 사진입니다.`);
       const background = resolveBackground(scenes, sceneIdx, fullPlanText, backgroundChoices);
       let matchedChars = CHARACTERS.filter((c) =>
         promptText.toLowerCase().includes(c.file.toLowerCase()),
@@ -89,7 +95,7 @@ export function useMediaGeneration(
 
       let previousImage: string | null = null;
       let anchorIndex = -1;
-      if (sceneIdx > 0 && allScenes.length > 0) {
+      if (!referencePlan && sceneIdx > 0 && allScenes.length > 0) {
         // Anchor the whole continuous location to its earliest available frame.
         // Reusing each newest frame would accumulate background/layout drift.
         for (let i = sceneIdx - 1; i >= 0; i--) {
@@ -142,6 +148,8 @@ ${promptText}`;
         references.push({url:sceneReference.imageUrl,role:'episode'});
         finalPrompt += '\n\n' + sceneReferenceInstruction();
       }
+      for (const source of plannedSources) references.push({url:source.imageUrl!,role:'planned',label:plannedReferenceLabel(source)});
+      if (referencePlan) finalPrompt += '\n\n' + plannedReferenceInstruction;
       if (propReference) {
         references.push({url:propReference.imageUrl,role:'prop'});
         finalPrompt += '\n\n' + clipReferenceInstruction(propReference,sceneIdx+1);

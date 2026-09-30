@@ -46,3 +46,13 @@ test('generation hook sends the selected source rather than only storing it in h
   assert.deepEqual(request.sourceEpisode,source);assert.deepEqual(history.episode,source);
  }finally{global.fetch=old;}
 });
+
+test('server retains authoritative reference connections even when the converter omits them; invalid links fail before paid conversion',async()=>{
+ const plans=[{background:null,props:[]},{background:1,props:[]},{background:1,props:[{scene:2,objects:['치킨']} ]},{background:1,props:[{scene:2,objects:['치킨']}]}];
+ const linked={...source,scenario:plans.map((p,i)=>`[장면 ${i+1} (${[4,4,3,4][i]}초)]\nreferencePlan: ${JSON.stringify(p)}\n동작`).join('\n')};
+ const s=server();await s.run({duration:'15s',customPrompt:episodePrompt(linked),sourceEpisode:linked});
+ assert.equal(s.response.statusCode,200);assert.deepEqual(JSON.parse(s.response.body.result).clips.map(c=>c.referencePlan),plans);
+ const bad={...linked,scenario:linked.scenario.replace('"scene":2','"scene":4')};
+ const rejected=server();await rejected.run({duration:'15s',customPrompt:episodePrompt(bad),sourceEpisode:bad});
+ assert.equal(rejected.response.statusCode,400);assert.equal(rejected.calls.length,0);
+});

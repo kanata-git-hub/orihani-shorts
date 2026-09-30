@@ -9,6 +9,7 @@ import { clipDurations, timingInstruction, validateClipTiming } from "./src/util
 import { readSceneReference, planWithSceneReference } from './src/sceneReference';
 import { videoAudioInstruction, normalizeVideoPlan, bindClipStartFrame } from './src/videoPrompt';
 import { characterReferencePolicy } from './src/characterReference';
+import { parseReferencePlans } from './src/referencePlan';
 import { readSourceEpisode, sourceConversionInstruction } from './src/sourceEpisode';
 import { SHOT_SIZES, SCENE_TRANSITIONS, shotConversionInstruction } from './src/shotDirection';
 import { episodePrompt } from './src/workflow/weekly';
@@ -91,6 +92,8 @@ ${shotConversionInstruction}
 
 Preserve physical conditions exactly: a closed door is not necessarily locked. Do not invent locks or new obstacles. Describe hinge motion toward or away from the visible character instead of ambiguous inward/outward directions.
 
+The referencePlan JSON lines are production metadata for automatic still-image references only. Do not turn them into dialogue, captions, visible text or extra action. Do not use their source numbers as Kling video @image references; each video uses its own start frame.
+
 Ensure the image prompts strictly follow the character reference instructions and environment details.
 For EACH clip, set a short locationId identifying its actual physical room or place (for example clinic-office). Reuse the EXACT same locationId across consecutive shots in that place, including reaction shots and close-ups, even when backgroundAsset is none. Change locationId only for an actual location change; use different IDs for two different offices or rooms of the same type. Establish the furniture/window layout, prop design and physical character locations in the first shot. Later shots use the same set and maintain coherent character left/right relationships, updating locations when the script moves someone. Plan each shot's gaze target, head/body direction, limb pose, expression, prop state and camera framing from its CURRENT scripted beat. Static/locked describes camera motion within one clip, not identical framing across clips. A new speaker alone does not require reversing the camera.
 In EACH imagePrompt, explicitly describe the current STARTING STATE (gaze target, head/body direction, pose, expression and prop state), CAMERA (shot size, angle and framing), and SET (the established room). Write the actual visible starting state rather than 'same pose as before'. Make scripted performance differences readable with the existing character design. Keep actions and reactions that happen later in the clip in videoPrompt; preserve their beginning state in imagePrompt. Consistency applies to identity and set design, while the current scene controls performance and composition.
@@ -162,8 +165,10 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
         });
 
         const converted = JSON.parse(converterResponse.text || '{}');
+        const referencePlans = parseReferencePlans(sourceEpisode?.scenario || plannerText);
+        if (referencePlans && referencePlans.length !== converted.clips?.length) throw Error('대본의 참고 연결 장면 수와 변환된 장면 수가 다릅니다. 다시 변환해주세요.');
         if (Array.isArray(converted.clips)) converted.clips = converted.clips.map((clip: any, i: number) => ({
-          ...clip, videoPrompt: bindClipStartFrame(clip.videoPrompt || '', i + 1),
+          ...clip, referencePlan: referencePlans?.[i], videoPrompt: bindClipStartFrame(clip.videoPrompt || '', i + 1),
         }));
         if (sourceEpisode) {
           converted.title = sourceEpisode.title.replace(/^\[에피소드\s*\d+\]\s*/, '');

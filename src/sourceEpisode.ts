@@ -1,3 +1,4 @@
+import { parseReferencePlans } from './referencePlan';
 import type { SourceEpisode } from './types';
 import { episodePrompt } from './workflow/weekly';
 
@@ -13,6 +14,7 @@ export function readSourceEpisode(value: unknown, duration: '5s' | '15s', custom
   }
   const episode = { duration: v.duration, title: v.title, scenario: v.scenario, korean: v.korean, caption: v.caption, thumbnail: v.thumbnail };
   if (episodePrompt(episode) !== customPrompt) throw Error('원본 대본과 입력 내용이 달라졌습니다. 대본을 다시 선택해주세요.');
+  parseReferencePlans(episode.scenario);
   return episode;
 }
 

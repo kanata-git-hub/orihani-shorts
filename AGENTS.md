@@ -142,3 +142,22 @@ ENVIRONMENT, ACTION, DIALOGUE, AUDIO and STRICT RULES, separated by actual newli
 Use O-wonjang, Deok-i and Somi as English names. Maintain the provided dialogue in Korean.
 Avoid contradictory locks and long generic prohibition lists. Keep directions specific
 to the shot and do not erase the screenplay's spectacle to make generation easier.
+
+## Machine-readable scene references
+
+For every newly planned clip use the exact Korean header `[장면 N (D초)]` with
+Korean seconds, for example `[장면 1 (4초)]`, and directly below it one JSON line:
+`referencePlan: {"background":null,"props":[]}`.
+Use a previous 1-based scene number for background when that image establishes
+this physical set. Use null for a new set. Each prop source is
+`{"scene":2,"objects":["치킨 상자","치킨"]}` inside props. Use only earlier scenes
+in the SAME episode that actually show these objects; no self/future references.
+Use [] for no props; include the line in ALL clips. Max 3 source entries, at most
+8 named objects per source. Combine objects from the same source into one entry.
+Choose a wide set anchor for backgrounds and the actual introduction image for
+props, not simply the immediately preceding close-up. Example scene 4 can use
+background 1, house from scene 1, and fan from scene 3. Preserve original designs
+but apply the current shot's camera, acting and STARTING object state. Earlier
+still images are not video end frames. Do not copy their poses or obsolete states.
+See docs/scene-references.md for the complete contract. These production lines
+are not subtitles, dialogue or visible text in the generated images/videos.

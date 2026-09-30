@@ -1,4 +1,5 @@
 import { readShotDirection, readSceneTransition } from '../shotDirection';
+import { parseReferencePlans, readReferencePlan, type ReferencePlan } from '../referencePlan';
 import { MemeCaption } from '../types';
 
 export const extractOverview = (text: string) => {
@@ -31,7 +32,14 @@ export const extractClips = (text: string) => {
   try {
     const data = JSON.parse(text);
     if (data.clips && Array.isArray(data.clips)) {
+      let plans: ReferencePlan[] | undefined, referencePlanError: string | undefined;
+      try {
+        plans = parseReferencePlans(typeof data.scenario === 'string' ? data.scenario : '');
+        if (plans && plans.length !== data.clips.length) throw Error('대본의 참고 연결 장면 수와 생성된 장면 수가 다릅니다.');
+        if (!plans) plans = data.clips.map((c:any,i:number) => readReferencePlan(c.referencePlan,i+1));
+      } catch (error) { referencePlanError = (error as Error).message; }
       return data.clips.map((c: any, i: number) => ({
+        referencePlan: plans?.[i], referencePlanError,
         title: c.title || `CLIP ${i+1}`,
         imageTitle: c.imageTitle || `Scene ${i+1}`,
         imagePrompt: c.imagePrompt || '',
@@ -86,7 +94,7 @@ export const extractClips = (text: string) => {
 };
 
 export const extractScenes = (text: string) => {
-  return extractClips(text).map(c => ({ title: c.imageTitle, prompt: c.imagePrompt, videoPrompt: c.videoPrompt, backgroundAsset: 'backgroundAsset' in c ? c.backgroundAsset as string | undefined : undefined, locationId: 'locationId' in c ? c.locationId as string | undefined : undefined, shot: 'shot' in c ? c.shot : undefined, sceneTransition: 'sceneTransition' in c ? c.sceneTransition : undefined }));
+  return extractClips(text).map(c => ({ title: c.imageTitle, prompt: c.imagePrompt, videoPrompt: c.videoPrompt, backgroundAsset: 'backgroundAsset' in c ? c.backgroundAsset as string | undefined : undefined, locationId: 'locationId' in c ? c.locationId as string | undefined : undefined, shot: 'shot' in c ? c.shot : undefined, sceneTransition: 'sceneTransition' in c ? c.sceneTransition : undefined, referencePlan: 'referencePlan' in c ? c.referencePlan : undefined, referencePlanError: 'referencePlanError' in c ? c.referencePlanError : undefined }));
 };
 
 export const extractVideoPrompt = (text: string) => {
