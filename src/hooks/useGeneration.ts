@@ -32,7 +32,7 @@ export function useGeneration(
       const sceneReference=readSceneReference(reference);
       const character = CHARACTERS.find((c) => c.id === selectedCharacter);
       // Step 1 & 2: Call backend API
-      showToast("기획 중입니다... (1/2)", "success");
+      showToast("대본을 변환하고 소품·장면 연결을 검수 중입니다.", "success");
       
       const response = await authFetch('/api/generate', {
         method: 'POST',

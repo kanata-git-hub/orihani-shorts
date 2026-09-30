@@ -93,6 +93,17 @@ export default function App() {
   };
 
   const locked=workflowBusy||editorBusy||referenceBusy||isGenerating||Object.values(generatingImages).some(Boolean);
+  const rebuildHistoryPrompts=async()=>{
+    const item=history.find(h=>h.id===viewingHistoryId);
+    if(locked||!item?.episode)return;
+    setWorkflowBusy(true);
+    try{
+      const media=await db.get(item.id);
+      setSelectedCharacter(item.characterId);setSceneImages({});setView('scenario');
+      await generatePlan(item.characterId,episodePrompt(item.episode),item.episode.duration===15?'15s':'5s',item.episode,media?.sceneReference);
+    }catch(e){showToast((e as Error).message,'error');}
+    finally{setWorkflowBusy(false);}
+  };
   const useInAnotherEpisode=(imageTitle:string)=>{
     try{
       const item=history.find(h=>h.id===targetId);
@@ -228,6 +239,7 @@ export default function App() {
             <button disabled={locked} className="ori-history-back" onClick={()=>setViewingHistoryId(null)}>← 다른 기록 고르기</button>
             <div className="max-w-4xl w-full mx-auto flex flex-col gap-6">
               <HistoryContent key={viewingHistoryId}
+                onRebuildPrompts={()=>void rebuildHistoryPrompts()} busy={locked}
                 referenceSettings={referenceSettings()}
                 clipReferenceSettings={clipReferenceSettings()}
                 backgroundSettings={viewingHistoryId && backgroundSettings(history.find(h=>h.id===viewingHistoryId)?.result || '')}

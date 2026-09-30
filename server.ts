@@ -13,6 +13,7 @@ import { parseReferencePlans } from './src/referencePlan';
 import { readSourceEpisode, sourceConversionInstruction } from './src/sourceEpisode';
 import { SHOT_SIZES, SCENE_TRANSITIONS, shotConversionInstruction } from './src/shotDirection';
 import { episodePrompt } from './src/workflow/weekly';
+import { PROMPT_MODEL, propBibleSchema, frameSchema, productionConversionInstruction, compileProductionPlan, continuityReviewSchema, continuityReviewInstruction, readReviewIssues } from './src/productionContinuity';
 dotenv.config({ override: true });
 
 async function startServer() {
@@ -68,7 +69,7 @@ ${timing}`;
         let plannerText = sourceEpisode ? episodePrompt(sourceEpisode) : "";
         if (!sourceEpisode) {
           const plannerResponse = await ai.models.generateContent({
-            model: "gemini-3.6-flash",
+            model: PROMPT_MODEL,
             contents: planWithSceneReference(plannerPrompt, sceneReference),
             config: {
               systemInstruction: `${agentPrompt}\n\n${timing}\n\n${videoAudioInstruction}`,
@@ -90,13 +91,15 @@ ${timing}
 
 ${shotConversionInstruction}
 
+${productionConversionInstruction}
+
 Preserve physical conditions exactly: a closed door is not necessarily locked. Do not invent locks or new obstacles. Describe hinge motion toward or away from the visible character instead of ambiguous inward/outward directions.
 
 The referencePlan JSON lines are production metadata for automatic still-image references only. Do not turn them into dialogue, captions, visible text or extra action. Do not use their source numbers as Kling video @image references; each video uses its own start frame.
 
 Ensure the image prompts strictly follow the character reference instructions and environment details.
 For EACH clip, set a short locationId identifying its actual physical room or place (for example clinic-office). Reuse the EXACT same locationId across consecutive shots in that place, including reaction shots and close-ups, even when backgroundAsset is none. Change locationId only for an actual location change; use different IDs for two different offices or rooms of the same type. Establish the furniture/window layout, prop design and physical character locations in the first shot. Later shots use the same set and maintain coherent character left/right relationships, updating locations when the script moves someone. Plan each shot's gaze target, head/body direction, limb pose, expression, prop state and camera framing from its CURRENT scripted beat. Static/locked describes camera motion within one clip, not identical framing across clips. A new speaker alone does not require reversing the camera.
-In EACH imagePrompt, explicitly describe the current STARTING STATE (gaze target, head/body direction, pose, expression and prop state), CAMERA (shot size, angle and framing), and SET (the established room). Write the actual visible starting state rather than 'same pose as before'. Make scripted performance differences readable with the existing character design. Keep actions and reactions that happen later in the clip in videoPrompt; preserve their beginning state in imagePrompt. Consistency applies to identity and set design, while the current scene controls performance and composition.
+In EACH structured frame, explicitly describe the current STARTING STATE (gaze target, head/body direction, pose, expression and prop state), CAMERA (shot size, angle and framing), and SET (the established room). Write the actual visible starting state rather than 'same pose as before'. Make scripted performance differences readable with the existing character design. Keep later actions in frame.action and outcomes in frame.endState. Consistency applies to identity and set design, while the current scene controls performance and composition.
 For EACH clip, set backgroundAsset from the location actually visible in that clip: pantry = the clinic staff tea/break room (탕비실), treatment = the clinic treatment/acupuncture room (치료실), reception = the clinic reception/front desk/waiting area (접수대), none = every other location or uncertain setting. Read the narrative context, not isolated words in dialogue. Do not classify a home kitchen, an office break room, a restaurant, or an outdoor scene as a clinic room. Reuse the same asset for shots in the same room and change it when the location changes. All three clinic rooms share light warm wood furniture, cream walls and warm lighting. The supplied empty room original will be attached during image generation. Keep the story's actual locations; do not relocate unrelated scenes to the clinic.
 Ensure the video prompts follow the strict format with REFERENCE INSTRUCTION, OUTPUT SPECS, CINEMATOGRAPHY, ENVIRONMENT, ACTION, DIALOGUE, AUDIO, STRICT RULES. Use a real newline between headings. DO NOT include a CHARACTER DESIGN section.
 Use these specific English names: 오원장 = O-wonjang, 소미 = Somi, 덕이 = Deok-i.
@@ -110,9 +113,14 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
 1. Caption: Create an extremely short, punchy one-line caption combining Korean and English. It MUST be a single line. Example format: "선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)". Do NOT write long paragraphs or separate sentences.
 2. Hashtags: Provide EXACTLY 5 hashtags in this exact order: '#[Core Topic 1 in Korean]', '#[Core Topic 1 in English]', '#Humor', '#Relatable', and '#유머'.`;
 
+        let converted: any;
+        let repairNotes: string[] = [];
+        // One bounded repair. Never silently pass a failed contract on to paid
+        // image generation or retry the entire creative planner on review failure.
+        for (let pass = 0; pass < 2; pass++) {
         const converterResponse = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
-          contents: planWithSceneReference(converterPrompt, sceneReference),
+          model: PROMPT_MODEL,
+          contents: planWithSceneReference(converterPrompt + (repairNotes.length ? `\n\nCorrect these production errors while preserving the screenplay:\n${JSON.stringify(repairNotes)}` : ''), sceneReference),
           config: {
             systemInstruction: characterReferencePolicy(),
             temperature: sourceEpisode ? 0.2 : 0.7,
@@ -129,6 +137,7 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
                   items: { type: "STRING" },
                   description: "Exactly 5 hashtags (without # symbol) in this exact order: [Core Topic 1 in Korean], [Core Topic 1 in English], Humor, Relatable, 유머." 
                 },
+                propBible: propBibleSchema,
                 clips: {
                   type: "ARRAY",
                   minItems: clipDurations(duration).length,
@@ -138,7 +147,7 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
                     properties: {
                       title: { type: "STRING", description: "Clip title" },
                       imageTitle: { type: "STRING", description: "Image scene title" },
-                      imagePrompt: { type: "STRING", description: "English prompt for image generation" },
+                      frame: frameSchema,
                       backgroundAsset: { type: "STRING", enum: ["pantry", "treatment", "reception", "none"], description: "Canonical clinic room visible in this clip, or none for other locations" },
                       locationId: { type: "STRING", description: "Stable physical location ID, identical across shots in the same place; independent of backgroundAsset" },
                       sceneTransition: { type: "STRING", enum: [...SCENE_TRANSITIONS], description: "continuous action, same-set reframe, or new-scene for location/time/visual-world changes" },
@@ -155,16 +164,33 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
                       videoTitle: { type: "STRING", description: "Video clip title" },
                       videoPrompt: { type: "STRING", description: "English prompt for video generation" }
                     },
-                    required: ["title", "imageTitle", "imagePrompt", "backgroundAsset", "locationId", "sceneTransition", "shot", "videoTitle", "videoPrompt"]
+                    required: ["title", "imageTitle", "frame", "backgroundAsset", "locationId", "sceneTransition", "shot", "videoTitle", "videoPrompt"]
                   }
                 }
               },
-              required: ["title", "location", "scenario", "instagramCaption", "hashtags", "clips"]
+              required: ["title", "location", "scenario", "instagramCaption", "hashtags", "propBible", "clips"]
             }
           }
         });
 
-        const converted = JSON.parse(converterResponse.text || '{}');
+        try {
+          converted = compileProductionPlan(JSON.parse(converterResponse.text || '{}'));
+          validateClipTiming(JSON.stringify(converted), duration);
+        } catch (error) {
+          if (pass === 1) throw error;
+          repairNotes = [(error as Error).message];
+          continue;
+        }
+        const review = await ai.models.generateContent({
+          model: PROMPT_MODEL,
+          contents: JSON.stringify({ screenplay: plannerText, propBible: converted.propBible, clips: converted.clips }),
+          config: { systemInstruction: continuityReviewInstruction, temperature: 0,
+            responseMimeType: 'application/json', responseSchema: continuityReviewSchema },
+        });
+        repairNotes = readReviewIssues(review.text || '{}');
+        if (!repairNotes.length) break;
+        if (pass === 1) throw Error(`기획과 프롬프트가 일치하지 않아 생성을 중단했습니다. ${repairNotes.slice(0,3).join(' / ')}`);
+        }
         const referencePlans = parseReferencePlans(sourceEpisode?.scenario || plannerText);
         if (referencePlans && referencePlans.length !== converted.clips?.length) throw Error('대본의 참고 연결 장면 수와 변환된 장면 수가 다릅니다. 다시 변환해주세요.');
         if (Array.isArray(converted.clips)) converted.clips = converted.clips.map((clip: any, i: number) => ({

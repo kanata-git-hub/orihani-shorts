@@ -10,18 +10,18 @@ function compile(rel,mocks={},runtime={}){
 }
 const {episodePrompt}=compile('src/workflow/weekly.ts');
 const source={duration:15,title:'[에피소드 4] 4화 퇴근의 문 (하찮은 오리 일상)',scenario:'[장면 1 (4초)]\n거대한 성문을 미는 덕이.\n[장면 2 (4초)]\n낮은 측면 구도.\n[장면 3 (3초)]\n문이 열린다.\n[장면 4 (4초)]\n현실의 출입문.',korean:'[장면 1]\n(무대사)\n[장면 4]\n소미 대사: 당기는 문이에요.',caption:'4화 퇴근의 문\n#퇴근 #하찮은오리일상 #오원장 #애니메이션 #유머',thumbnail:'4화 퇴근의 문'};
-const result={title:'rewritten',scenario:'rewritten',clips:[4,4,3,4].map((s,i)=>({imageTitle:`Scene ${i+1}`,imagePrompt:'current image',videoPrompt:`OUTPUT SPECS: ${s}s, vertical 9:16.\nACTION: Push.\nDIALOGUE: None.`,locationId:'gate',backgroundAsset:'none',sceneTransition:i===3?'new-scene':'reframe',shot:{size:i===1?'close-up':'wide',angle:'low angle',focus:'Deok-i and gate',startState:'Leaning forward'}}))};
-function server(){
+const result={title:'rewritten',scenario:'rewritten',propBible:[],clips:[4,4,3,4].map((s,i)=>({imageTitle:`Scene ${i+1}`,imagePrompt:'current image',frame:{environment:'Cloud gate',visibleCharacters:['Deok-i'],props:[],action:'Push once.',endState:'Gate stays closed.',continuityFromPrevious:i?'Same set.':'Opening shot'},videoPrompt:`OUTPUT SPECS: ${s}s, vertical 9:16.\nACTION: Push.\nDIALOGUE: None.`,locationId:'gate',backgroundAsset:'none',sceneTransition:i===3?'new-scene':'reframe',shot:{size:i===1?'close-up':'wide',angle:'low angle',focus:'Deok-i and gate',startState:'Leaning forward'}}))};
+function server(reviews=[]){
  const routes={},calls=[];
  const app={use(){},post(route,handler){routes[route]=handler;},get(){},listen(){}};
  const express=()=>app;express.json=()=>{};express.static=()=>{};
- compile('server.ts',{'express':express,'./server/editor/routes':{editorRouter:{}},'dotenv':{config(){}},'@google/genai':{GoogleGenAI:class{models={generateContent:async request=>{calls.push(request);return {text:request.config?.responseMimeType?JSON.stringify(result):'FREE FORM PLAN'};}};}}},{process:{...process,env:{NODE_ENV:'production'},argv:[],cwd:()=>root},console:{log(){}}});
+ compile('server.ts',{'express':express,'./server/editor/routes':{editorRouter:{}},'dotenv':{config(){}},'@google/genai':{GoogleGenAI:class{models={generateContent:async request=>{calls.push(request);if(request.config?.responseSchema?.properties?.issues)return {text:JSON.stringify({issues:reviews.shift()||[]})};return {text:request.config?.responseMimeType?JSON.stringify(result):'FREE FORM PLAN'};}};}}},{process:{...process,env:{NODE_ENV:'production'},argv:[],cwd:()=>root},console:{log(){}}});
  const response={statusCode:200,status(n){this.statusCode=n;return this;},json(v){this.body=v;return this;}};
  return {calls,response,run:body=>routes['/api/generate']({body},response)};
 }
 test('selected weekly screenplay bypasses ideation and reaches conversion unchanged',async()=>{
  const s=server();await s.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source});
- assert.equal(s.response.statusCode,200);assert.equal(s.calls.length,1);
+ assert.equal(s.response.statusCode,200);assert.equal(s.calls.length,2);
  assert.ok(s.calls[0].contents.includes(source.scenario));assert.ok(s.calls[0].contents.includes(source.korean));
  assert.match(s.calls[0].contents,/AUTHORITATIVE FINISHED SCREENPLAY/);
  assert.match(s.calls[0].config.systemInstruction,/Deok-i: keep his own ORIGINAL yellow/);
@@ -32,7 +32,7 @@ test('selected weekly screenplay bypasses ideation and reaches conversion unchan
  assert.match(plan.clips[1].videoPrompt,/@image2 = Scene 2 start frame reference/);
 });
 test('free-form ideas still plan and then convert; mismatched source fails before any model call',async()=>{
- const s=server();await s.run({duration:'15s',customPrompt:'a new idea'});assert.equal(s.calls.length,2);assert.equal(s.response.statusCode,200);
+ const s=server();await s.run({duration:'15s',customPrompt:'a new idea'});assert.equal(s.calls.length,3);assert.equal(s.response.statusCode,200);
  const invalid=server();await invalid.run({duration:'15s',customPrompt:'edited story',sourceEpisode:source});assert.equal(invalid.response.statusCode,400);assert.equal(invalid.calls.length,0);
 });
 test('generation hook sends the selected source rather than only storing it in history',async()=>{
@@ -55,4 +55,18 @@ test('server retains authoritative reference connections even when the converter
  const bad={...linked,scenario:linked.scenario.replace('"scene":2','"scene":4')};
  const rejected=server();await rejected.run({duration:'15s',customPrompt:episodePrompt(bad),sourceEpisode:bad});
  assert.equal(rejected.response.statusCode,400);assert.equal(rejected.calls.length,0);
+});
+
+test('conversion and review use 3.8, repair a concrete contradiction once and fail closed if it persists',async()=>{
+ const repaired=server([['Front wall is already down in the start image.'],[]]);
+ await repaired.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source});
+ assert.equal(repaired.response.statusCode,200);assert.equal(repaired.calls.length,4);
+ assert.ok(repaired.calls.every(c=>c.model==='gemini-3.8-flash'));
+ assert.match(repaired.calls[2].contents,/Front wall is already down/);
+ const plan=JSON.parse(repaired.response.body.result);
+ assert.equal(plan.productionVersion,1);assert.match(plan.clips[0].imagePrompt,/SINGLE START FRAME/);
+ const rejected=server([['Wrong roof opening'],['Wrong roof opening']]);
+ await rejected.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source});
+ assert.equal(rejected.calls.length,4);assert.equal(rejected.response.statusCode,500);
+ assert.equal(rejected.response.body.result,undefined);assert.match(rejected.response.body.error,/Wrong roof opening/);
 });

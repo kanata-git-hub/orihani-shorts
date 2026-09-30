@@ -75,6 +75,15 @@ there is no requirement to begin neutral and upright. Reserve the action's later
 for the video. At a purposeful time jump, state what happened between shots and why the
 new state is understandable. Do not show an entire future sequence in one image.
 
+Before describing shots, establish fixed dimensions and capacity for recurring story
+props using the needs of the ENTIRE episode. Give distinct moving parts distinct names,
+positions and attachment/hinge directions. Keep a window, entry door, folding wall and
+roof separate when such parts exist in the story. Never invent holes or resize a prop
+between shots to fit the cast. Record each relevant part's start and end state. Cropping
+or occlusion changes visibility, not the object's physical structure. The converter
+builds a shared prop bible and separate per-shot states, compiles start images without
+future actions, and reviews the compiled prompts against the original screenplay.
+
 ## Characters and identity
 
 Use the original front/side/back character references:

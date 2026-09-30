@@ -32,3 +32,25 @@ referencePlan: {"background":1,"props":[{"scene":1,"objects":["상자집"]},{"sc
 사용자가 수동 소품 참고를 지정하면 해당 장면의 자동 소품 목록 전체를 대신한다. 자동 배경 연결은 유지한다. 수동 연결을 해제하면 대본의 자동 소품 연결이 다시 적용된다. 수동 선택은 기존처럼 선택 당시 사진을 저장한다.
 
 과거 기록은 자동 연결 정보가 없으면 기존 배경 추론과 수동 소품 연결을 그대로 사용한다. 업데이트만으로 기존 사진이나 기획을 덮어쓰거나 유료 재생성하지 않는다. 새 연결을 쓰려면 수정된 주간 대본으로 기획을 불러온다.
+# Start-frame production contract
+
+New planning requests use Gemini 3.8 Flash for conversion and a separate continuity
+review. Rendering remains Gemini 3.1 Flash Image. `productionVersion: 1` records have
+one `propBible` with stable part IDs, attachment geometry and baseline scale/capacity;
+each clip's `frame` gives the parts' starting states and visibility, action, ending
+state, and a bridge from the preceding video's end. Scripted transformations remain
+allowed. Reference photos cannot silently add a hole, remove a wall or resize a prop.
+
+The server assembles `imagePrompt` from an allowlist of current environment, shot,
+visible characters, design and START states. It never interpolates action/end/bridge
+fields or an independently generated image prompt. Video ACTION is assembled from
+start, action and end, retaining the exact dialogue/audio headings. A schema check
+rejects missing/unknown/duplicate parts; the model review checks semantic fidelity
+to the screenplay. One repair is allowed, then a failed check returns an error.
+This checks text, not rendered image quality; paid images are still user-triggered.
+
+Existing records remain unchanged. In History, records with their original episode
+have `대본대로 프롬프트 다시 만들기`: it converts the saved original into a new record,
+preserving the old record's photos/video and the selected episode-wide reference.
+The new record starts without old generated images or per-shot manual overrides;
+its scripted referencePlan resolves references as its new images are generated.
