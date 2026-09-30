@@ -32,7 +32,7 @@ test('Spark import cleans narration, screen titles and captions while preserving
   assert.equal(p.title,'로켓');assert.equal(p.narration,'숫자 12개!');assert.equal(p.thumbnail,'ROCKET 123');
   assert.equal(p.captions.length,2);assert.equal(p.captions[1].source,'dialogue');assert.equal(p.captions[1].start,2);assert.equal(p.captions[1].text,'가자!');validatePlan(p);
   const ass=subtitles({...p,thumbnail:'치약 짰더니 로켓? 🚀'});
-  assert.ok(!ass.includes('🚀'));assert.match(ass,/치약 짰더니 로켓\?/);assert.match(ass,/pos\(540,480\)/);assert.match(ass,/Kyobo Handwriting 2024/);
+  assert.ok(!ass.includes('🚀'));assert.ok(!ass.includes('치약 짰더니 로켓'));assert.ok(!ass.includes(',Title,'));assert.match(ass,/가자!/);assert.match(ass,/Kyobo Handwriting 2024/);
 });
 test('legacy drafts keep their media and text backup, reuse display-only timing and invalidate old results',()=>{
   const file=new File(['video'],'clip.mp4',{lastModified:1}),voice=new Blob(['voice']),result=new Blob(['result']);
@@ -273,14 +273,23 @@ test('5 second source preserves narration and original caption times', () => {
   const p = importEpisode({ duration:5, title:'테스트', korean:'나레이션: 월요일 아침입니다.\n[0~2초] 일어나!\n[2~4초] 벽이 날아갔다.', thumbnail:'월요일 아침\nMonday morning' });
   assert.equal(p.narration, '월요일 아침입니다.'); assert.equal(p.captions.length,2); assert.equal(p.captions[1].end,4); assert.equal(p.thumbnail,'월요일 아침\nMonday morning'); validatePlan(p);
 });
-test('ASS user text cannot insert commands; titles end at one second', () => {
-  const text = subtitles({...defaultPlan(),thumbnail:'첫 화면',captions:[{start:0,end:5,text:'{\\pos(0,0)} 자막'}]});
-  assert.match(text,/0:00:00.00,0:00:01.00,Title/); assert.match(text,/pos\(540,1440\)/); assert.ok(!text.includes('{\\pos(0,0)}'));
+test('weekly scene paragraphs preserve dialogue windows, remove silence and merge subtitle mirrors',()=>{
+ const korean='[장면 1 (0~4초)]\n(무대사)\n화면 자막: (무대사)\n\n[장면 2 (4~8초)]\n오원장 대사: 나도 집 생겼다.\n화면 자막: 나도 집 생겼다.\n\n[장면 3 (8~11초)]\n소미 대사: 냉방은 제가 맡을게요.\n화면 자막: 냉방은 제가 맡을게요.\n\n[장면 4 (11~15초)]\n화면 자막: 마당까지 생겼네요.\n덕이 대사: 마당까지 생겼네요.';
+ const p=importEpisode({duration:15,title:'비밀 기지',korean,thumbnail:'10화 비밀 기지'});
+ validatePlan(p);assert.equal(p.narration,'');
+ assert.deepEqual(p.captions.map(c=>[c.start,c.end,c.text,c.source]),[[4,8,'나도 집 생겼다.','dialogue'],[8,11,'냉방은 제가 맡을게요.','dialogue'],[11,15,'마당까지 생겼네요.','dialogue']]);
+ const ass=subtitles(p);assert.ok(!ass.includes('무대사'));assert.ok(!ass.includes('비밀 기지'));
+ assert.match(ass,/0:00:04.00,0:00:08.00,Caption/);
+ assert.match(ass,/0:00:11.00,0:00:15.00,Caption/);
 });
-test('larger text invalidates only finished output, including unopened legacy summaries', () => {
+test('ASS excludes title overlays while preserving caption timing and escaping', () => {
+  const text = subtitles({...defaultPlan(),thumbnail:'첫 화면',captions:[{start:0,end:5,text:'{\\pos(0,0)} 자막'}]});
+  assert.ok(!text.includes('첫 화면'));assert.ok(!text.includes(',Title,'));assert.match(text,/0:00:00.00,0:00:05.00,Caption/); assert.match(text,/pos\(540,1440\)/); assert.ok(!text.includes('{\\pos(0,0)}'));
+});
+test('title-free rendering invalidates only finished output, including legacy summaries', () => {
   const d=makeDraft({plan:{...defaultPlan(),narration:'아침이다.'},videos:[new File(['video'],'clip.mp4',{lastModified:1})],voiceBlob:new Blob(['voice']),result:new Blob(['previous result'])});
   d.voiceKey=draftModel.voiceKey(d);d.syncKey=draftModel.syncKey(d);
-  d.resultKey=JSON.stringify([3,1,d.plan,d.voiceKey,[[d.videos[0].name,d.videos[0].size,d.videos[0].lastModified]]]);
+  d.resultKey=JSON.stringify([5,1,d.plan,d.voiceKey,[[d.videos[0].name,d.videos[0].size,d.videos[0].lastModified]]]);
   const restored=draftModel.restoreDraft(d);
   assert.equal(restored,d);assert.equal(draftModel.voiceIsCurrent(restored),true);
   assert.equal(restored.syncKey,draftModel.syncKey(restored));assert.equal(draftModel.draftStage(restored),'captions');
@@ -301,7 +310,7 @@ test('caption sizes are independent and wrapping preserves words and explicit li
   assert.equal(fitVideoText('첫 줄\n둘째 줄',400).text,'첫 줄\\N둘째 줄');
   assert.ok(fitVideoText('안녕!',400).size<=150);
 });
-test('actual font renders larger titles and captions inside the central 75 percent', {skip:!process.env.FFMPEG_PATH}, () => {
+test('actual font renders captions in the safe area with no title pixels', {skip:!process.env.FFMPEG_PATH}, () => {
   const {execFileSync}=require('node:child_process');
   const examples=[
     ['치약 짰더니 로켓?','월요일 아침 알람 끄려다'],
@@ -318,6 +327,7 @@ test('actual font renders larger titles and captions inside the central 75 perce
         const i=(y*1080+x)*3;
         if(Math.max(pixels[i],pixels[i+1],pixels[i+2])>60) {left=Math.min(left,x);right=Math.max(right,x);top=Math.min(top,y);bottom=Math.max(bottom,y);}
       }
+      if(from===0){assert.equal(right,-1,'no title pixels above captions');continue;}
       assert.ok(right>left,'text must be visible');
       assert.ok(left>=132&&right<=948,`example ${index}: horizontal bounds ${left}..${right}`);
       if(index<2)assert.ok(right-left>=740,`example ${index}: text remains too small (${right-left}px)`);

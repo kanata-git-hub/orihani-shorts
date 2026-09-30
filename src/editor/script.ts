@@ -1,5 +1,31 @@
 type ScriptRow = { start:number; end:number; label:string; text:string; kind:'dialogue'|'narration'|'screen' };
 
+// Weekly scripts use scene paragraphs as well as tables. Keep their scene
+// windows and collapse each spoken line's identical display-caption mirror.
+function normalizeSceneParagraphs(text:string):string {
+ const scene=/^\s*\[장면\s*\d+\s*\(\s*(\d+(?:\.\d+)?)\s*초?\s*[~～–—-]\s*(\d+(?:\.\d+)?)\s*초\s*\)\s*\]\s*$/;
+ const lines=text.replace(/\r\n?/g,'\n').replace(/\*\*/g,'').split('\n');
+ if(!lines.some(line=>scene.test(line)))return text;
+ const output:string[]=[], rows:ScriptRow[]=[];
+ let window:[number,number]|undefined;
+ const key=(s:string)=>s.replace(/^["“']|["”']$/g,'').trim();
+ const silent=(s:string)=>/^[（(]?\s*(?:무대사|no dialogue)\s*[)）]?$/i.test(key(s));
+ for(const line of lines){
+  const heading=line.match(scene);
+  if(heading){window=[Number(heading[1]),Number(heading[2])];if(window[1]<=window[0])throw Error('장면의 자막 시작·끝 시간을 확인해주세요.');continue;}
+  if(!window){output.push(line);continue;}
+  if(!line.trim()||silent(line))continue;
+  const label=line.trim().match(/^(오원장|덕이|소미)\s*(?:대사)?\s*[:：]\s*(.+)$/);
+  const caption=line.trim().match(/^(?:화면\s*(?:자막|문구)|자막)\s*[:：]\s*(.+)$/);
+  if(!label&&!caption){output.push(line);continue;}
+  const content=key(label?label[2]:caption![1]);if(silent(content))continue;
+  const row:ScriptRow={start:window[0],end:window[1],label:label?label[1]:'화면 문구',text:content,kind:label?'dialogue':'screen'};
+  const mirror=rows.findIndex(r=>r.start===row.start&&r.end===row.end&&key(r.text)===content&&r.kind!==row.kind);
+  if(mirror<0)rows.push(row);else if(row.kind==='dialogue')rows[mirror]=row;
+ }
+ return [...output,...rows.map(r=>`[${r.start}~${r.end}초] ${r.label}: ${r.text}`)].join('\n');
+}
+
 // Google Docs plain-text export puts the three table cells on separate lines.
 // Also accept the same table pasted as TSV or saved as Markdown.
 export function normalizeScriptTable(text:string):string {
@@ -13,7 +39,7 @@ export function normalizeScriptTable(text:string):string {
   return line.split('\t').map(s=>s.trim()).filter(Boolean);
  }).filter(Boolean);
  const header=cells.findIndex((s,i)=>s==='시점'&&cells[i+1]==='캐릭터'&&cells[i+2]==='내용');
- if(header<0)return text;
+ if(header<0)return normalizeSceneParagraphs(text);
  const rows:ScriptRow[]=[];
  for(let i=header+3;i<cells.length;i+=3){
   const time=cells[i].match(/^\[?장면\s*\d+\s*\(\s*(\d+(?:\.\d+)?)\s*초?\s*[~～–—-]\s*(\d+(?:\.\d+)?)\s*초\s*\)\]?$/);
