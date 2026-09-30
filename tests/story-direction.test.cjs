@@ -15,7 +15,7 @@ function server(reviews=[],output){
  const routes={},calls=[];
  const app={use(){},post(route,handler){routes[route]=handler;},get(){},listen(){}};
  const express=()=>app;express.json=()=>{};express.static=()=>{};
- compile('server.ts',{'express':express,'./server/editor/routes':{editorRouter:{}},'dotenv':{config(){}},'@google/genai':{GoogleGenAI:class{models={generateContent:async request=>{calls.push(request);if(output instanceof Error)throw output;if(request.config?.responseSchema?.properties?.issues)return {text:JSON.stringify({issues:reviews.shift()||[]})};return {text:output??(request.config?.responseMimeType?JSON.stringify(result):'FREE FORM PLAN'),modelVersion:request.model,usageMetadata:{totalTokenCount:123}};}};}}},{process:{...process,env:{NODE_ENV:'production'},argv:[],cwd:()=>root},console:{log(){}}});
+ compile('server.ts',{'express':express,'./server/editor/routes':{editorRouter:{}},'dotenv':{config(){}},'@google/genai':{GoogleGenAI:class{models={generateContent:async request=>{calls.push(request);if(output instanceof Error)throw output;if(request.config?.responseSchema?.properties?.issues){const review=reviews.shift()||[];if(review instanceof Error)throw review;return {text:JSON.stringify({issues:review})};}return {text:output??(request.config?.responseMimeType?JSON.stringify(result):'FREE FORM PLAN'),modelVersion:request.model,usageMetadata:{totalTokenCount:123}};}};}}},{process:{...process,env:{NODE_ENV:'production'},argv:[],cwd:()=>root},console:{log(){}}});
  const response={statusCode:200,status(n){this.statusCode=n;return this;},json(v){this.body=v;return this;}};
  return {calls,response,run:body=>routes['/api/generate']({body},response)};
 }
@@ -32,7 +32,7 @@ test('selected weekly screenplay bypasses ideation and reaches conversion unchan
  assert.match(plan.clips[1].videoPrompt,/@image2 = Scene 2 start frame reference/);
 });
 test('free-form ideas still plan and then convert; mismatched source fails before any model call',async()=>{
- const s=server();await s.run({duration:'15s',customPrompt:'a new idea'});assert.equal(s.calls.length,3);assert.equal(s.response.statusCode,200);
+ const s=server();await s.run({duration:'15s',customPrompt:'a new idea'});assert.equal(s.calls.length,3);assert.equal(s.response.statusCode,200);assert.deepEqual(s.calls.map(c=>c.model),['gemini-3.1-pro-preview','gemini-3.8-flash','gemini-3.8-flash']);
  const invalid=server();await invalid.run({duration:'15s',customPrompt:'edited story',sourceEpisode:source});assert.equal(invalid.response.statusCode,400);assert.equal(invalid.calls.length,0);
 });
 test('generation hook sends the selected source rather than only storing it in history',async()=>{
@@ -57,15 +57,15 @@ test('server retains authoritative reference connections even when the converter
  assert.equal(rejected.response.statusCode,400);assert.equal(rejected.calls.length,0);
 });
 
-test('conversion and review use 3.1 Pro, repair a concrete contradiction once and fail closed if it persists',async()=>{
+test('Pro designs once; Flash reviews and repairs once, failing closed if contradictions persist',async()=>{
  const repaired=server([['Front wall is already down in the start image.'],[]]);
  await repaired.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source});
  assert.equal(repaired.response.statusCode,200);assert.equal(repaired.calls.length,4);
- assert.ok(repaired.calls.every(c=>c.model==='gemini-3.1-pro-preview'));
+ assert.deepEqual(repaired.calls.map(c=>c.model),['gemini-3.1-pro-preview','gemini-3.8-flash','gemini-3.8-flash','gemini-3.8-flash']);
  assert.match(repaired.calls[2].contents,/Front wall is already down/);
  const plan=JSON.parse(repaired.response.body.result);
  assert.equal(plan.productionVersion,1);assert.match(plan.clips[0].imagePrompt,/SINGLE START FRAME/);
- assert.equal(plan.promptModel,'gemini-3.1-pro-preview');
+ assert.equal(plan.promptModel,'gemini-3.8-flash');assert.equal(plan.productionModels.repairsUsed,1);
  const rejected=server([['Wrong roof opening'],['Wrong roof opening']]);
  await rejected.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source});
  assert.equal(rejected.calls.length,4);assert.equal(rejected.response.statusCode,500);
@@ -97,7 +97,7 @@ test('Pro escaped heading output reaches review without a paid formatting repair
  const s=server([],JSON.stringify(escaped));
  await s.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source});
  assert.equal(s.response.statusCode,200);assert.equal(s.calls.length,2);
- assert.ok(s.calls.every(c=>c.model==='gemini-3.1-pro-preview'));
+ assert.deepEqual(s.calls.map(c=>c.model),['gemini-3.1-pro-preview','gemini-3.8-flash']);
  const plan=JSON.parse(s.response.body.result);
  assert.match(plan.clips[0].videoPrompt,/\nACTION:/);
  assert.match(plan.clips[0].videoPrompt,/\nDIALOGUE:/);
@@ -113,4 +113,16 @@ test('comparison rejects missing source or arbitrary models before charging; pre
  assert.ok(malformed.response.body.comparison.validationError);assert.equal(malformed.response.body.comparison.compiled,undefined);
  const rate=server([],Object.assign(Error('Rate limited'),{status:429}));await rate.run(input);
  assert.equal(rate.calls.length,1);assert.equal(rate.response.statusCode,429);
+});
+
+test('normal quota failures never replay the Pro initial design',async()=>{
+ const e=Object.assign(new Error('quota'),{status:429});const s=server([],e);
+ await s.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source});
+ assert.equal(s.response.statusCode,429);assert.equal(s.calls.length,1);
+});
+
+test('a Flash review quota error cannot repeat the completed Pro conversion',async()=>{
+ const s=server([Object.assign(new Error('review quota'),{status:429})]);
+ await s.run({duration:'15s',customPrompt:episodePrompt(source),sourceEpisode:source});
+ assert.equal(s.response.statusCode,429);assert.deepEqual(s.calls.map(c=>c.model),['gemini-3.1-pro-preview','gemini-3.8-flash']);
 });

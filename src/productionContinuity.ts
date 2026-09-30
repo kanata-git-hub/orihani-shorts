@@ -1,8 +1,9 @@
 import { readShotDirection, shotDirectionInstruction } from './shotDirection';
 
-// Text planning and image rendering are different models. Keep the image model
-// unchanged; upgrade the converter/reviewer without silently buying Pro images.
+// One precise initial design uses Pro. All reviews and bounded repairs use Flash.
 export const PROMPT_MODEL = 'gemini-3.1-pro-preview';
+export const REVIEW_MODEL = 'gemini-3.8-flash';
+export const MAX_PROMPT_REPAIRS = 1;
 export const PRODUCTION_VERSION = 1;
 const string = { type: 'STRING' };
 const array = (items: any) => ({ type: 'ARRAY', items });

@@ -78,7 +78,7 @@ export default function App() {
   } = useMedia(view === 'history' ? 'history' : 'workboard', currentWorkboardId, viewingHistoryId);
 
   const {
-    handleGenerateImage, handleCompareImages
+    handleGenerateImage, handleCompareImages, handleReviewImage
   } = useMediaGeneration(
     showToast, saveMediaToDB, targetId,
     setGeneratingImages, sceneImages, setSceneImages,
@@ -153,7 +153,13 @@ export default function App() {
     showToast("Plan saved to History successfully!");
   };
 
-  const workboardContent = <><ImageChecks targetId={targetId}/><WorkboardContent
+  const checkImageCandidate = (title: string, candidate: string, repair: boolean) => {
+    const plan = view === 'history' ? history.find(h => h.id === viewingHistoryId)?.result || '' : result;
+    const scenes = extractScenes(plan), index = scenes.findIndex(scene => scene.title === title);
+    if (index < 0) { showToast('이 그림의 원래 장면을 찾지 못했습니다.', 'error'); return; }
+    void handleReviewImage(title, scenes[index].prompt, index, scenes, plan, candidate, repair);
+  };
+  const workboardContent = <><ImageChecks targetId={targetId} busy={locked} onCheck={checkImageCandidate}/><WorkboardContent
     activeTab={view === 'prompts' ? 'prompts' : 'scenario'}
     selectedCharacter={selectedCharacter}
     result={result}
@@ -240,7 +246,7 @@ export default function App() {
           <section data-workspace-scroll className={`ori-history-content ${!viewingHistoryId?'ori-history-content-empty':''} flex-1 min-w-0 p-4 md:p-6 lg:p-10 flex flex-col gap-6 overflow-y-auto bg-[#ffffff]`}>
             <button disabled={locked} className="ori-history-back" onClick={()=>setViewingHistoryId(null)}>← 다른 기록 고르기</button>
             <div className="max-w-4xl w-full mx-auto flex flex-col gap-6">
-              <ImageChecks targetId={targetId}/>
+              <ImageChecks targetId={targetId} busy={locked} onCheck={checkImageCandidate}/>
               <HistoryContent key={viewingHistoryId}
                 onRebuildPrompts={()=>void rebuildHistoryPrompts()} busy={locked}
                 referenceSettings={referenceSettings()}

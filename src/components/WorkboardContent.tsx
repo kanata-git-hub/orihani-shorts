@@ -200,10 +200,10 @@ export function WorkboardContent({
                       {clip.title}
                     </div>
 
-                <p className="text-xs">이미지 생성 후 신체·인물 수·장면 상태를 자동 검수합니다. 이미지 1회와 텍스트 검수 1회 비용이 발생합니다.</p>
+                <p className="text-xs">Flash가 그림을 검수하고 오류가 명확하면 Flash Image로 최대 1회 수정합니다. 최대 이미지 2회·검수 2회 비용이며, 통과한 그림만 적용합니다.</p>
                 {handleCompareImages && <details className="ori-prompt-comparison">
                   <summary>이미지 모델 비교</summary>
-                  <p>동일한 프롬프트와 참고 사진으로 Flash Image와 Pro Image를 각각 한 번 생성·검수합니다. 이미지 2회와 검수 2회 비용이 발생합니다. 기존 장면은 유지합니다.</p>
+                  <p>동일한 프롬프트와 참고 사진으로 Flash Image와 Pro Image를 각각 한 번 생성하고 Flash로 검수합니다. 비교에서는 자동 수정하지 않습니다. 이미지 2회와 검수 2회 비용이 발생합니다. 기존 장면은 유지합니다.</p>
                   <button type="button" disabled={Object.values(generatingImages).some(Boolean) || !clip.imagePrompt} onClick={() => void handleCompareImages(clip.imageTitle, clip.imagePrompt, idx, currentScenes, result)}>현재 장면 두 이미지 모델 비교</button>
                 </details>}
                     {/* Image Generation Area */}

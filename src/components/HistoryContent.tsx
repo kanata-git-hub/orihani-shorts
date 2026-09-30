@@ -107,7 +107,7 @@ export function HistoryContent({
       {renderTabs()}
       {viewingItem?.episode && onRebuildPrompts && <div className="ori-workflow ori-scene-reference">
         <button type="button" className="ori-workflow-primary" disabled={busy} onClick={onRebuildPrompts}>대본대로 프롬프트 다시 만들기</button>
-        <p className="ori-reference-note">소품 구조와 장면 시작 상태를 검수해 새 기록으로 만듭니다. 기존 사진과 영상은 보관됩니다. Gemini 텍스트 처리 비용이 발생하며 사진은 따로 생성합니다.</p>
+        <p className="ori-reference-note">최초 설계에 Pro 1회, 검수와 최대 1회 수정에는 Flash를 사용해 새 기록으로 만듭니다. 기존 사진과 영상은 보관됩니다. Gemini 텍스트 처리 비용이 발생하며 사진은 따로 생성합니다.</p>
       </div>}
 
       {/* Top: Scenario Overview */}
@@ -222,10 +222,10 @@ export function HistoryContent({
                   {clip.title}
                 </div>
 
-                <p className="text-xs">이미지 생성 후 신체·인물 수·장면 상태를 자동 검수합니다. 이미지 1회와 텍스트 검수 1회 비용이 발생합니다.</p>
+                <p className="text-xs">Flash가 그림을 검수하고 오류가 명확하면 Flash Image로 최대 1회 수정합니다. 최대 이미지 2회·검수 2회 비용이며, 통과한 그림만 적용합니다.</p>
                 {handleCompareImages && <details className="ori-prompt-comparison">
                   <summary>이미지 모델 비교</summary>
-                  <p>동일한 프롬프트와 참고 사진으로 Flash Image와 Pro Image를 각각 한 번 생성·검수합니다. 이미지 2회와 검수 2회 비용이 발생합니다. 기존 장면은 유지합니다.</p>
+                  <p>동일한 프롬프트와 참고 사진으로 Flash Image와 Pro Image를 각각 한 번 생성하고 Flash로 검수합니다. 비교에서는 자동 수정하지 않습니다. 이미지 2회와 검수 2회 비용이 발생합니다. 기존 장면은 유지합니다.</p>
                   <button type="button" disabled={Object.values(generatingImages).some(Boolean) || !clip.imagePrompt} onClick={() => void handleCompareImages(clip.imageTitle, clip.imagePrompt, idx, viewingScenes, result)}>현재 장면 두 이미지 모델 비교</button>
                 </details>}
                 {/* Image Generation Area */}

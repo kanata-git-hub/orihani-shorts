@@ -7,7 +7,7 @@ import { BackgroundChoices, resolveBackground, backgroundInstruction, mayUsePrev
 import { readSceneReference, sceneReferenceInstruction, readClipReferences, clipReferenceInstruction } from '../sceneReference';
 import { readReferencePlan, referenceSources, plannedReferenceLabel, plannedReferenceInstruction } from '../referencePlan';
 import { shotDirectionInstruction } from '../shotDirection';
-import { IMAGE_MODELS, approvedImage, connectedAnatomyInstruction, type ImageResult } from '../imageQuality';
+import { IMAGE_MODELS, approvedImage, connectedAnatomyInstruction, type ImageResult, type ImageOperation } from '../imageQuality';
 
 
 export function useMediaGeneration(
@@ -29,7 +29,8 @@ export function useMediaGeneration(
     sceneIdx: number,
     allScenes: any[],
     fullPlanText?: string,
-    compare = false,
+    operation: ImageOperation = 'generate',
+    candidate?: string,
   ) => {
     if(generatingRef.current)return false;generatingRef.current=true;
     setGeneratingImages((prev) => ({ ...prev, [sceneTitle]: true }));
@@ -165,20 +166,30 @@ ${promptText}`;
       }
       finalPrompt += '\n\n' + connectedAnatomyInstruction;
       const parts = buildReferenceParts(references, finalPrompt);
+      const compare = operation === 'compare';
       const models = compare ? IMAGE_MODELS : [IMAGE_MODELS[0]];
       // Both comparison requests share these exact assembled parts; no prompt regeneration.
       const rows: ImageResult[] = await Promise.all(models.map(async imageModel => {
         try {
           const response = await authFetch('/api/generate-image', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ parts, imageModel }),
+            body: JSON.stringify({ parts, imageModel, operation, ...(candidate ? {candidate} : {}) }),
           });
           const data = await response.json();
           if (!response.ok) throw Error(data.error || '이미지 생성에 실패했습니다.');
           return data as ImageResult;
         } catch (error) { return { model: imageModel, error: (error as Error).message }; }
       }));
-      if (targetId) await db.setImageChecks(targetId, sceneTitle, { mode: compare ? 'comparison' : 'generation', createdAt: Date.now(), rows });
+      if (targetId) {
+        const prior = savedMedia?.imageChecks?.[sceneTitle];
+        const matched = candidate && prior?.rows?.some((row: ImageResult) => row.candidate === candidate);
+        const reportRows = matched ? prior.rows.map((row: ImageResult) => row.candidate === candidate ? rows[0] : row) : rows;
+        await db.setImageChecks(targetId, sceneTitle, { mode: matched ? prior.mode : compare ? 'comparison' : 'generation', createdAt: Date.now(), rows: reportRows });
+      }
+      if (operation === 'review') {
+        showToast('Flash 검수가 끝났습니다. 결과에서 지적 내용을 확인해주세요.');
+        return !!rows[0].candidate;
+      }
       if (compare) {
         showToast('이미지 비교 결과를 확인해주세요. 기존 장면은 바꾸지 않았습니다.');
         return rows.every(row => !!row.candidate);
@@ -212,6 +223,8 @@ ${promptText}`;
   };
 
   const handleCompareImages = (title: string, prompt: string, index: number, scenes: any[], plan?: string) =>
-    handleGenerateImage(title, prompt, index, scenes, plan, true);
-  return { handleGenerateImage, handleCompareImages };
+    handleGenerateImage(title, prompt, index, scenes, plan, 'compare');
+  const handleReviewImage = (title: string, prompt: string, index: number, scenes: any[], plan: string, candidate: string, repair: boolean) =>
+    handleGenerateImage(title, prompt, index, scenes, plan, repair ? 'repair' : 'review', candidate);
+  return { handleGenerateImage, handleCompareImages, handleReviewImage };
 }

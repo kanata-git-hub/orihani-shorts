@@ -35,7 +35,7 @@ export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy
     <p role="status" aria-live="polite">{message||(!mediaReady?'이 기록의 사진을 확인 중입니다.':!clipCountValid?'기록의 클립 수를 확인해주세요.':`사진 ${clips.length-missing.length}/${clips.length}장 준비됨`)}</p>
     <fieldset disabled={busy||Object.values(generating).some(Boolean)||!mediaReady||!clipCountValid}>
       {step==='images'&&<>
-        <p>이미 있는 사진은 그대로 사용합니다. 새 사진 생성에는 기존 Gemini 비용이 발생합니다. 완료될 때까지 화면을 열어두세요.</p>
+        <p>이미 있는 사진은 그대로 사용합니다. 사진마다 Flash Image 생성과 Flash 검수를 진행하고, 명확한 오류만 최대 1회 수정합니다. 장면당 최대 이미지 2회·검수 2회 비용이 발생합니다. 완료될 때까지 화면을 열어두세요.</p>
         <div className="ori-workflow-pictures">{clips.map((c,i)=><div key={i}>{images[c.imageTitle]?<img src={images[c.imageTitle]} alt={`클립 ${i+1} 시작 사진`}/>:<span>사진 없음</span>}<span>Clip {i+1} · {lengths[i]}초</span>{images[c.imageTitle]&&onReferenceScene&&<button onClick={()=>onReferenceScene(c.imageTitle)}>다른 화에서 참고하기</button>}</div>)}</div>
         <button className="ori-workflow-primary" onClick={()=>missing.length?action(async()=>{for(let i=0;i<clips.length;i++){const c=clips[i];if(images[c.imageTitle])continue;setMessage(`사진 ${i+1}/${clips.length} 생성 중`);if(!await onGenerate(c.imageTitle,c.imagePrompt,i,scenes,item.result))throw Error(`사진 ${i+1} 생성을 완료하지 못했습니다. 이미 만든 사진은 보관했습니다.`);}setStep('kling');setMessage('사진이 준비되었습니다. Kling에서 사용할 자료를 확인하세요.');}):setStep('kling')}>{missing.length?`남은 사진 ${missing.length}장 만들기`:'사진 준비 완료 → Kling'}</button>
       </>}

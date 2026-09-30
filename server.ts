@@ -14,7 +14,7 @@ import { parseReferencePlans } from './src/referencePlan';
 import { readSourceEpisode, sourceConversionInstruction } from './src/sourceEpisode';
 import { SHOT_SIZES, SCENE_TRANSITIONS, shotConversionInstruction } from './src/shotDirection';
 import { episodePrompt } from './src/workflow/weekly';
-import { PROMPT_MODEL, propBibleSchema, frameSchema, productionConversionInstruction, compileProductionPlan, continuityReviewSchema, continuityReviewInstruction, readReviewIssues } from './src/productionContinuity';
+import { PROMPT_MODEL, REVIEW_MODEL, MAX_PROMPT_REPAIRS, propBibleSchema, frameSchema, productionConversionInstruction, compileProductionPlan, continuityReviewSchema, continuityReviewInstruction, readReviewIssues } from './src/productionContinuity';
 import { readImageRequest, generateReviewedImage } from './server/imageGeneration';
 dotenv.config({ override: true });
 
@@ -63,13 +63,10 @@ async function startServer() {
       res.status(400).json({ error: '모델 비교에는 완성된 원본 대본이 필요합니다.' }); return;
     }
     const timing = timingInstruction(duration);
-    const maxRetries = 3;
-    let attempt = 0;
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-    while (attempt < maxRetries) {
-      try {
+    try {
         const plannerPrompt = `Please generate a creative Viral POV short-form video plan in Korean.
 Focus Character: ${character?.name}
 Instructions: Look at the reference formulas. Focus on relatable, cute everyday moments without forcing unnecessary twists. Ensure you strictly follow constraints and never repeat the same physical ailment or setup as the previous outputs. Make it highly engaging and creative.
@@ -126,12 +123,15 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
 
         let converted: any;
         let repairNotes: string[] = [];
+        let previousDraft = "", repairsUsed = 0;
+        const initialConverterModel = sourceEpisode ? PROMPT_MODEL : REVIEW_MODEL;
         // One bounded repair. Never silently pass a failed contract on to paid
         // image generation or retry the entire creative planner on review failure.
-        for (let pass = 0; pass < 2; pass++) {
+        for (let pass = 0; pass <= MAX_PROMPT_REPAIRS; pass++) {
+        repairsUsed = pass;
         const converterRequest = {
-          model: comparisonModel || PROMPT_MODEL,
-          contents: planWithSceneReference(converterPrompt + (repairNotes.length ? `\n\nCorrect these production errors while preserving the screenplay:\n${JSON.stringify(repairNotes)}` : ''), sceneReference),
+          model: comparisonModel || (pass === 0 ? initialConverterModel : REVIEW_MODEL),
+          contents: planWithSceneReference(converterPrompt + (repairNotes.length ? `\n\nCorrect these production errors while preserving the screenplay:\n${JSON.stringify(repairNotes)}\nPrevious draft to correct locally, preserving all valid parts:\n${previousDraft}` : ''), sceneReference),
           config: {
             systemInstruction: characterReferencePolicy(),
             temperature: sourceEpisode ? 0.2 : 0.7,
@@ -209,24 +209,28 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
           return;
         }
 
+        previousDraft = converterResponse.text || '{}';
         try {
           converted = compileProductionPlan(JSON.parse(converterResponse.text || '{}'));
           validateClipTiming(JSON.stringify(converted), duration);
         } catch (error) {
-          if (pass === 1) throw error;
+          if (pass === MAX_PROMPT_REPAIRS) throw error;
           repairNotes = [(error as Error).message];
           continue;
         }
         const review = await ai.models.generateContent({
-          model: PROMPT_MODEL,
+          model: REVIEW_MODEL,
           contents: JSON.stringify({ screenplay: plannerText, propBible: converted.propBible, clips: converted.clips }),
           config: { systemInstruction: continuityReviewInstruction, temperature: 0,
             responseMimeType: 'application/json', responseSchema: continuityReviewSchema },
         });
         repairNotes = readReviewIssues(review.text || '{}');
         if (!repairNotes.length) break;
-        if (pass === 1) throw Error(`기획과 프롬프트가 일치하지 않아 생성을 중단했습니다. ${repairNotes.slice(0,3).join(' / ')}`);
+        if (pass === MAX_PROMPT_REPAIRS) throw Error(`기획과 프롬프트가 일치하지 않아 생성을 중단했습니다. ${repairNotes.slice(0,3).join(' / ')}`);
         }
+        converted.promptModel = repairsUsed ? REVIEW_MODEL : initialConverterModel;
+        converted.productionModels = { design: PROMPT_MODEL, conversion: initialConverterModel,
+          review: REVIEW_MODEL, repair: REVIEW_MODEL, repairsUsed, maxRepairs: MAX_PROMPT_REPAIRS };
         const referencePlans = parseReferencePlans(sourceEpisode?.scenario || plannerText);
         if (referencePlans && referencePlans.length !== converted.clips?.length) throw Error('대본의 참고 연결 장면 수와 변환된 장면 수가 다릅니다. 다시 변환해주세요.');
         if (Array.isArray(converted.clips)) converted.clips = converted.clips.map((clip: any, i: number) => ({
@@ -243,21 +247,10 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
         validateClipTiming(result, duration);
         res.json({ success: true, result });
         return;
-      } catch (error: any) {
-        if (comparisonModel) {
-          res.status(error?.status === 429 ? 429 : 500).json({ error: error.message }); return;
-        }
-        if (error?.status === 429) {
-          attempt++;
-          const waitTime = Math.pow(2, attempt) * 1000;
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        } else {
-          res.status(500).json({ error: error.message });
-          return;
-        }
-      }
+    } catch (error: any) {
+      // A quota failure must never replay a Pro design or trigger model escalation.
+      res.status(error?.status === 429 ? 429 : 500).json({ error: error.message });
     }
-    res.status(429).json({ error: "Rate limit exceeded" });
   });
 
   app.post("/api/generate-image", async (req, res) => {
