@@ -23,7 +23,9 @@ At outline level identify the visible hook, causal payoff and each character's d
 At every shot check its new information, simple main action, start/end state, next-shot
 connection and duration. Use three revision passes: story/hook/payoff; characters/chemistry/
 cuteness; production/continuity/dialogue. Rework the weakest criterion, not the score.
-Do not accept a known score of 8 or below as the final standard when a 9 target is requested.
+The minimum is 8/10 in EVERY criterion, while aiming for 9/10 or higher. A score of
+exactly 8 meets the minimum but remains an improvement target; anything below 8 must
+be revised. A high average never compensates for a criterion below the minimum.
 Do not add an unrelated twist, more props or unfilmable choreography to chase the target.
 Preserve a supplied approved screenplay during conversion rather than silently rewriting it.
 
