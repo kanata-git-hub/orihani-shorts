@@ -14,7 +14,7 @@ async function openDB() {
     r.onblocked = () => { blocked = true; reject(Error('다른 탭의 오리쇼츠를 닫고 다시 열어주세요. 사진 저장소를 준비 중입니다.')); };
   });
 }
-async function mediaOperation(kind: 'get' | 'set' | 'delete' | 'clear' | 'reference' | 'clipReference' | 'images', key?: string, value?: any): Promise<any> {
+async function mediaOperation(kind: 'get' | 'set' | 'delete' | 'clear' | 'reference' | 'clipReference' | 'images' | 'imageChecks', key?: string, value?: any): Promise<any> {
   const database = await openDB();
   let summary: MediaSummary | undefined;
   try { return await new Promise((resolve, reject) => {
@@ -35,6 +35,9 @@ async function mediaOperation(kind: 'get' | 'set' | 'delete' | 'clear' | 'refere
           result = { ...result, images:result?.images || {}, clipReferences:{...result?.clipReferences} };
           if (value.reference) result.clipReferences[value.title] = value.reference;
           else delete result.clipReferences[value.title];
+          media.put(result, key!);
+        } else if (kind === 'imageChecks') {
+          result = { ...result, imageChecks: { ...result?.imageChecks, [value.title]: value.report } };
           media.put(result, key!);
         } else if (kind === 'images') {
           result = { ...result, images:{ ...result?.images, ...value } };
@@ -60,6 +63,10 @@ async function summaries(): Promise<Record<string, MediaSummary>> {
 export const db = {
   get: (key: string) => mediaOperation('get', key),
   set: (key: string, value: any) => mediaOperation('set', key, value),
+  setImageChecks: (key:string, title:string, report:any) => {
+    if (!title.trim() || title.length > 500 || ['__proto__','constructor','prototype'].includes(title)) throw Error('장면 이름을 확인해주세요.');
+    return mediaOperation('imageChecks', key, {title, report});
+  },
   setImages: (key:string, images:Record<string,string>) => mediaOperation('images', key, images),
   setSceneReference: (key:string, reference:SceneReference|null) => mediaOperation('reference', key, readSceneReference(reference)),
   setClipReference: (key:string, title:string, reference:SceneReference|null) => {

@@ -1,3 +1,4 @@
+import { ImageChecks } from '../components/ImageChecks';
 import { useEffect, useState, useCallback } from 'react';
 import { SourceEpisode } from '../types';
 import { HistoryItem } from '../types';
@@ -77,7 +78,7 @@ export default function App() {
   } = useMedia(view === 'history' ? 'history' : 'workboard', currentWorkboardId, viewingHistoryId);
 
   const {
-    handleGenerateImage
+    handleGenerateImage, handleCompareImages
   } = useMediaGeneration(
     showToast, saveMediaToDB, targetId,
     setGeneratingImages, sceneImages, setSceneImages,
@@ -152,7 +153,7 @@ export default function App() {
     showToast("Plan saved to History successfully!");
   };
 
-  const workboardContent = <WorkboardContent
+  const workboardContent = <><ImageChecks targetId={targetId}/><WorkboardContent
     activeTab={view === 'prompts' ? 'prompts' : 'scenario'}
     selectedCharacter={selectedCharacter}
     result={result}
@@ -164,8 +165,9 @@ export default function App() {
     handleSaveDraft={handleSaveDraft}
     handleExportPlan={handleExportPlan}
     handleGenerateImage={handleGenerateImage}
+    handleCompareImages={handleCompareImages}
     onReferenceScene={useInAnotherEpisode}
-  />;
+  /></>;
 
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-[#f5f2ed] font-sans text-[#552c24] overflow-hidden md:border-8 md:border-[#552c24]">
@@ -238,6 +240,7 @@ export default function App() {
           <section data-workspace-scroll className={`ori-history-content ${!viewingHistoryId?'ori-history-content-empty':''} flex-1 min-w-0 p-4 md:p-6 lg:p-10 flex flex-col gap-6 overflow-y-auto bg-[#ffffff]`}>
             <button disabled={locked} className="ori-history-back" onClick={()=>setViewingHistoryId(null)}>← 다른 기록 고르기</button>
             <div className="max-w-4xl w-full mx-auto flex flex-col gap-6">
+              <ImageChecks targetId={targetId}/>
               <HistoryContent key={viewingHistoryId}
                 onRebuildPrompts={()=>void rebuildHistoryPrompts()} busy={locked}
                 referenceSettings={referenceSettings()}
@@ -252,6 +255,7 @@ export default function App() {
                 sceneImages={sceneImages}
                 generatingImages={generatingImages}
                 handleGenerateImage={handleGenerateImage}
+    handleCompareImages={handleCompareImages}
                 onReferenceScene={useInAnotherEpisode}
               />
             </div>

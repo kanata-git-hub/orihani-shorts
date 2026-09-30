@@ -1,0 +1,28 @@
+export const IMAGE_MODELS = ['gemini-3.1-flash-image', 'gemini-3-pro-image'] as const;
+export type ImageModel = typeof IMAGE_MODELS[number];
+export type ImageReview = {
+  status: 'pass' | 'fail' | 'uncertain' | 'unavailable';
+  issues: { category: 'anatomy' | 'cast' | 'identity' | 'geometry' | 'start-state'; severity: 'error' | 'uncertain'; evidence: string }[];
+  error?: string;
+};
+export type ImageResult = {
+  model: string; providerModel?: string; inputHash?: string; elapsedMs?: number;
+  generationMs?: number; reviewMs?: number; usage?: unknown; reviewUsage?: unknown;
+  candidate?: string; result?: string; review?: ImageReview; error?: string;
+};
+export const isImageData = (v: unknown): v is string => typeof v === 'string' && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(v);
+export function readImageReview(raw: string): ImageReview {
+  const v = JSON.parse(raw);
+  if (!v || !Array.isArray(v.issues) || v.issues.length > 12) throw Error('이미지 검수 응답의 형식이 올바르지 않습니다.');
+  const categories = ['anatomy', 'cast', 'identity', 'geometry', 'start-state'];
+  for (const issue of v.issues) {
+    if (!issue || !categories.includes(issue.category) || !['error', 'uncertain'].includes(issue.severity) ||
+      typeof issue.evidence !== 'string' || !issue.evidence.trim() || issue.evidence.length > 1600) throw Error('이미지 검수 근거가 올바르지 않습니다.');
+  }
+  return { status: v.issues.some(i => i.severity === 'error') ? 'fail' : v.issues.length ? 'uncertain' : 'pass', issues: v.issues };
+}
+export function approvedImage(value: ImageResult): string | undefined {
+  // Missing or failed review must not silently replace a working scene image.
+  return value.review?.status === 'pass' && value.review.issues?.length === 0 && isImageData(value.result) ? value.result : undefined;
+}
+export const connectedAnatomyInstruction = `Physical continuity: each character is one connected body. When a prop hides the torso, keep visible feet/limbs directly at that body's occluding edge with coherent contact and scale; never put detached feet elsewhere on the floor. Foreground/midground labels describe framing, not permission to separate a character's parts. Multiple reference views depict the SAME individual, not extra cast members.`;

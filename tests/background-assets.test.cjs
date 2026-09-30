@@ -39,10 +39,10 @@ test('typed composition reaches image generation without changing legacy or manu
     {imageTitle:'two',imagePrompt:'Deok-i reaches',locationId:'gate',backgroundAsset:'none',sceneTransition:'reframe',shot},
     {imageTitle:'three',imagePrompt:'Deok-i in a new visual world',locationId:'gate',backgroundAsset:'none',sceneTransition:'new-scene',shot:{...shot,size:'extreme-wide'}},
   ]}));
-  const useMedia=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{get:async()=>({images:{one:png}})}},'../constants':{CHARACTERS:[{id:'deoki',name:'덕이',file:'duck.png',imgs:['front.png','side.png','back.png']} ]}});
+  const useMedia=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>({images:{one:png}})}},'../constants':{CHARACTERS:[{id:'deoki',name:'덕이',file:'duck.png',imgs:['front.png','side.png','back.png']} ]}});
   const api=useMedia.useMediaGeneration(()=>{},async()=>{},'record',()=>{},{},()=>{},{},'deoki');
   try{
-    global.fetch=async(url,options)=>{if(url==='/api/generate-image'){requests.push(JSON.parse(options.body));return Response.json({result:png});}return new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});};
+    global.fetch=async(url,options)=>{if(url==='/api/generate-image'){requests.push(JSON.parse(options.body));return Response.json({result:png,review:{status:'pass',issues:[]}});}return new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});};
     assert.equal(await api.handleGenerateImage('two',scenes[1].prompt,1,scenes),true);
     assert.match(requests.at(-1).parts.at(-1).text,/Shot size: close-up/);
     assert.match(requests.at(-1).parts.at(-1).text,/doctor outside crop/);
@@ -145,11 +145,11 @@ test('all three approved originals are real portrait PNG files',()=>{
 });
 test('generation sends the selected original alongside character sheets and fails before a paid call if missing',async()=>{
   const old=global.fetch,calls=[];
-  const useMedia=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{get:async()=>({images:{'Scene 1':png}})}},'../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'doctor.png',imgs:['front.png','side.png','back.png']}]}});
+  const useMedia=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>({images:{'Scene 1':png}})}},'../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'doctor.png',imgs:['front.png','side.png','back.png']}]}});
   const {handleGenerateImage}=useMedia.useMediaGeneration(()=>{},async()=>{},'record',()=>{},{},()=>{},{},'owonjang',{'Scene 2':'reception'});
   const scenes=[scene('탕비실'),scene('치료실',{title:'Scene 2'})];
   try{
-    global.fetch=async(url,options)=>{calls.push({url,body:options?.body});return url==='/api/generate-image'?Response.json({result:png}):new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});};
+    global.fetch=async(url,options)=>{calls.push({url,body:options?.body});return url==='/api/generate-image'?Response.json({result:png,review:{status:'pass',issues:[]}}):new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});};
     assert.equal(await handleGenerateImage('Scene 2','치료실',1,scenes),true);
     assert.ok(calls.some(c=>c.url==='/backgrounds/reception.png'));
     const parts=JSON.parse(calls.find(c=>c.url==='/api/generate-image').body).parts;
@@ -166,11 +166,11 @@ test('actual generation attaches the first same-room image instead of accumulati
   const old=global.fetch,calls=[],toasts=[];
   const drifted='data:image/png;base64,BBBB';
   let images={'Scene 1':png,'Scene 2':drifted};
-  const useMedia=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{get:async()=>({images})}},'../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'doctor.png',imgs:['front.png','side.png','back.png']}]}});
+  const useMedia=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>({images})}},'../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'doctor.png',imgs:['front.png','side.png','back.png']}]}});
   const {handleGenerateImage}=useMedia.useMediaGeneration(msg=>toasts.push(msg),async()=>{},'record',()=>{},{},()=>{},{},'owonjang');
   const scenes=[1,2,3,4].map(i=>scene('O-wonjang and Deok-i in the clinic office.',{title:`Scene ${i}`,backgroundAsset:'none',videoPrompt:'ENVIRONMENT: Warm clinic office.\nACTION: Look down.'}));
   try{
-    global.fetch=async(url,options)=>{calls.push({url,body:options?.body});return url==='/api/generate-image'?Response.json({result:png}):new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});};
+    global.fetch=async(url,options)=>{calls.push({url,body:options?.body});return url==='/api/generate-image'?Response.json({result:png,review:{status:'pass',issues:[]}}):new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});};
     for(const index of [1,2,3]){
       calls.length=0;
       assert.equal(await handleGenerateImage(scenes[index].title,scenes[index].prompt,index,scenes),true);
@@ -205,14 +205,14 @@ test('regenerating saved cuts keeps the room image but sends only current perfor
   const scenes=[originalPrompt,...currentPrompts].map((prompt,i)=>scene(prompt,{title:`Scene ${i+1}`,backgroundAsset:'none',videoPrompt:'ENVIRONMENT: Warm clinic office.'}));
   // Saved pre-fix plans have no locationId and can contain old poses and future outcomes.
   const plan=JSON.stringify({location:'원장실',scenario:'LATER_OUTCOME: a duck puts away the scale.',clips:scenes.map(s=>({imageTitle:s.title,imagePrompt:s.prompt,videoPrompt:s.videoPrompt,backgroundAsset:s.backgroundAsset}))});
-  const useMedia=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{get:async()=>({images:{'Scene 1':png}})}},'../constants':{CHARACTERS:[
+  const useMedia=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>({images:{'Scene 1':png}})}},'../constants':{CHARACTERS:[
     {id:'owonjang',name:'오원장',file:'doctor.png',imgs:['doctor-front.png','doctor-side.png','doctor-back.png']},
     {id:'deoki',name:'덕이',file:'duck.png',imgs:['duck-front.png','duck-side.png','duck-back.png']},
   ]}});
   const {handleGenerateImage}=useMedia.useMediaGeneration(()=>{},async()=>{},'saved-record',()=>{},{},()=>{},{},'owonjang');
   try{
     global.fetch=async(url,options)=>{
-      if(url==='/api/generate-image'){requests.push(JSON.parse(options.body));return Response.json({result:png});}
+      if(url==='/api/generate-image'){requests.push(JSON.parse(options.body));return Response.json({result:png,review:{status:'pass',issues:[]}});}
       return new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});
     };
     for(let i=1;i<scenes.length;i++){

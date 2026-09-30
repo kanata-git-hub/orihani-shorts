@@ -17,6 +17,7 @@ interface HistoryContentProps {
   generatingImages: Record<string, boolean>;
   
   handleGenerateImage: (sceneTitle: string, promptText: string, sceneIdx: number, allScenes: any[], fullPlanText?: string) => Promise<boolean>;
+  handleCompareImages?: (title:string, prompt:string, index:number, scenes:any[], plan?:string) => Promise<boolean>;
   onEdit:()=>void;
   onBusy:(v:boolean)=>void;
   draft?:DraftSummary;
@@ -35,7 +36,7 @@ export function HistoryContent({
   viewingScenes,
   sceneImages,
   generatingImages,
-  handleGenerateImage, onEdit, onBusy, draft, mediaReady, onReferenceScene,
+  handleGenerateImage, handleCompareImages, onEdit, onBusy, draft, mediaReady, onReferenceScene,
   referenceSettings, clipReferenceSettings, backgroundSettings, onRebuildPrompts, busy
 }: HistoryContentProps) {
   const [showRawPrompt, setShowRawPrompt] = useState(false);
@@ -221,6 +222,12 @@ export function HistoryContent({
                   {clip.title}
                 </div>
 
+                <p className="text-xs">이미지 생성 후 신체·인물 수·장면 상태를 자동 검수합니다. 이미지 1회와 텍스트 검수 1회 비용이 발생합니다.</p>
+                {handleCompareImages && <details className="ori-prompt-comparison">
+                  <summary>이미지 모델 비교</summary>
+                  <p>동일한 프롬프트와 참고 사진으로 Flash Image와 Pro Image를 각각 한 번 생성·검수합니다. 이미지 2회와 검수 2회 비용이 발생합니다. 기존 장면은 유지합니다.</p>
+                  <button type="button" disabled={Object.values(generatingImages).some(Boolean) || !clip.imagePrompt} onClick={() => void handleCompareImages(clip.imageTitle, clip.imagePrompt, idx, viewingScenes, result)}>현재 장면 두 이미지 모델 비교</button>
+                </details>}
                 {/* Image Generation Area */}
                 {!sceneImages[clip.imageTitle] ? (
                   <button 

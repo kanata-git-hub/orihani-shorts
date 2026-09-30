@@ -69,8 +69,8 @@ test('compiled scene reaches the actual image request without later-action text'
  const png='data:image/png;base64,AQID',calls=[];
  const scene=compileProductionPlan(housePlan()).clips[2];
  const {useMediaGeneration}=compile('src/hooks/useMediaGeneration.ts',{
-  'react':{useRef:v=>({current:v})},'../authFetch':{authFetch:async(url,opts)=>{calls.push(JSON.parse(opts.body));return Response.json({result:png});}},
-  '../utils/db':{db:{get:async()=>({images:{}})}},
+  'react':{useRef:v=>({current:v})},'../authFetch':{authFetch:async(url,opts)=>{calls.push(JSON.parse(opts.body));return Response.json({result:png,review:{status:'pass',issues:[]}});}},
+  '../utils/db':{db:{setImageChecks:async()=>{},get:async()=>({images:{}})}},
   '../constants':{CHARACTERS:[{id:'nurse',name:'소미',file:'somi',imgs:[png]}]},
  });
  const api=useMediaGeneration(()=>{},async()=>{},'new',()=>{},{},()=>{},{},'nurse');

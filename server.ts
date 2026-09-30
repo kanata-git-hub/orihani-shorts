@@ -15,6 +15,7 @@ import { readSourceEpisode, sourceConversionInstruction } from './src/sourceEpis
 import { SHOT_SIZES, SCENE_TRANSITIONS, shotConversionInstruction } from './src/shotDirection';
 import { episodePrompt } from './src/workflow/weekly';
 import { PROMPT_MODEL, propBibleSchema, frameSchema, productionConversionInstruction, compileProductionPlan, continuityReviewSchema, continuityReviewInstruction, readReviewIssues } from './src/productionContinuity';
+import { readImageRequest, generateReviewedImage } from './server/imageGeneration';
 dotenv.config({ override: true });
 
 async function startServer() {
@@ -260,49 +261,11 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
   });
 
   app.post("/api/generate-image", async (req, res) => {
-    const { parts } = req.body;
-    const maxRetries = 3;
-    let attempt = 0;
-
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-    while (attempt < maxRetries) {
-      try {
-        const response = await ai.models.generateContent({
-          model: "gemini-3.1-flash-image",
-          contents: { parts },
-          config: {
-            imageConfig: {
-              aspectRatio: "9:16",
-              imageSize: "1K",
-              addWatermark: false
-            } as any
-          }
-        });
-        
-        let imageUrl = "";
-        for (const part of response.candidates?.[0]?.content?.parts || []) {
-          if (part.inlineData) {
-            imageUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-            break;
-          }
-        }
-        
-        if (!imageUrl) throw new Error("No image generated");
-        res.json({ success: true, result: imageUrl });
-        return;
-      } catch (error: any) {
-        if (error?.status === 429) {
-          attempt++;
-          const waitTime = Math.pow(2, attempt) * 1000;
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        } else {
-          res.status(500).json({ error: error.message });
-          return;
-        }
-      }
-    }
-    res.status(429).json({ error: "Rate limit exceeded" });
+    let input;
+    try { input = readImageRequest(req.body); }
+    catch (error) { res.status(400).json({ error: (error as Error).message }); return; }
+    try { res.json(await generateReviewedImage(ai, input)); }
+    catch (error: any) { res.status(error?.status === 429 ? 429 : 502).json({ error: error.message || '이미지 생성에 실패했습니다.' }); }
   });
 
   if (process.env.NODE_ENV !== "production") {
