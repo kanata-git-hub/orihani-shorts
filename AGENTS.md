@@ -35,6 +35,51 @@ the speed of contact and settling. Do not use constant-speed sliding, repeated b
 full-clip slow motion or repeated idle blinks. A short 0.3-0.5 second settle can let a pose
 read without freezing the story. Avoid precision choreography the generator cannot express.
 
+## Behavioral appeal: let a desire move the body
+
+Start from what the character wants right now, not a list of cute gestures. Physical
+charm should look incidental to getting comfortable, playing, investigating, eating or
+staying close. The character is occupied by a real object or friend, not performing for
+the audience. Keep adult agency, original duck anatomy and recognizable personality;
+borrowing the observational appeal of an animal video does not turn the cast into pets.
+
+Before directing a movement, identify its visible trigger, object of attention, small
+choice and changed situation. Let eyes/head notice, the body commit, and weight settle
+with a slight natural lag where appropriate. Do not synchronize every body part or
+every character. Choose one main movement and one essential follow-through. A sit does
+not also need foot paddling, cheek inflation, a wiggle, a blink and a squeal. Do not make
+every shot a showcase for a different body part. Retain stillness that expresses focused
+anticipation or comfort, but do not pad an otherwise finished action to fill a clip.
+
+Each episode needs a different behavioral pleasure and a developing reason to watch.
+For example, seeking a particular friend's side, becoming absorbed in fragile play, or
+negotiating sleep and a snack offer different actions and choices. These are examples,
+not compulsory plots. Do not replace all action comedy with cuddles, all fantasy with
+quiet domestic scenes, or all endings with giving food. Keep a surreal device when it
+actually improves the visible behavior or payoff; remove it when it merely supplies an
+explanation. Ordinary behavior still needs an immediate attraction and an earned ending.
+
+Test the outline and each shot without dialogue: can a viewer tell what this character
+is trying to do, notice the small complication, and enjoy the chosen response? The
+movement must change something or reveal a preference; tactile choreography alone does
+not constitute four story beats. A quiet ending can be a voluntary return, a different
+way of playing, or a revealing compromise. Do not explain such a choice in a final line.
+
+Chemistry is reciprocal attention and adjustment, not compulsory touching. A companion
+notices what the other actually wants and makes a specific choice in response. Leave
+room for different physical rhythms: Deok-i commits eagerly and chooses his own place;
+O-wonjang can become unexpectedly absorbed and earnestly try again; Somi's economical
+composure may yield to comfort or appetite. They need not smile or speak together.
+Do not infantilize Deok-i, make Somi a caregiver in every story, or equate the doctor's
+leisure enthusiasm with clinical incompetence.
+
+In the body/character revision pass, remove any attractive-sounding micro-action that
+has no motive or cannot be seen in the chosen phone-size frame. In the production pass,
+protect the primary action and eliminate extra prop preparation from the three-second
+shot; show its setup earlier or start after an intelligible cut. Preserve who is awake,
+who initiates contact, who holds a prop and what supports each body. Script-only review
+does not verify animation quality, animal-like spontaneity or audience retention.
+
 ## Physical appeal and cinematography
 
 Preserve the original round proportions, bills, wings, short legs, costumes and surfaces.
