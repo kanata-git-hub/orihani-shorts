@@ -160,21 +160,57 @@ Never raise a score to meet the target, invent tiny meaningful score differences
 that ungenerated footage has passed. Fix the weak action or premise; disclose unresolved
 weaknesses instead of guaranteeing production quality or audience response.
 
-Run three real revision passes:
-1. Story: check the first-second attraction, each new beat, silent causality and ending.
-   Rewrite an unearned middle or outcome without forcing a twist into every quiet moment.
-2. Body and character: mentally isolate two seconds of the key sit, step, bite or lean.
-   Is its roundness, weight and timing actually directed and framed? Then check individual
-   habits, agency, reciprocity, and whether all endings or gestures have become identical.
-3. Production: check 4/4/3/4 action timing, original anatomy, contact/support, prop capacity,
-   start/end states, camera, references, one speaker, exact captions and silent audio.
-   Simplify surplus micro-actions rather than erasing the essential appealing movement.
+Review is a release gate, not a paragraph added after calling work complete.
+Before drafting, identify the latest user constraints and the specific unresolved failures
+of the previous version. Do not treat a format fix, another model, or continuity repair
+as evidence that an unchanged story has become more entertaining.
 
-Technical correctness is necessary but is not evidence of entertainment. A revision must
-change a visible action, performance, escalation or reward. Do not recommend paid remakes
-based on tiny subjective score differences, erase strong existing performances to fix
-continuity, or restart episodes outside the user's request. Preserve an authoritative
-finished screenplay during conversion and carry its essential physical acting through.
+Run three real revision passes on the entire package, fixing findings before the next pass:
+1. Story: state the first-second event, each shot's new information and its cause, and the
+   final payoff. Challenge the strongest reason to swipe away. An ordinary nod, preparation
+   without a visible event, repeated pursuit, or an ending that merely confirms the setup
+   requires an actual reason to watch or a rewrite. Do not force a twist into every quiet scene.
+2. Body and character: isolate two seconds of the key movement. Specify the desire,
+   silhouette, revealing angle, contact/weight, timing and one natural settling reaction.
+   Kindness and facial expressions do not substitute for bodily appeal. Check who chooses,
+   who responds and who benefits. Remove arbitrary micro-actions and repeated caretaker roles.
+3. Production: check 4/4/3/4 timing, anatomy, supports, prop capacity, cause across omitted
+   motion, start/end states, references, one speaker, exact captions and non-vocal silent audio.
+   Preserve essential acting when simplifying. Use the app parser on the actual final text.
+
+Then re-read the finished draft as a first-time viewer, without its planning explanation.
+If the final critique still says the hook is weak, the payoff is missing, a shot only repeats
+another, or the appeal depends entirely on hypothetical excellent animation, that is an
+OPEN ISSUE: revise before publication. Do not assign 8 merely to close the issue. A high
+average never cancels a low criterion. Record remaining implementation uncertainty honestly;
+unknown generated performance is distinct from a known script defect.
+
+Keep one version-specific review outside the five screenplay sections. It records all
+12 criteria with source quotes, reasons and limitations, four shot changes/causes/watch
+reasons, three revision passes, the strongest final objection and how it was addressed.
+Use `scripts/check-weekly-review.mjs` before saving a package under its final name:
+
+    node scripts/check-weekly-review.mjs screenplay.txt review.json
+
+The JSON schema and a worked example are in
+`docs/editorial-reviews/2026-10-02-10-12/review.json`. A SHA-256 fingerprint binds the review
+to the exact normalized source; subsequent story edits invalidate it. Missing evidence,
+any score below 8, open issues, stale review, wrong duration/reference or mismatched captions
+must stop release. Fix the source and re-review instead of deleting the failure. This
+mechanical check verifies completeness and consistency, NOT humor or audience performance.
+
+Archive the reviewed source/review beside each other with a unique revision path; the
+existing Google Doc remains the authoritative production document. After saving, read the
+Doc back and run the same check on the saved text. Confirm all five sections, 12 scenes,
+reference metadata and parent folder. Report complete only after readback succeeds. A
+process or instruction update is not itself proof that a screenplay passed the gate.
+
+Preserve the existing schedule and approved future premises. Do not start paid generation
+or recommend remaking a completed video from tiny subjective score differences. A proposed
+remake must identify a concrete visible improvement and its cost; production needs its own
+authorization. Do not restart episodes outside scope or silently rewrite approved stories
+when converting them to image/video prompts. Report the changed result briefly, with one
+canonical version. Do not ask the user to discover defects already identified in review.
 
 
 ## Duration and feasible action
