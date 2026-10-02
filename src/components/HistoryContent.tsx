@@ -9,6 +9,7 @@ import { extractOverview, extractClips } from '../utils/extractors';
 import { useToast } from '../hooks/useToast';
 import { videoPromptForCopy } from '../videoPrompt';
 import { IMAGE_GENERATION_NOTICE } from '../imageQuality';
+import { prepareSocialCaption } from '../utils/socialCaption';
 
 interface HistoryContentProps {
   viewingHistoryId: string | null;
@@ -61,6 +62,7 @@ export function HistoryContent({
   const result = viewingItem?.result || '';
   
   const overview = extractOverview(result);
+  const socialCaption = prepareSocialCaption(overview.instagramCaption, overview.hashtags);
   const clips = extractClips(result).map(clip=>({...clip,videoPrompt:videoPromptForCopy(clip.videoPrompt)}));
 
   const renderTabs = () => (
@@ -91,7 +93,7 @@ export function HistoryContent({
   };
 
   const handleCopyInstagram = () => {
-    const text = `${overview.instagramCaption}\n\n${(overview.hashtags || []).map((h: string) => `#${h}`).join(' ')}`;
+    const text = socialCaption.text;
     navigator.clipboard.writeText(text);
     setCopiedInstagram(true);
     showToast("인스타그램 내용 복사 완료!");
@@ -129,7 +131,7 @@ export function HistoryContent({
             </div>
           )}
 
-          {overview.instagramCaption && (
+          {socialCaption.text && (
             <div className="mt-4 p-4 bg-[#ffcd4a]/10 border-2 border-[#552c24]/20 rounded-md">
               <h4 className="text-sm font-bold text-[#552c24] mb-2 flex items-center justify-between">
                 📱 인스타그램 릴스 본문
@@ -142,10 +144,10 @@ export function HistoryContent({
                 </button>
               </h4>
               <div className="text-sm text-[#552c24] whitespace-pre-wrap mb-3">
-                {overview.instagramCaption}
+                {socialCaption.body}
               </div>
               <div className="text-sm font-medium text-blue-600 flex flex-wrap gap-1">
-                {overview.hashtags?.map((tag: string, i: number) => (
+                {socialCaption.hashtags.map((tag: string, i: number) => (
                   <span key={i}>#{tag}</span>
                 ))}
               </div>
