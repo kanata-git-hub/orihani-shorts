@@ -19,8 +19,10 @@ export function validateWeeklyReview(text, review) {
   const require = (test, message) => { if (!test) errors.push(message); };
   const nonempty = value => typeof value === 'string' && value.trim().length > 0;
   const source = normalize(text);
-  require(review?.version === 1, 'Unsupported review version.');
+  require(review?.version === 2, 'Unsupported review version.');
   require(review?.sourceSha256 === fingerprint(source), 'The screenplay changed after review; review this exact revision again.');
+  require(review?.evaluationMode === 'projected-finished', 'Review the likely finished film, not merely the screenplay intention.');
+  require(Array.isArray(review?.productionBasis) && review.productionBasis.length > 0 && review.productionBasis.every(b => nonempty(b.file) && nonempty(b.observation)), 'Ground the production assumption in observed samples or an explicitly unavailable baseline.');
   require(review?.scope === 'screenplay-only', 'Distinguish screenplay review from generated footage and audience results.');
   require(Array.isArray(review?.openIssues) && review.openIssues.length === 0, 'Unresolved issues prevent release.');
   const heads = [...source.matchAll(/^\[에피소드 (\d+)\] (\d+)화 ([^\n]+) \(하찮은 오리 일상\)$/gm)];
@@ -79,6 +81,7 @@ export function validateWeeklyReview(text, review) {
     require(!!r, prefix + 'Missing editorial review.');
     if (!r) return;
     require(Array.isArray(r.openIssues) && r.openIssues.length === 0, prefix + 'Unresolved editorial issue.');
+    require(r.screenTest && ['decisiveFrame', 'missingDetailTest', 'soundOffTest'].every(k => nonempty(r.screenTest[k])), prefix + 'Check the decisive screen image, imperfect detail and sound-off meaning.');
     const grades = r.criteria || [];
     require(grades.length === 12 && new Set(grades.map(g => g.id)).size === 12 && criteria.every(id => grades.some(g => g.id === id)), prefix + 'Review all twelve distinct criteria.');
     for (const g of grades) {

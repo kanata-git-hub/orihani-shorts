@@ -160,6 +160,32 @@ Never raise a score to meet the target, invent tiny meaningful score differences
 that ungenerated footage has passed. Fix the weak action or premise; disclose unresolved
 weaknesses instead of guaranteeing production quality or audience response.
 
+## Judge the likely finished film before releasing a script
+
+All twelve scores must judge the likely finished 15-second film using the existing
+production samples as the baseline, NOT ideal screenplay intent or imagined perfect
+animation. Reopen a previously passing review when this lens or the source changes.
+Read actual sample footage or clearly identify which prior observations support the
+assumption. Do not claim to have watched new footage, assessed audio, or measured success
+when only images or sampled frames are available.
+
+At outline, individual-shot and final-package stages, ask what a first-time phone viewer
+will actually SEE at the current level of staging, body animation, prop stability and
+editing. Record the decisive visible frame, whether the story survives imperfect micro-
+expressions/contact/cloth, and whether the cause and payoff remain clear with sound off.
+A beautifully worded intention earns no credit unless a legible action conveys it. Do
+not assume a tiny glance, a few-centimeter gap, precise catch, cloth squash, or obscured
+face will carry the entire joke or relationship. Increase meaningful pose/distance and
+framing contrast, expose the body, or use an intelligible cut; do not automatically add
+spectacle or remove the desired cute movement. Preserve already strong visible beats.
+
+If a projected finished-film criterion is below 8 or has a known unresolved defect,
+revise immediately and re-evaluate all affected criteria and connections before release.
+Do not wait for the user to ask for evaluation or another rewrite. Do not increase scores
+to satisfy the threshold. These remain subjective projections, not finished-film results,
+retention estimates or performance guarantees. When a baseline is unavailable, state that
+assumption in the review rather than fabricate observed capability.
+
 Review is a release gate, not a paragraph added after calling work complete.
 Before drafting, identify the latest user constraints and the specific unresolved failures
 of the previous version. Do not treat a format fix, another model, or continuity repair
@@ -193,7 +219,7 @@ Use `scripts/check-weekly-review.mjs` before saving a package under its final na
     node scripts/check-weekly-review.mjs screenplay.txt review.json
 
 The JSON schema and a worked example are in
-`docs/editorial-reviews/2026-10-02-10-12/review.json`. A SHA-256 fingerprint binds the review
+`docs/editorial-reviews/2026-10-02-10-12-screen/review.json`. A SHA-256 fingerprint binds the review
 to the exact normalized source; subsequent story edits invalidate it. Missing evidence,
 any score below 8, open issues, stale review, wrong duration/reference or mismatched captions
 must stop release. Fix the source and re-review instead of deleting the failure. This

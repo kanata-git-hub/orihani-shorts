@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fingerprint, validateWeeklyReview } from './check-weekly-review.mjs';
 
-const fixture = new URL('../docs/editorial-reviews/2026-10-02-10-12/', import.meta.url);
+const fixture = new URL('../docs/editorial-reviews/2026-10-02-10-12-screen/', import.meta.url);
 const text = readFileSync(new URL('screenplay.txt', fixture), 'utf8');
 const review = JSON.parse(readFileSync(new URL('review.json', fixture), 'utf8'));
 test('reviewed package is valid', () => assert.deepEqual(validateWeeklyReview(text, review), []));
@@ -40,4 +40,15 @@ test('review evidence must exist in the exact source', () => {
   const r = structuredClone(review);
   r.episodes[2].criteria[0].quote = 'A scene that does not exist.';
   assert.match(validateWeeklyReview(text, r).join('\n'), /needs source evidence/);
+});
+
+test('script intention alone cannot pass the finished-film review gate', () => {
+  const r = structuredClone(review);
+  r.evaluationMode = 'ideal-script';
+  r.productionBasis = [];
+  delete r.episodes[0].screenTest;
+  const errors = validateWeeklyReview(text, r).join('\n');
+  assert.match(errors, /likely finished film/);
+  assert.match(errors, /production assumption/);
+  assert.match(errors, /decisive screen image/);
 });
