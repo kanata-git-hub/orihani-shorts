@@ -1,6 +1,8 @@
 export const IMAGE_MODELS = ['gemini-3.1-flash-image', 'gemini-3-pro-image'] as const;
 export type ImageModel = typeof IMAGE_MODELS[number];
-export const MAX_IMAGE_EDITS = 1;
+export const MAX_IMAGE_EDITS = 3;
+export const MAX_IMAGE_ATTEMPTS = 1 + MAX_IMAGE_EDITS;
+export const IMAGE_GENERATION_NOTICE = `최초 생성 후 Flash가 검수하고, 명확한 오류가 있으면 직전 그림의 해당 부분을 최대 ${MAX_IMAGE_EDITS}회 수정합니다. 통과 즉시 종료하며, 장면당 최대 이미지 ${MAX_IMAGE_ATTEMPTS}회·검수 ${MAX_IMAGE_ATTEMPTS}회 비용이 발생합니다. 통과한 그림만 적용합니다.`;
 export type ImageOperation = 'generate' | 'compare' | 'review' | 'repair';
 export type ImageReview = {
   status: 'pass' | 'fail' | 'uncertain' | 'unavailable';

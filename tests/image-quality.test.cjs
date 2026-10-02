@@ -70,7 +70,7 @@ function sequenceAI(reviews,editError) {
   calls.push(r);
   if(r.model.includes('image')){
    imageCalls++;if(editError&&imageCalls===2)throw editError;
-   return {modelVersion:r.model,candidates:[{content:{parts:[{inlineData:{mimeType:'image/png',data:imageCalls===1?'BAUG':'BwgJ'}}]}}]};
+   return {modelVersion:r.model,candidates:[{content:{parts:[{inlineData:{mimeType:'image/png',data:['BAUG','BwgJ','CgsM','DQ4P'][imageCalls-1]}}]}}]};
   }
   const value=reviews.shift();if(value instanceof Error)throw value;return {text:value,modelVersion:r.model};
  }}};
@@ -84,11 +84,37 @@ test('normal image flow makes one targeted Flash edit and rechecks it before app
  assert.match(ai.calls[3].contents.parts.at(-4).text,/PRE-EDIT/);
  assert.deepEqual(ai.calls[3].contents.parts.at(-1),{inlineData:{mimeType:'image/png',data:'BwgJ'}});
 });
-test('failed repair stops at the cap; network/uncertain checks never escalate to Pro or retry',async()=>{
- for(const checks of [[badReview,badReview],[badReview,new Error('429 quota')]]){
-  const ai=sequenceAI(checks),r=await generateReviewedImage(ai,readImageRequest({parts}));
-  assert.equal(ai.calls.length,4);assert.equal(r.repairCount,1);assert.equal(approvedImage(r),undefined);assert.ok(r.candidate);
+test('four failed candidates stop at the hard image-call cap and keep every candidate',async()=>{
+ const ai=sequenceAI(Array(4).fill(badReview)),r=await generateReviewedImage(ai,readImageRequest({parts}));
+ assert.equal(ai.calls.length,8);assert.equal(r.repairCount,3);assert.equal(r.maxRepairs,3);
+ assert.equal(r.attempts.length,4);assert.equal(approvedImage(r),undefined);assert.equal(r.candidate,'data:image/png;base64,DQ4P');
+ assert.ok(ai.calls.every(c=>['gemini-3.1-flash-image','gemini-3.8-flash'].includes(c.model)));
+});
+test('success after any repair stops immediately and each edit targets only the latest image and findings',async()=>{
+ const fixes=['Remove the extra foot.','Restore the original glasses.','Close the starting-state door.'];
+ const checks=fixes.map((fix,i)=>JSON.stringify({issues:[{category:['anatomy','identity','start-state'][i],severity:'error',evidence:`visible error ${i+1}`,fix}]}));
+ const payloads=['BAUG','BwgJ','CgsM','DQ4P'];
+ for(let edits=0;edits<=3;edits++){
+  const ai=sequenceAI([...checks.slice(0,edits),'{"issues":[]}']);
+  const r=await generateReviewedImage(ai,readImageRequest({parts}));
+  assert.equal(ai.calls.length,2*(edits+1));assert.equal(r.repairCount,edits);
+  assert.equal(approvedImage(r),`data:image/png;base64,${payloads[edits]}`);
+  for(let edit=1;edit<=edits;edit++){
+   const request=ai.calls[edit*2].contents.parts;
+   assert.deepEqual(request.slice(0,parts.length),parts);
+   assert.deepEqual(request.at(-2),{inlineData:{mimeType:'image/png',data:payloads[edit-1]}});
+   assert.ok(request.at(-1).text.includes(fixes[edit-1]));
+   for(const other of fixes.filter(f=>f!==fixes[edit-1]))assert.ok(!request.at(-1).text.includes(other));
+   const review=ai.calls[edit*2+1].contents.parts;
+   assert.deepEqual(review.at(-3),{inlineData:{mimeType:'image/png',data:payloads[edit-1]}});
+   assert.deepEqual(review.at(-1),{inlineData:{mimeType:'image/png',data:payloads[edit]}});
+  }
  }
+});
+test('network and uncertain checks stop early without escalating or retrying paid requests',async()=>{
+ const unavailable=sequenceAI([badReview,new Error('429 quota')]);
+ const stopped=await generateReviewedImage(unavailable,readImageRequest({parts}));
+ assert.equal(unavailable.calls.length,4);assert.equal(stopped.repairCount,1);assert.equal(approvedImage(stopped),undefined);
  const ai=sequenceAI([badReview],new Error('503'));const r=await generateReviewedImage(ai,readImageRequest({parts}));
  assert.equal(ai.calls.length,3);assert.equal(r.candidate,'data:image/png;base64,BAUG');assert.match(r.repairError,/503/);assert.equal(approvedImage(r),undefined);
  for(const check of [new Error('429'),JSON.stringify({issues:[{category:'geometry',severity:'uncertain',evidence:'가려진 문',fix:'Inspect manually.'}]})]){
@@ -105,6 +131,10 @@ test('existing image recheck costs only one Flash call and no image generation',
 test('existing image repair is bounded and never discards original references to make room',async()=>{
  const ai=sequenceAI([badReview,'{"issues":[]}']);const r=await generateReviewedImage(ai,readImageRequest({parts,operation:'repair',candidate:png}));
  assert.equal(ai.calls.length,3);assert.equal(r.repairCount,1);assert.equal(r.attempts[0].candidate,png);assert.equal(r.review.status,'pass');
+ const capped=sequenceAI(Array(4).fill(badReview));
+ const failed=await generateReviewedImage(capped,readImageRequest({parts,operation:'repair',candidate:png}));
+ assert.equal(capped.calls.length,7);assert.equal(failed.repairCount,3);assert.equal(failed.attempts.length,4);
+ assert.equal(failed.attempts[0].candidate,png);assert.equal(approvedImage(failed),undefined);
  const all=[{text:'original refs'},...Array(14).fill(parts[1])],b=sequenceAI([badReview]);
  const held=await generateReviewedImage(b,readImageRequest({parts:all,operation:'repair',candidate:png}));
  assert.equal(b.calls.length,1);assert.equal(held.repairCount,0);assert.match(held.repairError,/14/);assert.equal(approvedImage(held),undefined);

@@ -77,7 +77,8 @@ export async function generateReviewedImage(ai: any, input: ReturnType<typeof re
   attempts.push({ candidate, model, providerModel, usage, generationMs, ...await inspect(ai, input.parts, candidate) });
   let repairCount = 0, repairError: string | undefined;
   const mayRepair = input.operation === 'generate' || input.operation === 'repair';
-  // No Pro fallback, no network retries. One targeted edit at most, only for a concrete failure.
+  // No Pro fallback or network retries. Edit the latest candidate only for a concrete failure.
+  // Stop on the first pass; a new image has at most three edits (four image calls total).
   while (mayRepair && attempts.at(-1)!.review.status === 'fail' && repairCount < MAX_IMAGE_EDITS) {
     if (input.referenceCount >= 14) { repairError = '참고 사진이 14장이어서 수정할 그림을 추가할 수 없습니다. 불필요한 참고 사진을 줄인 뒤 다시 시도해주세요.'; break; }
     const previous = attempts.at(-1)!;
@@ -88,12 +89,12 @@ export async function generateReviewedImage(ai: any, input: ReturnType<typeof re
       const response = await ai.models.generateContent({ model: IMAGE_MODELS[0], contents: { parts: [
         ...input.parts,
         { text: 'EDIT TARGET: the next image is the existing shot to correct, not another reference.' }, imagePart(previous.candidate),
-        { text: `Make a targeted edit to the EDIT TARGET. Earlier last-image/anchor pointers refer only to the preceding reference sequence; the final attached image here is the EDIT TARGET. Preserve its camera, framing, lighting, character identities, poses and all correct prop parts. Fix ONLY these visually verified discrepancies against the current START-frame specification:\n${JSON.stringify(fixes)}\nDo not advance the story, redesign the set or reproduce an old reference pose. Keep every body connected with the original limb count. Return one corrected image, no captions or diagrams.` },
+        { text: `Make a targeted edit to the EDIT TARGET. Earlier last-image/anchor pointers refer only to the preceding reference sequence; the final attached image here is the EDIT TARGET. Preserve its camera, framing, lighting, character identities and all correct poses and prop parts. Change a pose or prop state only when required by a correction below. Fix ONLY these visually verified discrepancies against the current START-frame specification:\n${JSON.stringify(fixes)}\nDo not advance the story, redesign the set or reproduce an old reference pose. Keep every body connected with the original limb count. Return one corrected image, no captions or diagrams.` },
       ] }, config: imageConfig });
       candidate = responseImage(response); model = IMAGE_MODELS[0];
       attempts.push({ candidate, model, providerModel: response.modelVersion, usage: response.usageMetadata,
         generationMs: Date.now() - t, ...await inspect(ai, input.parts, candidate, previous.candidate) });
-    } catch (error) { repairError = '한 번의 이미지 수정에 실패했습니다. ' + (error as Error).message; break; }
+    } catch (error) { repairError = `${repairCount}차 이미지 수정 요청에 실패해 중단했습니다. ` + (error as Error).message; break; }
   }
   const final = attempts.at(-1)!;
   return { model: final.model, providerModel: final.providerModel, inputHash, operation: input.operation,
