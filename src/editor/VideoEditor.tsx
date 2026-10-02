@@ -60,7 +60,7 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
   const loadDraft = (draft: Draft) => {
     const restored = restoreDraft(draft);
     setD(restored); setStage(draftStage(restored)); setRaw(''); setConsent(false);
-    setMessage(`저장된 편집을 복원했습니다. ${draftProgress(summarizeDraft(restored)).action}${restored !== draft ? ' · 깨질 수 있는 문자를 정리했습니다. 기존 원문과 완성 파일은 보관했습니다.' : ''}`);
+    setMessage(`저장된 편집을 복원했습니다. ${draftProgress(summarizeDraft(restored)).action}${restored !== draft ? ' · 자막 표시를 정리했습니다. 기존 원문과 완성 파일은 보관했습니다.' : ''}`);
   };
   const saver = useRef<ReturnType<typeof draftWriter<Draft>> | null>(null);
   if(!saver.current)saver.current=draftWriter<Draft>(async snapshot=>{

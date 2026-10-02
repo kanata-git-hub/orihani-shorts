@@ -1,11 +1,11 @@
 import type { VoiceSegment } from './speech';
 import { cleanVideoText } from './text';
-import { normalizeScriptTable } from './script';
+import { normalizeScriptTable, isCaptionPlaceholder } from './script';
 export type Caption = { start: number; end: number; text: string; source?: 'narration' | 'dialogue' | 'screen'; review?: string };
 export type EditPlan = { duration: 5 | 15; title: string; narration: string; thumbnail: string; captions: Caption[]; originalVolume: number; voiceVolume: number; voiceSpeed: number; voiceSegments?: VoiceSegment[]; dialogueRanges?: {start:number;end:number}[]; importWarning?: string };
 export const defaultPlan = (): EditPlan => ({ duration: 5, title: '', narration: '', thumbnail: '', captions: [], originalVolume: 0.2, voiceVolume: 1, voiceSpeed: 1 });
 export function cleanPlanText(p: EditPlan): EditPlan {
-  return { ...p, title: cleanVideoText(p.title), narration: cleanVideoText(p.narration), thumbnail: cleanVideoText(p.thumbnail), captions: p.captions.map(c => ({ ...c, text: cleanVideoText(c.text) })).filter((c, i) => c.text || !p.captions[i].text.trim()) };
+  return { ...p, title: cleanVideoText(p.title), narration: cleanVideoText(p.narration), thumbnail: cleanVideoText(p.thumbnail), captions: p.captions.map(c => ({ ...c, text: cleanVideoText(c.text) })).filter((c, i) => !isCaptionPlaceholder(c.text) && (c.text || !p.captions[i].text.trim())) };
 }
 export function validatePlan(p: EditPlan) {
   if (!p || ![5, 15].includes(p.duration)) throw Error('영상 길이를 확인해주세요.');
