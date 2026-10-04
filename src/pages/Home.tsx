@@ -12,7 +12,8 @@ import { recordDraftId, recordProgress } from '../workflow/progress';
 import { VideoEditor } from '../editor/VideoEditor';
 import { Sparkles, Clapperboard, AlertCircle } from 'lucide-react';
 import { CHARACTERS } from '../constants';
-import { extractScenes } from '../utils/extractors';
+import { extractScenes, extractOverview } from '../utils/extractors';
+import { prepareSocialCaption } from '../utils/socialCaption';
 
 import { Header } from '../components/Header';
 import { WorkboardSidebar } from '../components/WorkboardSidebar';
@@ -128,6 +129,8 @@ export default function App() {
   const resumeEditor=(id:string)=>{setResumeId(id);setView('editor');remember({kind:'editor',id});};
   const openRecordEditor=(item:HistoryItem)=>{try{if(document.documentElement.dataset.oriEditorReady!=='1')throw Error('편집 화면을 준비 중입니다. 잠시 후 다시 눌러주세요.');setResumeId(undefined);window.dispatchEvent(new CustomEvent('orihani-editor-import',{detail:{version:1,key:item.editorKey||'history-'+item.id,episode:editorEpisode(item)}}));}catch(e){showToast((e as Error).message,'error');}};
   const importWork=async(file:File)=>{try{if(file.size>MAX_PACKAGE_BYTES)throw Error('작업 파일은 48MB 이하로 넣어주세요.');const pack=readPackage(await file.text());const item=importIdentity(pack.item,history);const importedRefs=Object.fromEntries(Object.entries(pack.clipReferences||{}).map(([title,ref])=>[title,ref.sourceId===pack.item.id?{...ref,sourceId:item.id}:ref]));await db.set(item.id,{images:pack.images,...(pack.sceneReference?{sceneReference:pack.sceneReference}:{}),clipReferences:importedRefs});saveHistory(item);selectHistory(item.id);showToast('기획·사진·대본을 가져왔습니다.');}catch(e){showToast((e as Error).message,'error');}};
+  const currentOverview = extractOverview(result);
+  const reelsCaption = prepareSocialCaption(currentOverview.instagramCaption, currentOverview.hashtags).text;
   const currentScenes = extractScenes(result);
   const viewingScenes = viewingHistoryId ? extractScenes(history.find(h => h.id === viewingHistoryId)?.result || '') : [];
 
@@ -228,7 +231,7 @@ export default function App() {
           <section data-workspace-scroll className="flex-1 min-w-0 p-4 md:p-6 lg:p-10 flex flex-col gap-6 overflow-y-auto bg-[#ffffff]">
             <div className="max-w-4xl w-full mx-auto flex flex-col gap-6">
               {view === 'prompts' && !isGenerating && result ? (
-                <WorkspaceTabs key={currentWorkboardId} label="시각화 작업" defaultTab="clips" tabs={[
+                <WorkspaceTabs reelsCaption={reelsCaption} key={currentWorkboardId} label="시각화 작업" defaultTab="clips" tabs={[
                   { id: 'reference', label: '다른 화 참고', content: referenceSettings() },
                   { id: 'props', label: '장면별 소품', content: clipReferenceSettings() },
                   { id: 'background', label: '배경 에셋', content: backgroundSettings(result) },

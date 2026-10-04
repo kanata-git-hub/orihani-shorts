@@ -5,13 +5,10 @@
   gap: 18px;
 }
 
-.ori-workspace-tablist {
+.ori-workspace-menu {
   position: sticky;
   top: 0;
   z-index: 5;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
   flex-shrink: 0;
   padding: 8px;
   background: #fff;
@@ -19,6 +16,36 @@
   border-radius: 14px;
   box-shadow: 0 3px 10px #552c2410;
 }
+
+.ori-workspace-tablist {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.ori-workspace-copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #552c24;
+  border-radius: 9px;
+  background: #ffcd4a;
+  color: #552c24;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.ori-workspace-copy svg { flex-shrink: 0; }
+.ori-workspace-copy:active:not(:disabled) { background: #edb62e; }
+.ori-workspace-copy:disabled { opacity: .45; cursor: default; }
+.ori-workspace-copy[data-copy-state="error"] { background: #fff0ed; border-color: #b94330; }
 
 .ori-workspace-tablist-five {
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -53,6 +80,7 @@
 }
 
 .ori-workspace-tablist button:focus-visible,
+.ori-workspace-copy:focus-visible,
 .ori-workspace-panel:focus-visible {
   outline: 3px solid #b88649;
   outline-offset: 2px;
