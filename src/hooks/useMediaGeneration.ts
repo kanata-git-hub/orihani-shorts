@@ -1,4 +1,5 @@
 import { authFetch } from '../authFetch';
+import { readApiResponse } from '../utils/apiResponse';
 import { useRef } from 'react';
 import { db } from '../utils/db';
 import { CHARACTERS } from "../constants";
@@ -7,7 +8,7 @@ import { BackgroundChoices, resolveBackground, backgroundInstruction, mayUsePrev
 import { readSceneReference, sceneReferenceInstruction, readClipReferences, clipReferenceInstruction } from '../sceneReference';
 import { readReferencePlan, referenceSources, plannedReferenceLabel, plannedReferenceInstruction } from '../referencePlan';
 import { shotDirectionInstruction } from '../shotDirection';
-import { IMAGE_MODELS, approvedImage, connectedAnatomyInstruction, type ImageResult, type ImageOperation } from '../imageQuality';
+import { IMAGE_MODELS, isImageData, approvedImage, connectedAnatomyInstruction, type ImageResult, type ImageOperation } from '../imageQuality';
 
 
 export function useMediaGeneration(
@@ -175,10 +176,21 @@ ${promptText}`;
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ parts, imageModel, operation, ...(candidate ? {candidate} : {}) }),
           });
-          const data = await response.json();
-          if (!response.ok) throw Error(data.error || '이미지 생성에 실패했습니다.');
+          const data = await readApiResponse(response, '이미지');
+          const returnedImage = data.candidate || approvedImage(data);
+          if (!isImageData(returnedImage)) throw Error('이미지 응답에 그림이 없습니다. 기존 그림은 유지됩니다.');
+          data.candidate = returnedImage;
           return data as ImageResult;
-        } catch (error) { return { model: imageModel, error: (error as Error).message }; }
+        } catch (error) {
+          const message = (error as Error).message;
+          const priorRow = savedMedia?.imageChecks?.[sceneTitle]?.rows?.find((row: ImageResult) => candidate ? row.candidate === candidate : row.model === imageModel);
+          const retained = candidate || priorRow?.candidate;
+          const explanation = candidate ? message : `새 그림을 받지 못해 이전 그림을 보관했습니다. ${message}`;
+          // A failed request must never delete an existing paid image or its attempt history.
+          return isImageData(retained) ? { ...priorRow, model: priorRow?.model || 'existing-image', candidate: retained, result: undefined,
+            error: explanation, review: { status: 'unavailable' as const, issues: [], error: explanation } }
+            : { model: imageModel, error: message };
+        }
       }));
       if (targetId) {
         const prior = savedMedia?.imageChecks?.[sceneTitle];
@@ -187,15 +199,24 @@ ${promptText}`;
         await db.setImageChecks(targetId, sceneTitle, { mode: matched ? prior.mode : compare ? 'comparison' : 'generation', createdAt: Date.now(), rows: reportRows });
       }
       if (operation === 'review') {
-        showToast('Flash 검수가 끝났습니다. 결과에서 지적 내용을 확인해주세요.');
-        return !!rows[0].candidate;
+        const row = rows[0];
+        showToast(row.review?.status === 'unavailable' ? '검수가 완료되지 않아 그림을 보관했습니다. 결과에서 바로 확인·사용할 수 있습니다.'
+          : row.review?.status === 'pass' ? '검수를 통과했습니다. 결과의 ‘이 그림 장면에 적용’을 눌러 사용하세요.'
+          : '검수 결과와 그림을 확인해주세요.');
+        return !!row.candidate && row.review?.status !== 'unavailable';
       }
       if (compare) {
         showToast('이미지 비교 결과를 확인해주세요. 기존 장면은 바꾸지 않았습니다.');
         return rows.every(row => !!row.candidate);
       }
       const imageUrl = approvedImage(rows[0]);
-      if (!imageUrl) throw Error(rows[0].error || '이미지 검수를 통과하지 못했습니다. 이미지 검수·비교 결과에서 그림과 이유를 확인해주세요.');
+      if (!imageUrl) {
+        if (isImageData(rows[0].candidate)) {
+          showToast('생성된 그림을 결과에 보관했습니다. 그림을 확인하고 직접 적용하거나 검수만 다시 실행할 수 있습니다.');
+          return false;
+        }
+        throw Error(rows[0].error || '이미지 결과를 받지 못했습니다. 다시 시도해주세요.');
+      }
       const newImages={...savedImages,[sceneTitle]:imageUrl};
       if(targetId)await saveMediaToDB(targetId,newImages);
       if(targetRef.current===targetId)setSceneImages(newImages);
@@ -213,7 +234,7 @@ ${promptText}`;
           "error",
         );
       } else {
-        showToast("Failed: " + errMsg, "error");
+        showToast(errMsg, "error");
       }
       return false;
     } finally {
@@ -226,5 +247,17 @@ ${promptText}`;
     handleGenerateImage(title, prompt, index, scenes, plan, 'compare');
   const handleReviewImage = (title: string, prompt: string, index: number, scenes: any[], plan: string, candidate: string, repair: boolean) =>
     handleGenerateImage(title, prompt, index, scenes, plan, repair ? 'repair' : 'review', candidate);
-  return { handleGenerateImage, handleCompareImages, handleReviewImage };
+  const handleApplyImage = async (title: string, candidate: string) => {
+    if (generatingRef.current || !targetId || !isImageData(candidate)) return false;
+    generatingRef.current = true;
+    setGeneratingImages(prev => ({ ...prev, [title]: true }));
+    try {
+      await saveMediaToDB(targetId, { [title]: candidate });
+      if (targetRef.current === targetId) setSceneImages(prev => ({ ...prev, [title]: candidate }));
+      showToast('확인한 그림을 장면에 적용했습니다.');
+      return true;
+    } catch { showToast('그림을 저장하지 못했습니다. 결과에서 다운로드한 뒤 저장 공간을 확인해주세요.', 'error'); return false; }
+    finally { generatingRef.current = false; setGeneratingImages(prev => ({ ...prev, [title]: false })); }
+  };
+  return { handleGenerateImage, handleCompareImages, handleReviewImage, handleApplyImage };
 }
