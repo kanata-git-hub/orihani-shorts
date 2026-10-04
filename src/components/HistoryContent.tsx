@@ -101,7 +101,7 @@ export function HistoryContent({
   };
 
   return (
-    <WorkspaceTabs label="기록 작업" defaultTab="content" tabs={[
+    <WorkspaceTabs reelsCaption={socialCaption.text} label="기록 작업" defaultTab="content" tabs={[
       { id: 'reference', label: '다른 화 참고', content: referenceSettings },
       { id: 'props', label: '장면별 소품', content: clipReferenceSettings },
       { id: 'background', label: '배경 에셋', content: backgroundSettings },
