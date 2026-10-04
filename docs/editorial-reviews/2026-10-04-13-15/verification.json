@@ -1,0 +1,38 @@
+{
+  "documentUrl": "https://docs.google.com/document/d/1dOQYUc7mnxrsoUpYE-sK1myRiJNxkDOnOd8PqXLZf3s/edit",
+  "sourceSha256": "663200e2af9ea7573b5ab06006b4c707e39302632796f4f07cb6acbbcf279da3",
+  "checkedSource": "Google Docs native text readback",
+  "checkWeeklyReview": "PASS",
+  "appParser": {
+    "episodes": [
+      13,
+      14,
+      15
+    ],
+    "durations": [
+      15,
+      15,
+      15
+    ],
+    "referencesPerEpisode": [
+      4,
+      4,
+      4
+    ],
+    "characters": [
+      [
+        "nurse",
+        "deoki"
+      ],
+      [
+        "nurse"
+      ],
+      [
+        "owonjang",
+        "deoki"
+      ]
+    ]
+  },
+  "nativeHeadings": 18,
+  "publication": "Reviewed under a staging title before final folder publication. No video generation or posting."
+}
