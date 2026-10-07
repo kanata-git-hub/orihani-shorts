@@ -11,69 +11,85 @@ Do not burn an episode title or thumbnail slogan into the video. Upload titles r
 metadata. Include exact Korean dialogue captions for editing at the actual speech times;
 silent-scene markers are neither displayed nor spoken. Generate clean start-frame images.
 
-## Opening rule: a compelling first frame, a major change within three seconds
+## Opening and story standard: immediate interest, earned anticipation and character payoff
 
-This opening rule replaces the older first-second-motion / four-second-change threshold.
-The user reports that higher-view examples combine an interesting opening still with a
-large visible change within three seconds. Use that pattern as this series' production
-standard, not as a proven platform ranking formula or a guarantee of views.
+Updated 2026-10-08 after the supplied ladybug episode and the user's report of reposts
+and new followers. This replaces the compulsory major-change-by-three-seconds rule.
+Keep the opening image immediately interesting and bring change early, but judge whether
+each moment earns attention instead of treating a timestamp as a universal pass/fail gate.
 
-Pass TWO independent gates before writing the rest of an episode:
-1. Freeze frame zero at phone size. The image itself must contain an intriguing event,
-   incongruous relationship, unusual scale, or an already-developing consequence. The
-   viewer should immediately wonder what is happening or what will happen next. A cute
-   neutral pose, ordinary walk, empty room, or caption promising later fun is insufficient.
-2. By 3.0 seconds, show a substantially different, clearly readable situation: a reveal,
-   arrival, transformation of the surroundings, reversal, or physical consequence of
-   the opening action. Show the changed state by the deadline, not merely its preparation.
-   Moving limbs, swaying cloth, zooming, shaking the camera, or cutting without a new fact
-   do not pass. Compare the zero-second and three-second images without sound or captions.
+Frame zero must show an understandable problem, desire, incongruity or developing event.
+The main character, relevant object and their relationship should read at phone size
+without an introduction, captions or knowledge of previous episodes. A viewer should know
+what outcome to anticipate. A pretty neutral pose or a promise of later fun is insufficient.
 
-Start inside the event; do not add a separate teaser or wait until the second four-second
-clip for the first payoff. The first frame may show a beam, an opening burst or a tilted
-object in mid-action. It must retain room for the planned escalation or reveal; do not
-draw the final state into the start image. A reveal through reframing is valid when it
-exposes a meaningful result, not when only the camera position changes.
+Two opening approaches are valid:
+- Immediate event: a large reveal or consequence arrives within roughly three seconds,
+  as in the supplied beam-to-UFO and cola-to-wave examples. Preserve this strength when
+  it serves the story; do not delay an already effective event.
+- Earned anticipation: the opening already poses a specific question and the character
+  visibly attempts something with enjoyable, motivated acting. The major change may
+  arrive later, as the ladybug takes off at about 4.3 seconds. The approach, timing and
+  changing distance must themselves be engaging; mere preparation or idle cuteness is
+  not an exception. Do not replace the old three-second deadline with a five-second one.
 
-The supplied examples show a green beam followed by a UFO arriving at about two seconds;
-an alarm-related blast followed by the exposed wall and character reaction; and an already
-spraying cola can becoming a huge wave with Deok-i riding it at about two seconds. These
-are observed visual sequences from supplied five-second samples. The user's view ranking
-is reported, not independently verified; do not infer Reel retention or causal lift.
+At the three-second review point, ask what the viewer is waiting to discover, how the
+action has progressed, and what was enjoyable to watch so far. A substantial changed
+state can answer those questions, but is not mandatory if the attempt already does.
+Shorten or rewrite anticipation that has no concrete expectation, visible progress or
+physical appeal. A camera move, repeated blink or explanatory caption cannot supply them.
 
-Keep the imaginative scale that makes the situation interesting. Ordinary desires may
-have huge, surreal comic consequences. Do not shrink an exciting premise into quiet
-domestic gestures to make it cute. Equally, do not attach unrelated explosions: make the
-change a readable consequence of what the character does, wants, or encounters.
+Use the ladybug episode as a strong story reference: a readable catching problem, Deok-i's
+earnest approach while O-wonjang peeks from behind, an airborne complication, then the
+would-be catchers sheltering together inside the box while the bug remains outside.
+Its useful principles are clear stakes, cute behavior during the attempt, an expectation
+being overturned and an ending image that recalls the original goal. Do not copy its
+bug, box, hiding, fearful roles or failure ending into every episode. A surprising
+success, revealing choice or shared game can provide an equally specific payoff.
 
-Cuteness must survive every stage: the anticipation, big change, recovery, response and
-choice. Use recognizable faces, round silhouettes, short feet, readable balance and
-character-specific responses. A big event alone does not create fandom. Let Deok-i,
-O-wonjang or Somi turn its consequence into an endearing choice or interaction. Preserve
-original anatomy, adult agency, medical trust and the other identity constraints below.
+Every stage of a main action should retain the characters' appeal: commitment, short
+steps, balance, retreat, recovery and the response to a friend. Preserve recognizable
+faces, round proportions, original anatomy, adult agency and medical trust. Let the
+same event expose distinct wants and choices. Friendship should be visible in reciprocal
+behavior, not added as an unrelated hug or generic smile after the joke.
 
-After the first three seconds, each later shot must add a new consequence, attempt,
-reversal or character choice. Do not spend the remaining twelve seconds reacting to the
-same reveal. End with a fresh comic or emotional payoff that recalls the event and makes
-these particular characters worth revisiting. Large movement in every second is not
-required; a pause must still carry anticipation, expression or a reward.
+Keep consequences developing after the first change. A useful flexible arc is a legible
+problem/desire, a cute self-directed attempt, a complication or changed expectation, and
+a memorable character-specific outcome. Each shot must add an attempt, result, choice
+or meaningful response. Vary who initiates, who responds and who benefits; do not make
+every episode a frightened duo, a caretaker and child, or a compulsory reversal.
+The ending should make the opening newly funny or resolve its desire in a distinctive
+way. Let it read, then finish without explaining the joke or padding the completed action.
 
-Keep the existing 15-second / 4-4-3-4 format unless the user changes it. The three-second
-deadline is inside clip one, not a request for a new clip boundary or a shorter episode.
-A useful default is: 0 seconds an intriguing image; 0-3 a major changed state; 3-4 a
-readable response or next desire; 4-8 a new attempt/consequence; 8-11 an escalation or
-reveal; 11-15 the character-specific payoff. Vary the story rather than copying this as
-four interchangeable gags.
+Large fantasy consequences remain welcome when causally connected to the desire or
+event. Quiet sound and brief pauses are also allowed when anticipation, acting or a payoff
+remains visible. Do not equate cuteness with calm inactivity, or retention with constant
+large movement, explosions and fast cuts. Keep both the event and the character legible.
 
-At outline, script, start-image and finished-video review, separately record:
-- What is interesting in the opening still without explanation?
-- What concrete fact/state is different by 3.0 seconds, and what causes it?
-- What visible cute behavior and character choice accompany that change?
-- What new reason to watch remains after the first reveal, and what is the final payoff?
-Both opening gates must pass; a strong ending or a subjective score cannot waive either.
-Keep review notes outside the five screenplay sections and out of viewer-facing captions.
-An ungenerated action is a plan, not a verified video result. Do not automatically remake
-or replace existing episodes when only the writing rules have been changed.
+Retain 15 seconds and 4/4/3/4 clips unless the user changes the format. Do not add a teaser,
+a repeated highlight or a title card. Start images depict the real starting state, including
+mid-action where useful, while leaving the later reveal for the video. Adapt timing within
+and across the existing clips to the event rather than filling each clip with preparation.
+
+At outline, script, start-image and finished-video review, separately check:
+- Is the opening image immediately interesting and the problem or desire understandable?
+- Until the first major change, what precise expectation, visible progress and cute action
+  keep the viewer watching? Does the proposed anticipation earn its duration?
+- Does the complication arise from the attempt or established situation?
+- Do the responses distinguish these characters and show a reciprocal relationship?
+- Does the last image/action pay off the opening and leave a reason to see them again?
+Keep review notes outside the five screenplay sections and viewer-facing captions.
+A planned action is not a verified animation result; scores do not waive a known weakness.
+
+Evidence: the supplied 15-second ladybug video and an insight screenshot showed 2,299 views,
+980 viewers and 17 seconds average view time. The screenshot initially showed zero follows;
+the user subsequently reported reposts and new followers, without updated counts. Record
+that positive follow-up rather than repeating zero as current. Do not invent counts,
+attribute every new follower to this reel without attribution data, or claim a single post
+proves a success formula. Treat it as a promising series reference to test across varied
+stories, alongside the earlier fast-event examples. Track viewing, redistribution and
+follows separately. Do not rewrite approved episode files or start paid production merely
+because the writing standard changed.
 
 ## Writing method: a body worth watching
 
@@ -85,8 +101,8 @@ Do not confuse a cute model, kind behavior or an explained personality with cute
 
 Choose a recognizable desire and a physical action that is enjoyable to watch. Develop
 the outcome and the character's choice together. Make the opening still intriguing and
-show a major changed situation by three seconds, following the two opening gates above.
-Tactile, expressive movement adds appeal but cannot replace either opening gate. Do not require an unrelated catastrophe, giant prop
+keep the action progressing toward an early consequence. Use an immediate event or earned
+anticipation as described above; expressive movement must serve that readable situation. Do not require an unrelated catastrophe, giant prop
 or fantasy spectacle just to justify a quiet episode. Also do not stretch a motionless
 pose or a five-second idea into fifteen seconds. Every shot needs a new action, result,
 choice or revealing response; a new crop alone is insufficient unless it reveals a fact.
@@ -256,8 +272,8 @@ of the previous version. Do not treat a format fix, another model, or continuity
 as evidence that an unchanged story has become more entertaining.
 
 Run three real revision passes on the entire package, fixing findings before the next pass:
-1. Story: separately state the opening still's attraction and the major changed state
-   visible by three seconds, then each shot's new information/cause and the final payoff. Challenge the strongest reason to swipe away. An ordinary nod, preparation
+1. Story: state the opening still's attraction, the visible attempt and specific expectation
+   before the first major change, then each shot's new information/cause and the final payoff. Challenge the strongest reason to swipe away. An ordinary nod, preparation
    without a visible event, repeated pursuit, or an ending that merely confirms the setup
    requires an actual reason to watch or a rewrite. Do not force a twist into every quiet scene.
 2. Body and character: isolate two seconds of the key movement. Specify the desire,
@@ -390,7 +406,7 @@ For every clip specify:
 - Physical location and whether this is continuous, a reframe, or a new scene.
 - Shot size, angle, visible subject and meaningful foreground/background depth.
 - Starting pose and object state, one main action/reveal, and the resulting state.
-- For clip one, an intriguing opening still and a concrete major change visible by 3.0 seconds; include their timing within the existing four-second clip.
+- For clip one, an intriguing opening still, the visible attempt or early event, and the specific expectation that makes its timing engaging; state when the first major change occurs without a compulsory three-second cutoff.
 - Physical acting and approximate in-clip timing: weight/contact, one essential follow-through, and an angle that makes them visible.
 - Exact speaker/line or silence, supporting sound and any motivated transition.
 
