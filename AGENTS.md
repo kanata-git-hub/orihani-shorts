@@ -11,6 +11,44 @@ Do not burn an episode title or thumbnail slogan into the video. Upload titles r
 metadata. Include exact Korean dialogue captions for editing at the actual speech times;
 silent-scene markers are neither displayed nor spoken. Generate clean start-frame images.
 
+## Series essence: small wants, imperfect care, recognizable friends
+
+The series premise is: **작은 욕심과 서툰 배려 때문에 매번 일이 커지는 세 오리의 생활 시트콤.**
+The viewer promise is an enjoyable everyday incident whose outcome makes these particular
+friends more recognizable and worth meeting again. Cute appearance supports that promise;
+an interchangeable cute gesture, a random spectacle or a clinic sales pitch cannot replace it.
+
+Build an episode from a concrete small want: keeping a snack, looking capable, enjoying
+a comfortable spot, winning a trivial contest, or helping a friend in one's own way.
+Let a choice or attempt change the situation. Another character's different want, mistaken
+interpretation or imperfect help can complicate it. The final choice or image pays off the
+original want and reveals personality or a relationship through behavior.
+Small wants need not be selfish, and imperfect care need not mean incompetence.
+"일이 커진다" includes an unexpectedly awkward, funny or tender consequence; it does not
+require a disaster, a giant prop, a failed attempt or ever-increasing visual scale.
+
+Use the ensemble flexibly. An episode may feature one, two or three characters; do not
+force all three into every short. Rotate who initiates, helps, misunderstands, surprises
+or succeeds. Preserve each character's established adult agency and medical trust.
+Let reciprocity emerge through a concrete action rather than a compulsory hug, apology,
+lesson or statement about friendship. Occasional quiet or fantastical episodes remain
+valid when their desire, action and character-specific payoff are readable.
+
+Before drafting, privately answer four questions in one sentence each:
+1. Who wants what small thing right now?
+2. What choice, attempt or imperfect help changes the situation?
+3. How does the response reveal this character or this relationship?
+4. What exact final action or image pays off the opening desire?
+Use these as planning questions, not four mandatory shots or extra viewer-facing text.
+If the same plot and ending work unchanged with any cute mascot, strengthen the choices
+and reactions using these characters' wants; do not add a personality label as a substitute.
+
+Clinic recognition comes from consistent characters and their world. Do not require a
+disease explanation, product mention, appointment invitation or promotional end card in
+ordinary sitcom episodes. Explicitly requested advertisements remain a separate format.
+Write for repeat viewing and interest in the cast without claiming this alone will cause
+clinic visits, purchases, follower growth or advertising revenue.
+
 ## Opening and story standard: immediate interest, earned anticipation and character payoff
 
 Updated 2026-10-08 after the supplied ladybug episode and the user's report of reposts
@@ -72,6 +110,8 @@ mid-action where useful, while leaving the later reveal for the video. Adapt tim
 and across the existing clips to the event rather than filling each clip with preparation.
 
 At outline, script, start-image and finished-video review, separately check:
+- Does this episode turn a small want or imperfect care into a consequence with a
+  character-specific payoff, rather than merely displaying cute models?
 - Is the opening image immediately interesting and the problem or desire understandable?
 - Until the first major change, what precise expectation, visible progress and cute action
   keep the viewer watching? Does the proposed anticipation earn its duration?
