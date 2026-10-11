@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-11",
+  "episodes": [16, 17, 18],
+  "screenplaySha256": "387682354b9b40ed6a7e6900c4f3b3e698c4d69e8a8b4964013e0f523c91aeac",
+  "checker": "PASS",
+  "appParser": {
+    "episodes": 3,
+    "scenesPerEpisode": [4, 4, 4],
+    "totalSecondsPerEpisode": [15, 15, 15]
+  },
+  "googleDocsReadback": {
+    "documentId": "19gJCcDwa9J66eXzD0gmSzmRyksTUnGiXI5q-36dqlP0",
+    "exactTextMatch": true,
+    "checker": "PASS"
+  },
+  "limits": "Projected-finished editorial review only; no video generation or audience-performance claim."
+}
