@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "parserRevision": "e0ba9d7606f0f639ad125669c311a950a2aefa2e",
+  "episodes": [
+    {
+      "title": "[에피소드 16] 16화 한정거장 (하찮은 오리 일상)",
+      "duration": 15,
+      "characters": [
+        "owonjang",
+        "deoki"
+      ]
+    },
+    {
+      "title": "[에피소드 17] 17화 한입먼저 (하찮은 오리 일상)",
+      "duration": 15,
+      "characters": [
+        "owonjang",
+        "nurse"
+      ]
+    },
+    {
+      "title": "[에피소드 18] 18화 같이퇴근 (하찮은 오리 일상)",
+      "duration": 15,
+      "characters": [
+        "owonjang",
+        "deoki"
+      ]
+    }
+  ],
+  "scenes": 12,
+  "silentScenes": 12
+}

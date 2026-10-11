@@ -1,0 +1,28 @@
+{
+  "documentId": "19gJCcDwa9J66eXzD0gmSzmRyksTUnGiXI5q-36dqlP0",
+  "parentId": "1O2wOWOLyAXmq96aXOExX0fecwK7jZbq-",
+  "title": "[2026-10-11] 3D 오리 삼총사 릴스 개그 시리즈 주간 패키지.md",
+  "sourceSha256": "c255d83e4b87e42d44812a6e3716a2d7cfab5df5b91d23c062f0944b71486999",
+  "exactReadbackMatch": true,
+  "readbackReviewPassed": true,
+  "readbackAppParserPassed": true,
+  "episodes": [
+    16,
+    17,
+    18
+  ],
+  "durations": [
+    15,
+    15,
+    15
+  ],
+  "scenes": 12,
+  "sections": 15,
+  "spokenDialogueScenes": 0,
+  "captionMarkerScenes": 12,
+  "permissionPreserved": "anyone reader inherited; no permission mutation",
+  "parserRevision": "e0ba9d7606f0f639ad125669c311a950a2aefa2e",
+  "replaces": "docs/editorial-reviews/2026-10-11-16-18",
+  "scope": "screenplay-only; no generated footage or publication",
+  "automationBriefUpdated": true
+}

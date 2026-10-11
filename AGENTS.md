@@ -11,43 +11,70 @@ Do not burn an episode title or thumbnail slogan into the video. Upload titles r
 metadata. Include exact Korean dialogue captions for editing at the actual speech times;
 silent-scene markers are neither displayed nor spoken. Generate clean start-frame images.
 
-## Series essence: small wants, imperfect care, recognizable friends
+## Series premise: relatable working adults, told through visible daily life
 
-The series premise is: **작은 욕심과 서툰 배려 때문에 매번 일이 커지는 세 오리의 생활 시트콤.**
-The viewer promise is an enjoyable everyday incident whose outcome makes these particular
-friends more recognizable and worth meeting again. Cute appearance supports that promise;
-an interchangeable cute gesture, a random spectacle or a clinic sales pitch cannot replace it.
+Updated 2026-10-11 by the user's explicit revision of theme and writing method.
+This section supersedes conflicting older story/comedy and speech prescriptions below.
+The subject is **한의사 오원장, 간호사 소미, 사무직 직장인 덕이의 공감 가는 일상**.
+The professions create different circumstances; the viewer recognizes a human feeling,
+want or choice inside those circumstances. Do not claim no other creator has covered
+these occupations. Distinction comes from this cast's specific lives and responses.
 
-Build an episode from a concrete small want: keeping a snack, looking capable, enjoying
-a comfortable spot, winning a trivial contest, or helping a friend in one's own way.
-Let a choice or attempt change the situation. Another character's different want, mistaken
-interpretation or imperfect help can complicate it. The final choice or image pays off the
-original want and reveals personality or a relationship through behavior.
-Small wants need not be selfish, and imperfect care need not mean incompetence.
-"일이 커진다" includes an unexpectedly awkward, funny or tender consequence; it does not
-require a disaster, a giant prop, a failed attempt or ever-increasing visual scale.
+O-wonjang is a competent Korean medicine doctor and clinic operator. Somi is a capable
+nurse with her own working day, breaks, preferences and private life. Deok-i is an
+ordinary office worker at a separate company, NOT the clinic's employee or an infant.
+He may meet the others as a friend off duty. Do not casually assign him clinic shifts,
+reception work or a subordinate relationship to O-wonjang. Show all three as adults.
+Their lives can overlap during commutes, meals, visits, hobbies and days off, but do not
+force all three into every episode or erase their different circumstances.
 
-Use the ensemble flexibly. An episode may feature one, two or three characters; do not
-force all three into every short. Rotate who initiates, helps, misunderstands, surprises
-or succeeds. Preserve each character's established adult agency and medical trust.
-Let reciprocity emerge through a concrete action rather than a compulsory hug, apology,
-lesson or statement about friendship. Occasional quiet or fantastical episodes remain
-valid when their desire, action and character-specific payoff are readable.
+Entertainment comes before a theme explanation. It includes recognition ("I do that"),
+anticipation, enjoyable bodily acting, relief, a rueful laugh, affection and surprise.
+NOT every episode must be a gag, a reversal, a failure or an escalating disaster.
+Do not overcorrect into random slapstick, nor into pretty, motionless sentiment.
+Life is the subject; a lecture about life is not the story. The cast can be tired,
+proud, hungry, reluctant, playful or content without every episode being about suffering.
+Their jobs are lived context, not an occupational introduction or compulsory clinic ad.
 
-Before drafting, privately answer four questions in one sentence each:
-1. Who wants what small thing right now?
-2. What choice, attempt or imperfect help changes the situation?
-3. How does the response reveal this character or this relationship?
-4. What exact final action or image pays off the opening desire?
-Use these as planning questions, not four mandatory shots or extra viewer-facing text.
-If the same plot and ending work unchanged with any cute mascot, strengthen the choices
-and reactions using these characters' wants; do not add a personality label as a substitute.
+Start from a particular familiar adult moment: finally finding a seat just before getting
+off, having a break repeatedly interrupted, or finishing the last bit of closing work.
+These are examples, not a repeating topic list. Specify what the person wants NOW,
+what ordinary pressure or small contradiction obstructs it, their self-directed attempt,
+and an exact last choice/image that gives the viewer a reward. Small wants and imperfect
+care remain useful ingredients, not the mandatory theme or a universal four-shot formula.
+Do not label a scene relatable merely because a character wears a work uniform.
 
-Clinic recognition comes from consistent characters and their world. Do not require a
-disease explanation, product mention, appointment invitation or promotional end card in
-ordinary sitcom episodes. Explicitly requested advertisements remain a separate format.
-Write for repeat viewing and interest in the cast without claiming this alone will cause
-clinic visits, purchases, follower growth or advertising revenue.
+Default to NO dialogue and NO narration. The situation, cause, choice and ending must
+be understood without spoken words, subtitles, a title, labels or explanatory overlays.
+If a line is needed to make the event intelligible, the visual expression is incomplete:
+rewrite staging, objects, action or the connection between cuts before adding a line.
+Short optional interjections, expressive breaths and onomatopoeic vocal accents may
+punctuate an already readable action. They carry rhythm/emotion, never missing facts.
+Designate the character and timing in sound directions; do not automatically subtitle
+nonverbal accents. Do not convert them into conversations, narration, songs or repeated
+vocal clutter. One deliberate vocal source at a time. Silent beats need only their
+environmental/action sounds. A no-dialogue marker means no dialogue, not a requirement
+to remove an explicitly scripted nonverbal accent. Do not invent extra voices.
+If the user explicitly supplies or requests dialogue, preserve it and its exact captions.
+Do not silently replace the events or speech of already approved earlier scripts.
+
+Before drafting, privately answer:
+1. Which familiar moment from whose particular working/private life are we watching?
+2. What visible want, pressure and self-directed attempt can a stranger understand?
+3. What is enjoyable or recognizable BEFORE explaining its theme or hearing a word?
+4. What exact final behavior rewards this episode, comically or emotionally?
+Delete the planning explanation, all dialogue and all narration and test the four images
+and action sequence again. Test with the sound OFF as well: vocal accents cannot rescue
+an unreadable motive or ending. If only beautiful staging or a moral remains, rewrite.
+
+Maintain original anatomy and visible weight/contact/tempo throughout the action.
+Use the clinic's professional responsibility without unsafe care, patient ridicule,
+privacy breaches, treatment incompetence or ignored urgent duties. Off-duty fatigue and
+ordinary operational work can be shown; do not imply an unavailable patient was neglected.
+A friend helps through a concrete reciprocal choice, not an assigned caretaker role.
+Keep the existing 15-second 4/4/3/4 format and three-episode package. No paid regeneration.
+The user's explicit 2026-10-11 request replaces all of episodes 16-18; preserve 11-15.
+Future writing follows this direction, but does not rewrite already confirmed work by default.
 
 ## Opening and story standard: immediate interest, earned anticipation and character payoff
 
@@ -268,7 +295,7 @@ giant prop, clinic location or fantasy-to-reality formula. Each episode works on
 ## Editorial gate before production
 
 Aim for 9/10 on each of twelve criteria: (1) first-frame hook, (2) immediate comprehension,
-(3) relatable surprise, (4) a reason to keep watching in every shot, (5) ending reward,
+(3) relatable recognition and meaningful surprise, (4) a reason to keep watching in every shot, (5) ending reward,
 (6) distinct character choices, (7) relationship chemistry, (8) bodily/movement appeal,
 (9) likability without bullying, (10) clear image/dialogue/caption communication,
 (11) feasible timing and continuity, and (12) a character-specific reason to return.
@@ -393,7 +420,7 @@ Use the original front/side/back character references:
 - O-wonjang: an anthropomorphic pale cream duck with round glasses, a light-blue shirt
   and white doctor's coat; a capable, caring Korean medicine doctor with ordinary
   weaknesses such as snacks, enthusiasm and hobbies.
-- Deok-i: an adult office-worker duck, yellow with his own cheek color and simple wings.
+- Deok-i: an adult office-worker at a separate company, not clinic staff; yellow with his own cheek color and simple wings.
   Preserve his reference proportions. He can be clever, clumsy, determined or helpful.
 - Somi: pale cream duck, off-white nurse top and navy pants, deadpan; capable but with her
   own desires. Expression contrast does not require her to smile at every ending.
@@ -429,10 +456,13 @@ Surreal non-medical daily-life metaphors are allowed. Do not ridicule a patient'
 
 ## Dialogue, text and audio
 
-One speaker per clip, brief natural Korean. Preserve supplied lines and silent clips.
+Default to no dialogue/narration as specified in the current series premise. For explicitly
+requested dialogue, use one speaker per clip and brief natural Korean. Preserve supplied lines and silent clips.
 Speech and edited subtitles match exactly. Captions and UI labels are not spoken lines.
 Silent clips use appropriate environmental/action sounds and, if wanted, instrumental
-music only: no speech, narration, singing, vocal reactions or off-screen voices.
+music only: no invented speech, narration, singing or off-screen voices. The latest
+series premise permits explicitly scripted brief nonverbal accents; those are optional,
+not explanatory dialogue and not automatic captions.
 Do not animate speech-like mouth movement in a silent character; visual reactions remain.
 Leave incidental labels/screens blank. Do not depend on generated Korean text or numbers.
 Provide captions for later editing; do not burn captions into generated images.
