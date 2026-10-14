@@ -7,6 +7,17 @@ const fixture = new URL('../docs/editorial-reviews/2026-10-02-10-12-screen/', im
 const text = readFileSync(new URL('screenplay.txt', fixture), 'utf8');
 const review = JSON.parse(readFileSync(new URL('review.json', fixture), 'utf8'));
 test('reviewed package is valid', () => assert.deepEqual(validateWeeklyReview(text, review), []));
+test('explicit two-episode revision changes only scope, never evidence or score gates', () => {
+  const headings = [...text.matchAll(/^\[에피소드 (\d+)\]/gm)];
+  const source = text.slice(0, headings[2].index);
+  const r = structuredClone(review); r.episodes = r.episodes.slice(0,2); r.sourceSha256 = fingerprint(source);
+  const numbers = headings.slice(0,2).map(h=>Number(h[1]));
+  assert.deepEqual(validateWeeklyReview(source, r, numbers), []);
+  assert.ok(validateWeeklyReview(source, r).length);
+  assert.ok(validateWeeklyReview(source, r, [999,1000]).length);
+  r.episodes[0].criteria[0].score = 7;
+  assert.match(validateWeeklyReview(source, r, numbers).join('\n'), /below the release threshold/);
+});
 test('editing a reviewed script invalidates the review', () => {
   assert.match(validateWeeklyReview(text.replace('폭 앉는다', '천천히 앉는다'), review).join('\n'), /changed after review/);
 });

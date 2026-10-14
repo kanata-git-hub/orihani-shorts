@@ -1,7 +1,35 @@
 # Production Direction: 하찮은 오리 일상
 
-This file is loaded by server.ts as the free-form video planner's system instruction.
-A supplied, completed weekly screenplay is authoritative and goes directly to conversion.
+This file is loaded by server.ts as the legacy free-form video planner's system instruction.
+A completed legacy weekly screenplay goes to conversion. An authored production package
+already contains final image/video prompts and MUST bypass model planning/conversion.
+
+## Authored production handoff — 2026-10-14 user request
+
+The user now wants ChatGPT to author the complete episode plan, all start-image prompts,
+all Kling video prompts and continuity metadata together, before opening the meme app.
+Use `docs/authored-production.md` and `src/workflow/productionPackage.ts` for the format.
+The app imports validated `orihani-production` JSON and uses its supplied prompts directly.
+Do not send this path to Gemini for planning, conversion, text review or prompt repair.
+Existing image generation/visual review and the user's Kling workflow remain available.
+Do not confuse authoring prompts with having generated or verified their final footage.
+
+Future scheduled packages contain the normal three episodes plus their final prompts,
+not just a screenplay awaiting another creative conversion. Author and review one
+canonical production JSON; derive its readable screenplay/prompts and portable work
+files from that exact source. Save the JSON to the established weekly Drive folder as
+`[YYYY-MM-DD] 3D 오리 삼총사 릴스 개그 시리즈 주간 패키지.json`.
+For equal dates the app prefers this file to a legacy human-readable screenplay.
+Do not publish a newer JSON until its entire requested scope has passed validation.
+
+Keep the existing twelve-criterion editorial standard and three real revision passes.
+For an explicitly scoped revision, run the same review gate with the requested episode
+numbers via `--episodes=N,M`; preserve episodes outside that scope.
+The default weekly gate still requires three episodes. This changes scope, not the
+quality threshold. Validate the final JSON with `readProductionPackage`, confirm exact
+prompt preservation and read back the saved source before reporting completion.
+The authored JSON is authoritative for this workflow; older Google Docs remain legacy
+sources and archives, not a reason to regenerate the authored prompts.
 
 ## Current release standard
 

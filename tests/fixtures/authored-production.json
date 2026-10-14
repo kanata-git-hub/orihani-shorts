@@ -1,0 +1,303 @@
+{
+  "format": "orihani-production",
+  "version": 1,
+  "revision": "synthetic-import-test",
+  "episodes": [
+    {
+      "number": 1,
+      "characterId": "nurse",
+      "episode": {
+        "duration": 15,
+        "title": "[에피소드 1] 1화 가져오기 검증",
+        "scenario": "[장면 1 (4초)]\nreferencePlan: {\"background\": null, \"props\": []}\n소미 검증 전용 장면\n[장면 2 (4초)]\nreferencePlan: {\"background\": 1, \"props\": []}\n소미 검증 전용 장면\n[장면 3 (3초)]\nreferencePlan: {\"background\": 1, \"props\": []}\n소미 검증 전용 장면\n[장면 4 (4초)]\nreferencePlan: {\"background\": 1, \"props\": []}\n소미 검증 전용 장면",
+        "korean": "(무대사)",
+        "thumbnail": "1화 가져오기 검증",
+        "caption": "검증 전용"
+      },
+      "plan": {
+        "title": "1화 가져오기 검증",
+        "location": "Test set",
+        "scenario": "[장면 1 (4초)]\nreferencePlan: {\"background\": null, \"props\": []}\n소미 검증 전용 장면\n[장면 2 (4초)]\nreferencePlan: {\"background\": 1, \"props\": []}\n소미 검증 전용 장면\n[장면 3 (3초)]\nreferencePlan: {\"background\": 1, \"props\": []}\n소미 검증 전용 장면\n[장면 4 (4초)]\nreferencePlan: {\"background\": 1, \"props\": []}\n소미 검증 전용 장면",
+        "instagramCaption": "검증 전용",
+        "hashtags": [
+          "one",
+          "two",
+          "three",
+          "four",
+          "five"
+        ],
+        "propBible": [],
+        "clips": [
+          {
+            "title": "장면 1",
+            "imageTitle": "Image 1",
+            "videoTitle": "CLIP 1",
+            "imagePrompt": "Synthetic image fixture START_ONLY_1.",
+            "videoPrompt": "REFERENCE INSTRUCTION: @image1\nOUTPUT SPECS: 4s, vertical 9:16.\nCINEMATOGRAPHY: Locked.\nENVIRONMENT: Test set.\nACTION: ACTION_ONLY_1.\nDIALOGUE: None.\nAUDIO: Quiet ambience.\nSTRICT RULES: Preserve the character.",
+            "backgroundAsset": "none",
+            "locationId": "test-set",
+            "sceneTransition": "new-scene",
+            "referencePlan": {
+              "background": null,
+              "props": []
+            },
+            "shot": {
+              "size": "medium",
+              "angle": "Front",
+              "focus": "Character",
+              "startState": "START_ONLY_1"
+            },
+            "frame": {
+              "environment": "Synthetic test set.",
+              "visibleCharacters": [
+                "Somi"
+              ],
+              "props": [],
+              "action": "ACTION_ONLY_1",
+              "endState": "END_ONLY_1",
+              "continuityFromPrevious": "Test continuity."
+            }
+          },
+          {
+            "title": "장면 2",
+            "imageTitle": "Image 2",
+            "videoTitle": "CLIP 2",
+            "imagePrompt": "Synthetic image fixture START_ONLY_2.",
+            "videoPrompt": "REFERENCE INSTRUCTION: @image2\nOUTPUT SPECS: 4s, vertical 9:16.\nCINEMATOGRAPHY: Locked.\nENVIRONMENT: Test set.\nACTION: ACTION_ONLY_2.\nDIALOGUE: None.\nAUDIO: Quiet ambience.\nSTRICT RULES: Preserve the character.",
+            "backgroundAsset": "none",
+            "locationId": "test-set",
+            "sceneTransition": "reframe",
+            "referencePlan": {
+              "background": 1,
+              "props": []
+            },
+            "shot": {
+              "size": "medium",
+              "angle": "Front",
+              "focus": "Character",
+              "startState": "START_ONLY_2"
+            },
+            "frame": {
+              "environment": "Synthetic test set.",
+              "visibleCharacters": [
+                "Somi"
+              ],
+              "props": [],
+              "action": "ACTION_ONLY_2",
+              "endState": "END_ONLY_2",
+              "continuityFromPrevious": "Test continuity."
+            }
+          },
+          {
+            "title": "장면 3",
+            "imageTitle": "Image 3",
+            "videoTitle": "CLIP 3",
+            "imagePrompt": "Synthetic image fixture START_ONLY_3.",
+            "videoPrompt": "REFERENCE INSTRUCTION: @image3\nOUTPUT SPECS: 3s, vertical 9:16.\nCINEMATOGRAPHY: Locked.\nENVIRONMENT: Test set.\nACTION: ACTION_ONLY_3.\nDIALOGUE: None.\nAUDIO: Quiet ambience.\nSTRICT RULES: Preserve the character.",
+            "backgroundAsset": "none",
+            "locationId": "test-set",
+            "sceneTransition": "reframe",
+            "referencePlan": {
+              "background": 1,
+              "props": []
+            },
+            "shot": {
+              "size": "medium",
+              "angle": "Front",
+              "focus": "Character",
+              "startState": "START_ONLY_3"
+            },
+            "frame": {
+              "environment": "Synthetic test set.",
+              "visibleCharacters": [
+                "Somi"
+              ],
+              "props": [],
+              "action": "ACTION_ONLY_3",
+              "endState": "END_ONLY_3",
+              "continuityFromPrevious": "Test continuity."
+            }
+          },
+          {
+            "title": "장면 4",
+            "imageTitle": "Image 4",
+            "videoTitle": "CLIP 4",
+            "imagePrompt": "Synthetic image fixture START_ONLY_4.",
+            "videoPrompt": "REFERENCE INSTRUCTION: @image4\nOUTPUT SPECS: 4s, vertical 9:16.\nCINEMATOGRAPHY: Locked.\nENVIRONMENT: Test set.\nACTION: ACTION_ONLY_4.\nDIALOGUE: None.\nAUDIO: Quiet ambience.\nSTRICT RULES: Preserve the character.",
+            "backgroundAsset": "none",
+            "locationId": "test-set",
+            "sceneTransition": "reframe",
+            "referencePlan": {
+              "background": 1,
+              "props": []
+            },
+            "shot": {
+              "size": "medium",
+              "angle": "Front",
+              "focus": "Character",
+              "startState": "START_ONLY_4"
+            },
+            "frame": {
+              "environment": "Synthetic test set.",
+              "visibleCharacters": [
+                "Somi"
+              ],
+              "props": [],
+              "action": "ACTION_ONLY_4",
+              "endState": "END_ONLY_4",
+              "continuityFromPrevious": "Test continuity."
+            }
+          }
+        ]
+      }
+    },
+    {
+      "number": 2,
+      "characterId": "nurse",
+      "episode": {
+        "duration": 15,
+        "title": "[에피소드 2] 2화 가져오기 검증",
+        "scenario": "[장면 1 (4초)]\nreferencePlan: {\"background\": null, \"props\": []}\n소미 검증 전용 장면\n[장면 2 (4초)]\nreferencePlan: {\"background\": 1, \"props\": []}\n소미 검증 전용 장면\n[장면 3 (3초)]\nreferencePlan: {\"background\": 1, \"props\": []}\n소미 검증 전용 장면\n[장면 4 (4초)]\nreferencePlan: {\"background\": 1, \"props\": []}\n소미 검증 전용 장면",
+        "korean": "(무대사)",
+        "thumbnail": "2화 가져오기 검증",
+        "caption": "검증 전용"
+      },
+      "plan": {
+        "title": "2화 가져오기 검증",
+        "location": "Test set",
+        "scenario": "[장면 1 (4초)]\nreferencePlan: {\"background\": null, \"props\": []}\n소미 검증 전용 장면\n[장면 2 (4초)]\nreferencePlan: {\"background\": 1, \"props\": []}\n소미 검증 전용 장면\n[장면 3 (3초)]\nreferencePlan: {\"background\": 1, \"props\": []}\n소미 검증 전용 장면\n[장면 4 (4초)]\nreferencePlan: {\"background\": 1, \"props\": []}\n소미 검증 전용 장면",
+        "instagramCaption": "검증 전용",
+        "hashtags": [
+          "one",
+          "two",
+          "three",
+          "four",
+          "five"
+        ],
+        "propBible": [],
+        "clips": [
+          {
+            "title": "장면 1",
+            "imageTitle": "Image 1",
+            "videoTitle": "CLIP 1",
+            "imagePrompt": "Synthetic image fixture START_ONLY_1.",
+            "videoPrompt": "REFERENCE INSTRUCTION: @image1\nOUTPUT SPECS: 4s, vertical 9:16.\nCINEMATOGRAPHY: Locked.\nENVIRONMENT: Test set.\nACTION: ACTION_ONLY_1.\nDIALOGUE: None.\nAUDIO: Quiet ambience.\nSTRICT RULES: Preserve the character.",
+            "backgroundAsset": "none",
+            "locationId": "test-set",
+            "sceneTransition": "new-scene",
+            "referencePlan": {
+              "background": null,
+              "props": []
+            },
+            "shot": {
+              "size": "medium",
+              "angle": "Front",
+              "focus": "Character",
+              "startState": "START_ONLY_1"
+            },
+            "frame": {
+              "environment": "Synthetic test set.",
+              "visibleCharacters": [
+                "Somi"
+              ],
+              "props": [],
+              "action": "ACTION_ONLY_1",
+              "endState": "END_ONLY_1",
+              "continuityFromPrevious": "Test continuity."
+            }
+          },
+          {
+            "title": "장면 2",
+            "imageTitle": "Image 2",
+            "videoTitle": "CLIP 2",
+            "imagePrompt": "Synthetic image fixture START_ONLY_2.",
+            "videoPrompt": "REFERENCE INSTRUCTION: @image2\nOUTPUT SPECS: 4s, vertical 9:16.\nCINEMATOGRAPHY: Locked.\nENVIRONMENT: Test set.\nACTION: ACTION_ONLY_2.\nDIALOGUE: None.\nAUDIO: Quiet ambience.\nSTRICT RULES: Preserve the character.",
+            "backgroundAsset": "none",
+            "locationId": "test-set",
+            "sceneTransition": "reframe",
+            "referencePlan": {
+              "background": 1,
+              "props": []
+            },
+            "shot": {
+              "size": "medium",
+              "angle": "Front",
+              "focus": "Character",
+              "startState": "START_ONLY_2"
+            },
+            "frame": {
+              "environment": "Synthetic test set.",
+              "visibleCharacters": [
+                "Somi"
+              ],
+              "props": [],
+              "action": "ACTION_ONLY_2",
+              "endState": "END_ONLY_2",
+              "continuityFromPrevious": "Test continuity."
+            }
+          },
+          {
+            "title": "장면 3",
+            "imageTitle": "Image 3",
+            "videoTitle": "CLIP 3",
+            "imagePrompt": "Synthetic image fixture START_ONLY_3.",
+            "videoPrompt": "REFERENCE INSTRUCTION: @image3\nOUTPUT SPECS: 3s, vertical 9:16.\nCINEMATOGRAPHY: Locked.\nENVIRONMENT: Test set.\nACTION: ACTION_ONLY_3.\nDIALOGUE: None.\nAUDIO: Quiet ambience.\nSTRICT RULES: Preserve the character.",
+            "backgroundAsset": "none",
+            "locationId": "test-set",
+            "sceneTransition": "reframe",
+            "referencePlan": {
+              "background": 1,
+              "props": []
+            },
+            "shot": {
+              "size": "medium",
+              "angle": "Front",
+              "focus": "Character",
+              "startState": "START_ONLY_3"
+            },
+            "frame": {
+              "environment": "Synthetic test set.",
+              "visibleCharacters": [
+                "Somi"
+              ],
+              "props": [],
+              "action": "ACTION_ONLY_3",
+              "endState": "END_ONLY_3",
+              "continuityFromPrevious": "Test continuity."
+            }
+          },
+          {
+            "title": "장면 4",
+            "imageTitle": "Image 4",
+            "videoTitle": "CLIP 4",
+            "imagePrompt": "Synthetic image fixture START_ONLY_4.",
+            "videoPrompt": "REFERENCE INSTRUCTION: @image4\nOUTPUT SPECS: 4s, vertical 9:16.\nCINEMATOGRAPHY: Locked.\nENVIRONMENT: Test set.\nACTION: ACTION_ONLY_4.\nDIALOGUE: None.\nAUDIO: Quiet ambience.\nSTRICT RULES: Preserve the character.",
+            "backgroundAsset": "none",
+            "locationId": "test-set",
+            "sceneTransition": "reframe",
+            "referencePlan": {
+              "background": 1,
+              "props": []
+            },
+            "shot": {
+              "size": "medium",
+              "angle": "Front",
+              "focus": "Character",
+              "startState": "START_ONLY_4"
+            },
+            "frame": {
+              "environment": "Synthetic test set.",
+              "visibleCharacters": [
+                "Somi"
+              ],
+              "props": [],
+              "action": "ACTION_ONLY_4",
+              "endState": "END_ONLY_4",
+              "continuityFromPrevious": "Test continuity."
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
