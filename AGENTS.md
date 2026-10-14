@@ -11,6 +11,62 @@ Do not burn an episode title or thumbnail slogan into the video. Upload titles r
 metadata. Include exact Korean dialogue captions for editing at the actual speech times;
 silent-scene markers are neither displayed nor spoken. Generate clean start-frame images.
 
+## Observational sitcom and readable generated action — 2026-10-14 revision
+
+This user-requested revision takes precedence over conflicting older writing or
+production guidance below. Preserve the cast, adult relationships, clean 15-second
+4/4/3/4 format, and already approved episodes unless the user requests their revision.
+
+- Prefer specific, recognizable everyday wants and small choices. An episode need
+  not contain an absurd mistake, a reversal, or a large incident. Small scale does
+  not excuse an unclear cause or a motionless ending: preserve enjoyable bodily
+  acting and a visible change in the situation.
+- Describe the story as visible cause → response → changed state. A new viewer
+  must understand why the character acts from the footage itself, without knowing
+  the synopsis, reading a phone screen, or hearing an explanatory line. If a
+  necessary cause is missing, repair staging or the story rather than claiming
+  that an interpretation is visible.
+- For a 3–4 second generated clip, give the main actor one primary action with
+  its necessary short response or settling motion. Avoid chains requiring two
+  actors to hit several precise cues. If recognition, interruption and a decision
+  compete for time, simplify the beat or move a beat across the cut. Do not turn
+  this into a ban on natural continuous movement.
+- Before issuing an image-to-video prompt, compare the PREVIOUS ACTUAL END FRAME
+  with the NEXT ACTUAL START IMAGE. Check seated/standing posture and support,
+  character positions, each object's holder, food already at/in the beak, and
+  story-relevant objects on the table. Match the source footage rather than an
+  intended but unrealized script. A change needs a readable action or an
+  intentional time/space transition. An object outside the crop is not missing;
+  a visible table from which a necessary object vanished is a real mismatch.
+- Keep the relevant prop set and recognizable designs stable across cuts.
+  Unmotivated cups, food plates, furniture or replacement containers should not
+  appear merely because each image was generated separately. When repairing
+  existing work, distinguish a story-breaking mismatch from a cosmetic one;
+  do not require every otherwise usable clip to be regenerated.
+- A start-pose constraint applies at time zero. Say which part then moves.
+  Never ambiguously require characters to maintain their exact starting poses
+  throughout an action clip. Preserve identity, anatomy, wing ownership, object
+  contact and camera placement without freezing the performance. Natural eating
+  is compatible with no speech; do not forbid all beak movement.
+- After generation, check the actual essential action at phone viewing size,
+  including a sound-off check. Beautiful footage is not evidence that a
+  scripted gag or decision occurred. Mark missing essential actions as unresolved.
+  Editing can emphasize an existing action; it cannot establish an event that
+  was never generated simply by interpreting it generously.
+- Repair the smallest necessary part. Reuse successful clips and consider the
+  previous clip's actual last frame as the replacement clip's first frame.
+  Preserve clear anticipation, contact, weight and payoff in editing; do not cut
+  through a charming action merely to shorten runtime. Give replacement prompts
+  when requested, and do not initiate paid generation without authorization.
+
+Observed episode 17 failure: the supplied second clip did not show the scripted
+phone-for-sandwich mistake. Its start image also changed the character from seated
+to standing and removed the open lunchbox needed in the next beat. The reviewed
+repair direction is an interrupted meal followed by Somi choosing to put the
+phone away; it reuses clips 1, 3 and 4 and replaces clip 2 using clip 1's actual
+last frame. This is a repair proposal, not evidence that a new clip has succeeded
+or that the preserved October 11 weekly screenplay has already been replaced.
+
 ## Series premise: relatable working adults, told through visible daily life
 
 Updated 2026-10-11 by the user's explicit revision of theme and writing method.
