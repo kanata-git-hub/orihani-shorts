@@ -39,126 +39,95 @@ Do not burn an episode title or thumbnail slogan into the video. Upload titles r
 metadata. Include exact Korean dialogue captions for editing at the actual speech times;
 silent-scene markers are neither displayed nor spoken. Generate clean start-frame images.
 
-## Observational sitcom and readable generated action — 2026-10-14 revision
+## Current creative direction: character comedy in an elastic world — 2026-10-14
 
-This user-requested revision takes precedence over conflicting older writing or
-production guidance below. Preserve the cast, adult relationships, clean 15-second
-4/4/3/4 format, and already approved episodes unless the user requests their revision.
+This revision follows the user's rejection of the observational direction and request
+to rewrite episodes 16, 17 and 18. It supersedes conflicting earlier rules about realistic
+daily life, quiet behavior and small choices. Preserve previously approved episodes 11–15.
 
-- Prefer specific, recognizable everyday wants and small choices. An episode need
-  not contain an absurd mistake, a reversal, or a large incident. Small scale does
-  not excuse an unclear cause or a motionless ending: preserve enjoyable bodily
-  acting and a visible change in the situation.
-- Describe the story as visible cause → response → changed state. A new viewer
-  must understand why the character acts from the footage itself, without knowing
-  the synopsis, reading a phone screen, or hearing an explanatory line. If a
-  necessary cause is missing, repair staging or the story rather than claiming
-  that an interpretation is visible.
-- For a 3–4 second generated clip, give the main actor one primary action with
-  its necessary short response or settling motion. Avoid chains requiring two
-  actors to hit several precise cues. If recognition, interruption and a decision
-  compete for time, simplify the beat or move a beat across the cut. Do not turn
-  this into a ban on natural continuous movement.
-- Before issuing an image-to-video prompt, compare the PREVIOUS ACTUAL END FRAME
-  with the NEXT ACTUAL START IMAGE. Check seated/standing posture and support,
-  character positions, each object's holder, food already at/in the beak, and
-  story-relevant objects on the table. Match the source footage rather than an
-  intended but unrealized script. A change needs a readable action or an
-  intentional time/space transition. An object outside the crop is not missing;
-  a visible table from which a necessary object vanished is a real mismatch.
-- Keep the relevant prop set and recognizable designs stable across cuts.
-  Unmotivated cups, food plates, furniture or replacement containers should not
-  appear merely because each image was generated separately. When repairing
-  existing work, distinguish a story-breaking mismatch from a cosmetic one;
-  do not require every otherwise usable clip to be regenerated.
-- A start-pose constraint applies at time zero. Say which part then moves.
-  Never ambiguously require characters to maintain their exact starting poses
-  throughout an action clip. Preserve identity, anatomy, wing ownership, object
-  contact and camera placement without freezing the performance. Natural eating
-  is compatible with no speech; do not forbid all beak movement.
-- After generation, check the actual essential action at phone viewing size,
-  including a sound-off check. Beautiful footage is not evidence that a
-  scripted gag or decision occurred. Mark missing essential actions as unresolved.
-  Editing can emphasize an existing action; it cannot establish an event that
-  was never generated simply by interpreting it generously.
-- Repair the smallest necessary part. Reuse successful clips and consider the
-  previous clip's actual last frame as the replacement clip's first frame.
-  Preserve clear anticipation, contact, weight and payoff in editing; do not cut
-  through a charming action merely to shorten runtime. Give replacement prompts
-  when requested, and do not initiate paid generation without authorization.
+The creative promise is: small ducks take their wants very seriously in a world that can
+be absurd. Familiar feelings provide an entry point, not a ceiling on events. "일상" in the
+series name does not require realistic incidents, a clinic setting, a lesson, or an
+ordinary ending. Fantasy, physical comedy, harmless suspense, visual transformation,
+spectacle and intimate behavioral comedy are all available. Do not schedule these by a
+rigid genre quota or make every episode follow the same escalation formula.
 
-Observed episode 17 failure: the supplied second clip did not show the scripted
-phone-for-sandwich mistake. Its start image also changed the character from seated
-to standing and removed the open lunchbox needed in the next beat. The reviewed
-repair direction is an interrupted meal followed by Somi choosing to put the
-phone away; it reuses clips 1, 3 and 4 and replaces clip 2 using clip 1's actual
-last frame. This is a repair proposal, not evidence that a new clip has succeeded
-or that the preserved October 11 weekly screenplay has already been replaced.
+### Find an entertaining event before dividing it into shots
 
-## Series premise: relatable working adults, told through visible daily life
+Pitch what is actually enjoyable to WATCH in one sentence. A situation such as a tired
+commuter finding a seat is not yet an entertaining event. Identify the specific viewer
+expectation, the character's worthwhile attempt and the particular result. If those
+need a paragraph of interpretation, revise the premise. Pretty renders, soft lighting,
+relatability labels and production polish do not provide missing comedy.
 
-Updated 2026-10-11 by the user's explicit revision of theme and writing method.
-This section supersedes conflicting older story/comedy and speech prescriptions below.
-The subject is **한의사 오원장, 간호사 소미, 사무직 직장인 덕이의 공감 가는 일상**.
-The professions create different circumstances; the viewer recognizes a human feeling,
-want or choice inside those circumstances. Do not claim no other creator has covered
-these occupations. Distinction comes from this cast's specific lives and responses.
+The first frame and final payoff should each be drawable as a specific, distinct image.
+Each shot changes an attempt, consequence, choice, power balance or understood fact.
+Do not stretch routine actions into four shots and then explain them as empathy.
+A small story needs a compelling action or exchange; a spectacular story needs a readable
+cause and a particular character response. Neither earns approval merely by its scale.
+Earned anticipation remains valid; there is no compulsory major-change timestamp.
+After removing the title, synopsis, dialogue, audio and ideal micro-expressions, the
+event and its reward must still read. A moral or generic group smile is not the payoff.
 
-O-wonjang is a competent Korean medicine doctor and clinic operator. Somi is a capable
-nurse with her own working day, breaks, preferences and private life. Deok-i is an
-ordinary office worker at a separate company, NOT the clinic's employee or an infant.
-He may meet the others as a friend off duty. Do not casually assign him clinic shifts,
-reception work or a subordinate relationship to O-wonjang. Show all three as adults.
-Their lives can overlap during commutes, meals, visits, hobbies and days off, but do not
-force all three into every episode or erase their different circumstances.
+### Give the cast appetites and comic agency
 
-Entertainment comes before a theme explanation. It includes recognition ("I do that"),
-anticipation, enjoyable bodily acting, relief, a rueful laugh, affection and surprise.
-NOT every episode must be a gag, a reversal, a failure or an escalating disaster.
-Do not overcorrect into random slapstick, nor into pretty, motionless sentiment.
-Life is the subject; a lecture about life is not the story. The cast can be tired,
-proud, hungry, reluctant, playful or content without every episode being about suffering.
-Their jobs are lived context, not an occupational introduction or compulsory clinic ad.
+Cuteness comes through concentration, disproportionate effort, ambition, failed dignity,
+delighted absorption, stubbornness and recovery. Preserve weight, contact and pleasing
+motion during these meaningful actions. Blinks, foot adjustments and settling alone do
+not turn an uninteresting premise into a film. Do not make characters perform cute
+gestures for the camera without a want or object of attention.
 
-Start from a particular familiar adult moment: finally finding a seat just before getting
-off, having a break repeatedly interrupted, or finishing the last bit of closing work.
-These are examples, not a repeating topic list. Specify what the person wants NOW,
-what ordinary pressure or small contradiction obstructs it, their self-directed attempt,
-and an exact last choice/image that gives the viewer a reward. Small wants and imperfect
-care remain useful ingredients, not the mandatory theme or a universal four-shot formula.
-Do not label a scene relatable merely because a character wears a work uniform.
+Adults may crave a treat, compete, boast, sulk briefly, be embarrassed, play tricks or
+solve a problem in an unexpected way. Likeability does not demand perfect manners.
+Harmless teasing and momentary disagreement are allowed; avoid sustained cruelty,
+humiliation, coerced distress, injury and medical irresponsibility.
+Friendship can show through answering a challenge, joining a game, copying a friend,
+changing tactics or sharing an absurd predicament. No compulsory hug, gift or lesson.
+Rotate initiative and comic advantage. Do not lock Deok-i into a baby/scared role,
+O-wonjang into a caretaker or incompetent doctor, or Somi into the only sensible adult.
 
-Default to NO dialogue and NO narration. The situation, cause, choice and ending must
-be understood without spoken words, subtitles, a title, labels or explanatory overlays.
-If a line is needed to make the event intelligible, the visual expression is incomplete:
-rewrite staging, objects, action or the connection between cuts before adding a line.
-Short optional interjections, expressive breaths and onomatopoeic vocal accents may
-punctuate an already readable action. They carry rhythm/emotion, never missing facts.
-Designate the character and timing in sound directions; do not automatically subtitle
-nonverbal accents. Do not convert them into conversations, narration, songs or repeated
-vocal clutter. One deliberate vocal source at a time. Silent beats need only their
-environmental/action sounds. A no-dialogue marker means no dialogue, not a requirement
-to remove an explicitly scripted nonverbal accent. Do not invent extra voices.
-If the user explicitly supplies or requests dialogue, preserve it and its exact captions.
-Do not silently replace the events or speech of already approved earlier scripts.
+O-wonjang remains a competent Korean medicine doctor; Somi a capable nurse; Deok-i an
+adult office worker at a separate company, never clinic staff. Their jobs are context,
+not compulsory exposition or a requirement to use the clinic. Preserve original anatomy,
+colors, proportions and simple wings. Somi retains her original smooth head without
+invented hair. Fantastical objects and transformations must not casually redesign the cast.
 
-Before drafting, privately answer:
-1. Which familiar moment from whose particular working/private life are we watching?
-2. What visible want, pressure and self-directed attempt can a stranger understand?
-3. What is enjoyable or recognizable BEFORE explaining its theme or hearing a word?
-4. What exact final behavior rewards this episode, comically or emotionally?
-Delete the planning explanation, all dialogue and all narration and test the four images
-and action sequence again. Test with the sound OFF as well: vocal accents cannot rescue
-an unreadable motive or ending. If only beautiful staging or a moral remains, rewrite.
+### Let the world change while keeping the event readable
 
-Maintain original anatomy and visible weight/contact/tempo throughout the action.
-Use the clinic's professional responsibility without unsafe care, patient ridicule,
-privacy breaches, treatment incompetence or ignored urgent duties. Off-duty fatigue and
-ordinary operational work can be shown; do not imply an unavailable patient was neglected.
-A friend helps through a concrete reciprocal choice, not an assigned caretaker role.
-Keep the existing 15-second 4/4/3/4 format and three-episode package. No paid regeneration.
-The user's explicit 2026-10-11 request replaces all of episodes 16-18; preserve 11-15.
-Future writing follows this direction, but does not rewrite already confirmed work by default.
+An ordinary desire may produce an extraordinary event. Establish only the surreal rule
+needed by that episode through a visible cause. No explanatory lore is necessary.
+Preserve object identity, contact, screen direction and intelligible consequences.
+A fantasy does not have to end as a dream or reset to mundane reality.
+Do not remove a worthwhile visual event just because the series is called daily life.
+
+Default to no dialogue and no narration. Optional deliberate nonverbal accents may
+punctuate an already readable event; they must not carry missing facts or become repeated
+vocal clutter. Preserve explicitly requested dialogue and its exact captions.
+No generated titles, readable incidental labels or explanatory overlays.
+Keep 15 seconds at 4/4/3/4 and begin the actual story at frame one.
+
+### Production continuity and honest release
+
+Retain the authored-package handoff, prop bible, machine-readable references and exact
+prompt preservation. One dominant action per short clip can include anticipation and
+follow-through. Simplify staging without deleting the event that made it worth making.
+Start-frame constraints apply at time zero, not throughout motion. Intentional fantasy
+transformation belongs in action/end states; do not reveal it in a preceding start still.
+Give recurring props sufficient fixed capacity for the entire cast before shot one.
+
+When generated work exists, compare the previous ACTUAL end frame and next ACTUAL start
+image: pose/support, object ownership, important food or furniture, and character positions.
+A clear motivated time jump can change a state; an unexplained reset cannot. Offscreen is
+not missing. Repair story-breaking mismatches without demanding cosmetic regeneration.
+Never describe an essential action as having occurred merely because a script intended it.
+
+Retain the twelve-criterion editorial gate and three real revision passes below.
+They are diagnostics, not a reason to grant every draft eight points. Relatable conditions
+are not proof of entertainment; good manners are not chemistry; a rounded body or bodily
+settling alone is not a comic performance. Clearly distinguish screenplay judgment from
+observed footage and audience data. No paid generation is authorized by a writing revision.
+A complete new 16–18 package must be reviewed, validated and read back before it replaces
+the existing canonical production source.
 
 ## Opening and story standard: immediate interest, earned anticipation and character payoff
 
@@ -247,7 +216,7 @@ because the writing standard changed.
 The goal is viewers who enjoy the seconds they watch, finish the short, and want to see
 these particular characters again. Treat bodily appeal as a primary source of pleasure,
 alongside comic events and relationships. It must be present during the action, not saved
-for a smiling final pose. A simple sit, step or bite can be rewarding in its own right.
+for a smiling final pose. A sit, step or bite can enrich a scene, but does not by itself justify an episode.
 Do not confuse a cute model, kind behavior or an explained personality with cute movement.
 
 Choose a recognizable desire and a physical action that is enjoyable to watch. Develop
@@ -340,8 +309,8 @@ a low three-quarter side/rear view can reveal a round sit; a side view can show 
 a medium shot can keep food, small wings and feet together. Retain a readable face when
 its response matters. Do not isolate body parts for their own sake or use rear views in
 every shot. At phone size, the action must be visible without searching a vast empty room.
-Use scale, depth, light and color to clarify the action. Do not replace ordinary sets
-with spectacle merely because an ordinary action has not yet been well directed.
+Use scale, depth, light and color to clarify the action. Choose the setting and scale that best express the event. Ordinary sets and spectacle
+are both valid; neither compensates for a missing event.
 
 The start image establishes the actual pre-action pose and supports the planned movement.
 Do not draw the already seated pose, wrapped blanket or completed collision before the
@@ -365,8 +334,8 @@ in each episode. Rotate who initiates, helps, overdoes something and receives ca
 Care can be visible in leaving room, staying beside a frightened friend or accepting a
 friend's preferred distance. A hug or gift is not automatically chemistry, and every
 episode must not end with a group cuddle. Keep the comic or emotional consequence.
-Do not use bullying, theft, forced discomfort, unfair burdens, injury or clinical mistakes
-to generate reactions. Brief harmless fear and embarrassment can coexist with mutual care.
+Do not use sustained bullying, injury or clinical mistakes to generate reactions.
+Harmless rivalry, mischief, brief fear and embarrassment can coexist with mutual care.
 
 Build four connected beats, but vary their structure and ending. A final choice can be
 rewarding without a spectacular twist. The ending should reinterpret an earlier action,
