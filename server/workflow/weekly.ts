@@ -1,18 +1,19 @@
-import { parseWeekly } from '../../src/workflow/weekly';
+import { readWeeklyInput } from '../../src/workflow/productionPackage';
 
 export const WEEKLY_FOLDER = '1O2wOWOLyAXmq96aXOExX0fecwK7jZbq-';
 type DriveFile = {id:string;name:string;mimeType:string;modifiedTime?:string};
 export type LatestWeekly = {id:string;name:string;date:string;url:string;text:string;checkedAt:string;episodeCount:number};
 const docsType='application/vnd.google-apps.document';
-const stem=/^\[(\d{4}-\d{2}-\d{2})\]\s*3D 오리 삼총사 릴스 개그 시리즈 주간 패키지(?:\.md|\.txt)?$/;
+const stem=/^\[(\d{4}-\d{2}-\d{2})\]\s*3D 오리 삼총사 릴스 개그 시리즈 주간 패키지(?:\.md|\.txt|\.json)?$/;
 function packageDate(name:string){
  const value=stem.exec(name)?.[1];if(!value)return null;
  const date=new Date(value+'T00:00:00Z');return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value?value:null;
 }
 export function newestWeekly(files:DriveFile[]){
  const candidates=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name)&&
-  (f.mimeType===docsType||(/\.(md|txt)$/i.test(f.name)&&['text/plain','text/markdown','text/x-markdown','application/octet-stream'].includes(f.mimeType))));
- candidates.sort((a,b)=>packageDate(b.name)!.localeCompare(packageDate(a.name)!)||(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
+  (f.mimeType===docsType||(/\.(md|txt)$/i.test(f.name)&&['text/plain','text/markdown','text/x-markdown','application/octet-stream'].includes(f.mimeType))||(/\.json$/i.test(f.name)&&['application/json','text/plain','application/octet-stream'].includes(f.mimeType))));
+ // Same-date authored prompts take priority over their human-readable script.
+ candidates.sort((a,b)=>packageDate(b.name)!.localeCompare(packageDate(a.name)!)||Number(/\.json$/i.test(b.name))-Number(/\.json$/i.test(a.name))||(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
  if(!candidates.length)throw Error('지정된 폴더에서 날짜가 적힌 주간 대본을 찾지 못했습니다.');
  return candidates[0];
 }
@@ -67,7 +68,7 @@ export function createWeeklyReader(options:{key:()=>string|undefined;fetch?:type
   if(!response.ok)throw driveError(response.status);
   const text=await readText(response,1000000);
   if(text.length>300000||/^\s*<!doctype html|^\s*<html/i.test(text))throw Error('주간 대본을 텍스트로 읽지 못했습니다. 문서 공유 권한을 확인해주세요.');
-  const episodes=parseWeekly(text);
+  const episodes=readWeeklyInput(text);
   // A malformed latest document is an error; never silently substitute an older week.
   cached={id:file.id,name:file.name,date:packageDate(file.name)!,url:file.mimeType===docsType?`https://docs.google.com/document/d/${file.id}/edit`:`https://drive.google.com/file/d/${file.id}/view`,text,checkedAt:new Date(now()).toISOString(),episodeCount:episodes.length};
   return cached;

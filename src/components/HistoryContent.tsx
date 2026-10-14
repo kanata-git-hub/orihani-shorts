@@ -10,6 +10,7 @@ import { useToast } from '../hooks/useToast';
 import { videoPromptForCopy } from '../videoPrompt';
 import { IMAGE_GENERATION_NOTICE } from '../imageQuality';
 import { prepareSocialCaption } from '../utils/socialCaption';
+import { isAuthoredPlan } from '../workflow/productionPackage';
 
 interface HistoryContentProps {
   viewingHistoryId: string | null;
@@ -108,7 +109,8 @@ export function HistoryContent({
       { id: 'kling', label: 'Kling 영상 대기', content: viewingItem&&<HistoryContinue key={viewingItem.id} item={viewingItem} images={sceneImages} generating={generatingImages} onGenerate={handleGenerateImage} onEdit={onEdit} onBusy={onBusy} draft={draft} mediaReady={mediaReady} onReferenceScene={onReferenceScene}/> },
       { id: 'content', label: '기획·시각화', content: <div className="flex-1 flex flex-col gap-6 pb-8">
       {renderTabs()}
-      {viewingItem?.episode && onRebuildPrompts && <div className="ori-workflow ori-scene-reference">
+      {isAuthoredPlan(result) && <p className="ori-workflow">완성 제작안 · 기획과 이미지·영상 프롬프트를 그대로 사용합니다.</p>}
+      {viewingItem?.episode && !isAuthoredPlan(result) && onRebuildPrompts && <div className="ori-workflow ori-scene-reference">
         <button type="button" className="ori-workflow-primary" disabled={busy} onClick={onRebuildPrompts}>대본대로 프롬프트 다시 만들기</button>
         <p className="ori-reference-note">최초 설계에 Pro 1회, 검수와 최대 1회 수정에는 Flash를 사용해 새 기록으로 만듭니다. 기존 사진과 영상은 보관됩니다. Gemini 텍스트 처리 비용이 발생하며 사진은 따로 생성합니다.</p>
       </div>}

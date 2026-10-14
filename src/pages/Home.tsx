@@ -4,6 +4,7 @@ import { SourceEpisode } from '../types';
 import { HistoryItem } from '../types';
 import { WeeklyScript } from '../workflow/WeeklyScript';
 import { episodePrompt } from '../workflow/weekly';
+import { isAuthoredPlan } from '../workflow/productionPackage';
 import { editorEpisode, readPackage, importIdentity, MAX_PACKAGE_BYTES } from '../workflow/package';
 import { db, MEDIA_CHANGED, MediaSummary } from '../utils/db';
 import { DraftSummary } from '../editor/draft';
@@ -67,7 +68,7 @@ export default function App() {
     result,
     error,
     currentWorkboardId,
-    handleGenerate: generatePlan
+    handleGenerate: generatePlan, handleLoadPrepared
   } = useGeneration(showToast, saveHistory, apiKeys);
   useEffect(()=>{if(result&&currentWorkboardId&&!isGenerating)remember({kind:'history',id:currentWorkboardId});},[result,currentWorkboardId,isGenerating,remember]);
   
@@ -97,7 +98,7 @@ export default function App() {
   const locked=workflowBusy||editorBusy||referenceBusy||isGenerating||Object.values(generatingImages).some(Boolean);
   const rebuildHistoryPrompts=async()=>{
     const item=history.find(h=>h.id===viewingHistoryId);
-    if(locked||!item?.episode)return;
+    if(locked||!item?.episode||isAuthoredPlan(item.result))return;
     setWorkflowBusy(true);
     try{
       const media=await db.get(item.id);
@@ -199,7 +200,12 @@ export default function App() {
         {(view === '15s-plan' || view === '5s-plan') && (
           <div className="flex-1 w-full bg-[#f9f7f4] flex flex-col items-center p-4 md:p-6 overflow-y-auto">
             <RecentWork history={history} drafts={drafts} media={mediaSummaries} recent={recent} onHistory={item=>{selectHistory(item.id);setView('history');}} onEditor={resumeEditor}/>
-            <WeeklyScript onChoose={(episode,character)=>{if(source&&source.title!==episode.title)setPendingReference(null);setSource(episode);setCustomPrompt(episodePrompt(episode));setSelectedCharacter(character);setView(episode.duration===5?'5s-plan':'15s-plan');}}/>
+            <WeeklyScript disabled={locked} onPrepared={(entry,revision)=>{
+              if(locked)return;
+              const item=handleLoadPrepared(entry,revision);
+              setSelectedCharacter(item.characterId);setSceneImages({});setPendingReference(null);setSource(null);setCustomPrompt('');setView('prompts');
+              showToast('완성 제작안을 불러왔습니다. 장면 1부터 이미지를 만드세요.');
+            }} onChoose={(episode,character)=>{if(source&&source.title!==episode.title)setPendingReference(null);setSource(episode);setCustomPrompt(episodePrompt(episode));setSelectedCharacter(character);setView(episode.duration===5?'5s-plan':'15s-plan');}}/>
             <div className="w-full max-w-2xl mb-4 shrink-0"><SceneReferenceSettings history={history} value={pendingReference} disabled={locked} onChange={setPendingReference}/></div>
             <div className="w-full max-w-2xl bg-white shadow-[8px_8px_0px_#552c24] border-2 border-[#552c24] flex flex-col shrink-0 my-auto">
               <WorkboardSidebar 

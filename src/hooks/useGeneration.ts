@@ -4,6 +4,7 @@ import { readSceneReference, type SceneReference } from '../sceneReference';
 import { db } from '../utils/db';
 import { useState } from "react";
 import { CHARACTERS, getSystemPrompt } from "../constants";
+import { preparedHistory, type PreparedEpisode } from '../workflow/productionPackage';
 
 
 export function useGeneration(
@@ -82,6 +83,16 @@ export function useGeneration(
     }
   };
 
+  const handleLoadPrepared = (entry: PreparedEpisode, revision: string) => {
+    const item = preparedHistory(entry, revision);
+    // Local import only. No /api/generate, model review, repair or paid call.
+    saveHistory(item);
+    setError(null);
+    setCurrentWorkboardId(item.id);
+    setResult(item.result);
+    return item;
+  };
+
   return {
     isGenerating,
     result,
@@ -89,5 +100,6 @@ export function useGeneration(
     error,
     currentWorkboardId,
     handleGenerate,
+    handleLoadPrepared,
   };
 }

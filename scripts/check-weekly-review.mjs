@@ -14,7 +14,9 @@ const times = ['0~4초', '4~8초', '8~11초', '11~15초'];
 export const normalize = text => text.replace(/\r\n?/g, '\n').trimEnd() + '\n';
 export const fingerprint = text => createHash('sha256').update(normalize(text)).digest('hex');
 
-export function validateWeeklyReview(text, review) {
+// Default weekly release remains three episodes. An explicitly scoped user
+// revision may name its exact episode numbers without rewriting other episodes.
+export function validateWeeklyReview(text, review, episodeNumbers) {
   const errors = [];
   const require = (test, message) => { if (!test) errors.push(message); };
   const nonempty = value => typeof value === 'string' && value.trim().length > 0;
@@ -26,11 +28,13 @@ export function validateWeeklyReview(text, review) {
   require(review?.scope === 'screenplay-only', 'Distinguish screenplay review from generated footage and audience results.');
   require(Array.isArray(review?.openIssues) && review.openIssues.length === 0, 'Unresolved issues prevent release.');
   const heads = [...source.matchAll(/^\[에피소드 (\d+)\] (\d+)화 ([^\n]+) \(하찮은 오리 일상\)$/gm)];
-  require(heads.length === 3, 'A package must contain exactly three episodes.');
+  const count = episodeNumbers?.length ?? 3;
+  if (episodeNumbers) require(count > 0 && count <= 3 && new Set(episodeNumbers).size === count && episodeNumbers.every(n => Number.isInteger(n) && n > 0) && JSON.stringify(heads.map(h => Number(h[1]))) === JSON.stringify(episodeNumbers), 'The source must contain exactly the requested episode numbers.');
+  require(heads.length === count, `A package must contain exactly ${count} episodes.`);
   require((source.match(/^\[에피소드 /gm) || []).length === heads.length, 'Malformed episode heading.');
   const reviews = review?.episodes || [];
-  require(reviews.length === 3, 'Review all three episodes.');
-  require(new Set(reviews.map(r => r.number)).size === 3, 'Duplicate episode review.');
+  require(reviews.length === count, 'Review every scoped episode.');
+  require(new Set(reviews.map(r => r.number)).size === count, 'Duplicate episode review.');
   heads.forEach((head, index) => {
     const number = Number(head[1]);
     const prefix = `Episode ${number}: `;
@@ -96,11 +100,12 @@ export function validateWeeklyReview(text, review) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const [scriptPath, reviewPath] = process.argv.slice(2);
+  const [scriptPath, reviewPath, scope] = process.argv.slice(2);
   if (!scriptPath || !reviewPath) { console.error('Usage: node check-weekly-review.mjs screenplay.txt review.json'); process.exitCode = 2; }
   else {
     try {
-      const issues = validateWeeklyReview(readFileSync(scriptPath, 'utf8'), JSON.parse(readFileSync(reviewPath, 'utf8')));
+      if (scope && !/^--episodes=\d+(,\d+)*$/.test(scope)) throw Error('Use --episodes=17,18 for an explicitly scoped revision.');
+      const issues = validateWeeklyReview(readFileSync(scriptPath, 'utf8'), JSON.parse(readFileSync(reviewPath, 'utf8')), scope?.slice('--episodes='.length).split(',').map(Number));
       if (issues.length) { console.error(issues.join('\n')); process.exitCode = 1; }
       else console.log('PASS: package format and revision-specific review. Story quality remains an editorial judgment; footage and audience performance are untested.');
     } catch (error) { console.error(error.message); process.exitCode = 1; }
