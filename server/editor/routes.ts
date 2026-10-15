@@ -60,7 +60,7 @@ editorRouter.post('/voice', express.json({ limit: '16kb' }), async (req, res) =>
   try {
     const { text: originalText, voice, style, duration } = req.body;
     const text = typeof originalText === 'string' ? spokenNumbers(originalText) : originalText;
-    if (typeof text !== 'string' || !text.trim() || text.length > 1200 || !['Zubenelgenubi', 'Achird', 'Algenib', 'Kore', 'Puck'].includes(voice) || typeof style !== 'string' || style.length > 500 || ![5, 15].includes(duration)) { res.status(400).json({ error: '나레이션과 목소리 설정을 확인해주세요.' }); return; }
+    if (typeof text !== 'string' || !text.trim() || text.length > 1200 || !['Zubenelgenubi', 'Achird', 'Algenib', 'Kore', 'Puck'].includes(voice) || typeof style !== 'string' || style.length > 500 || ![5, 15, 30].includes(duration)) { res.status(400).json({ error: '나레이션과 목소리 설정을 확인해주세요.' }); return; }
     if (!process.env.GEMINI_API_KEY) throw Error('서버의 Gemini 키 설정이 필요합니다.');
     // Never automatically retry a paid generation request.
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {

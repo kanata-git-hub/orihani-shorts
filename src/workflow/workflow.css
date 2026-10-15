@@ -32,3 +32,14 @@
  .ori-reference-selected>div { overflow-wrap: anywhere; }
  .ori-workflow input[type=file] { font-size: 13px; }
 }
+.ori-kling4-start{width:100%;max-width:672px;margin-bottom:20px}
+.ori-kling4 h3,.ori-kling4-start h2{font-size:21px;font-weight:700}
+.ori-kling4 h4{font-size:17px;font-weight:700;margin:16px 0 10px}
+.ori-keyframe-picker{display:flex;gap:8px;overflow-x:auto;margin:14px 0;padding-bottom:4px}
+.ori-keyframe-picker button{flex:1;white-space:nowrap;min-width:85px}
+.ori-kling4-video{border-top:1px solid #d8c9b9;margin-top:24px;padding-top:10px}
+.ori-image-import{border:1px dashed #bfa98e;border-radius:12px;background:#fffaeb;padding:12px;margin:12px 0;min-width:0}
+.ori-image-import .ori-image-import-label{display:block;font-size:15px;font-weight:700;margin:0}
+.ori-image-import input{display:block;width:100%;margin-top:8px;font-size:13px;min-width:0}
+.ori-image-import small{display:block;font-size:12px;color:#79655d;margin-top:8px}
+.ori-image-import p{font-size:13px;margin:8px 0 0}

@@ -1,3 +1,6 @@
+import { getKling4Plan } from '../kling4';
+import { Kling4Workspace } from '../workflow/Kling4Workspace';
+import { ImageImport } from './ImageImport';
 import { PromptLength } from './PromptLength';
 import { ImagePreview } from './ImagePreview';
 import { HistoryContinue } from '../workflow/HistoryContinue';
@@ -15,6 +18,9 @@ import { prepareReelsCaption } from '../utils/socialCaption';
 import { isAuthoredPlan } from '../workflow/productionPackage';
 
 interface HistoryContentProps {
+  onApplyImage:(title:string,image:string)=>Promise<boolean>;
+  onUpdatePlan:(result:string)=>void;
+  onKling4Copy:()=>void;
   viewingHistoryId: string | null;
   history: HistoryItem[];
   viewingScenes: any[];
@@ -42,7 +48,7 @@ export function HistoryContent({
   sceneImages,
   generatingImages,
   handleGenerateImage, handleCompareImages, onEdit, onBusy, draft, mediaReady, onReferenceScene,
-  referenceSettings, clipReferenceSettings, backgroundSettings, onRebuildPrompts, busy
+  referenceSettings, clipReferenceSettings, backgroundSettings, onRebuildPrompts, busy, onApplyImage, onUpdatePlan, onKling4Copy
 }: HistoryContentProps) {
   const [showRawPrompt, setShowRawPrompt] = useState(false);
   const [copiedAllPrompts, setCopiedAllPrompts] = useState(false);
@@ -64,6 +70,8 @@ export function HistoryContent({
   const viewingItem = history.find(h => h.id === viewingHistoryId);
   const result = viewingItem?.result || '';
 
+  const kling4 = getKling4Plan(result);
+  const modernWorkspace = kling4 && <Kling4Workspace key={viewingItem!.id} result={result} images={sceneImages} busy={busy} ready={mediaReady} onApply={onApplyImage} onGenerate={handleGenerateImage} onUpdate={onUpdatePlan} onEdit={onEdit}/>;
   const overview = extractOverview(result);
   const socialCaption = prepareReelsCaption(overview, viewingItem?.episode);
   const clips = extractClips(result).map(clip=>({...clip,videoPrompt:videoPromptForCopy(clip.videoPrompt)}));
@@ -87,8 +95,9 @@ export function HistoryContent({
   return (
     <WorkspaceTabs reelsCaption={socialCaption.text} label="기록 작업" defaultTab="content" tabs={[
       { id: 'content', label: '기획', content: <div className="flex-1 flex flex-col gap-6 pb-8">
+      {!kling4&&<div className="ori-workflow"><p>이 제작안은 이전 클립 방식입니다.</p><button disabled={busy||!mediaReady} onClick={onKling4Copy}>Kling 4.0 작업으로 복사</button><p>이미지와 대본을 보관하고 새 작업을 만듭니다.</p></div>}
       {isAuthoredPlan(result) && <p className="ori-authored-note">완성 제작안 · 프롬프트 그대로 사용</p>}
-      {viewingItem?.episode && !isAuthoredPlan(result) && onRebuildPrompts && <div className="ori-workflow ori-scene-reference">
+      {viewingItem?.episode && !kling4 && !isAuthoredPlan(result) && onRebuildPrompts && <div className="ori-workflow ori-scene-reference">
         <button type="button" className="ori-workflow-primary" disabled={busy} onClick={onRebuildPrompts}>대본대로 프롬프트 다시 만들기</button>
         <p className="ori-reference-note">최초 설계에 Pro 1회, 검수와 최대 1회 수정에는 Flash를 사용해 새 기록으로 만듭니다. 기존 사진과 영상은 보관됩니다. Gemini 텍스트 처리 비용이 발생하며 사진은 따로 생성합니다.</p>
       </div>}
@@ -152,7 +161,7 @@ export function HistoryContent({
       )}
 
     </div> },
-      { id: 'images', label: '클립·이미지', content: <div className="flex-1 flex flex-col gap-6 pb-8">
+      { id: 'images', label: '주요장면·이미지', content: modernWorkspace || <div className="flex-1 flex flex-col gap-6 pb-8">
       {/* Bottom: Clip-by-clip Card List */}
       {clips.length > 0 && (
          <div className="ori-clips-workspace flex flex-col gap-4">
@@ -184,6 +193,7 @@ export function HistoryContent({
                   catch { setClipCopy({index:idx,status:'error'}); }
                 }}><Copy size={16} aria-hidden="true" /><span aria-live="polite">{clipCopy?.index === idx ? clipCopy.status === 'done' ? '이 클립 프롬프트 복사 완료' : '복사 실패 · 다시 시도' : '이 클립 영상 프롬프트 복사'}</span></button>
                 <p className="text-xs text-[#79655d]">이미지 생성·자동 검수 시 비용이 발생합니다.</p>
+                <ImageImport title={clip.imageTitle} disabled={busy||!mediaReady} hasImage={!!sceneImages[clip.imageTitle]} onApply={onApplyImage}/>
                     {/* Image Generation Area */}
                 {!sceneImages[clip.imageTitle] ? (
                   <button
@@ -258,7 +268,7 @@ export function HistoryContent({
          </div>
       )}
     </div> },
-      { id: 'kling', label: 'Kling 영상 대기', content: viewingItem&&<HistoryContinue key={viewingItem.id} item={viewingItem} images={sceneImages} generating={generatingImages} onGenerate={handleGenerateImage} onEdit={onEdit} onBusy={onBusy} draft={draft} mediaReady={mediaReady} onReferenceScene={onReferenceScene}/> },
+      { id: 'kling', label: 'Kling 영상 대기', content: viewingItem&&<HistoryContinue onApplyImage={onApplyImage} klingWorkspace={modernWorkspace} key={viewingItem.id} item={viewingItem} images={sceneImages} generating={generatingImages} onGenerate={handleGenerateImage} onEdit={onEdit} onBusy={onBusy} draft={draft} mediaReady={mediaReady} onReferenceScene={onReferenceScene}/> },
       { id: 'reference', label: '다른 화 참고', content: referenceSettings },
       { id: 'props', label: '장면별 소품', content: clipReferenceSettings },
       { id: 'background', label: '배경 에셋', content: backgroundSettings },

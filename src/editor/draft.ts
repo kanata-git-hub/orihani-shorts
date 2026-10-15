@@ -17,12 +17,12 @@ export const voiceIsCurrent = (d: Draft) => !d.plan.narration.trim() || (!!d.voi
 export const resultIsCurrent = (d: Draft) => !!d.result && d.resultKey === resultKey(d) && voiceIsCurrent(d) && d.syncKey === syncKey(d) && !d.plan.captions.some(c => c.review);
 export const hasDraftContent = (d: Draft) => !!(d.original.trim() || d.plan.title.trim() || d.plan.narration.trim() || d.plan.thumbnail.trim() || d.plan.captions.length || d.videos.some(Boolean) || d.voiceBlob || d.result);
 export function draftStage(d: Draft): EditorStage {
-  if (clipLengths(d.plan.duration).some((_, i) => !d.videos[i])) return 'videos';
+  if (clipLengths(d.plan.duration,d.plan.videoLayout).some((_, i) => !d.videos[i])) return 'videos';
   if (resultIsCurrent(d)) return 'result';
   return voiceIsCurrent(d) && d.syncKey === syncKey(d) ? 'captions' : 'voice';
 }
 export function summarizeDraft(d: Draft, updatedAt = Date.now()): DraftSummary {
-  return { id: d.id, title: d.plan.title || '제목 없는 편집', updatedAt, version: 1, state: draftStage(d), videoCount: d.videos.filter(Boolean).length, requiredVideos: clipLengths(d.plan.duration).length, hasResult: !!d.result, textPolicy: TEXT_POLICY_VERSION, renderVersion: RENDER_VERSION };
+  return { id: d.id, title: d.plan.title || '제목 없는 편집', updatedAt, version: 1, state: draftStage(d), videoCount: d.videos.filter(Boolean).length, requiredVideos: clipLengths(d.plan.duration,d.plan.videoLayout).length, hasResult: !!d.result, textPolicy: TEXT_POLICY_VERSION, renderVersion: RENDER_VERSION };
 }
 export function restoreDraft(d: Draft): Draft {
   const plan = cleanPlanText(d.plan);

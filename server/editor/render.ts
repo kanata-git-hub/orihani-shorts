@@ -1,3 +1,4 @@
+import { clipLengths } from '../../src/editor/media';
 import { spawn } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -34,7 +35,7 @@ export function subtitles(p: EditPlan) {
 }
 export async function render(p: EditPlan, videos: string[], voice: string | undefined, dir: string, signal?: AbortSignal) {
   p = cleanPlanText(p);
-  validatePlan(p); const lengths = p.duration === 5 ? [5] : [4, 4, 3, 4];
+  validatePlan(p); const lengths = clipLengths(p.duration,p.videoLayout);
   if (videos.length !== lengths.length) throw Error(`영상 ${lengths.length}개를 순서대로 넣어주세요.`);
   const narration = voice ? await inspect(voice, dir, signal) : undefined;
   if (narration && (!narration.audio || (!p.voiceSegments?.length && narration.duration / p.voiceSpeed > p.duration + 0.05))) throw Error('나레이션이 영상보다 깁니다. 속도를 조절하거나 대본을 줄여 음성을 다시 만들어주세요. 음성을 잘라내지는 않습니다.');

@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const compiled = path.join(root, '.editor-test');
 fs.mkdirSync(compiled, { recursive: true });
 fs.writeFileSync(path.join(compiled, 'package.json'), '{"type":"commonjs"}');
-for (const f of ['src/videoPrompt.ts','src/productionContinuity.ts','src/utils/clipTiming.ts','src/workflow/productionPackage.ts','src/referencePlan.ts','src/shotDirection.ts','src/sceneReference.ts','src/characterReference.ts','src/backgroundAssets.ts','server/workflow/weekly.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/typography.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
+for (const f of ['src/kling4.ts','src/videoPrompt.ts','src/productionContinuity.ts','src/utils/clipTiming.ts','src/workflow/productionPackage.ts','src/referencePlan.ts','src/shotDirection.ts','src/sceneReference.ts','src/characterReference.ts','src/backgroundAssets.ts','server/workflow/weekly.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/typography.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
   const dest = path.join(compiled, f.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
@@ -358,6 +358,18 @@ test('real render: silent source, audio source, narration mixing and 15s concat'
   fs.copyFileSync(path.join(dir,'finished.mp4'),path.join(dir,'verified-15s.mp4'));
 });
 
+test('real Kling 4.0 render accepts one 15s or 30s video, including late captions and original audio', { skip: !process.env.FFMPEG_PATH, timeout:180000 }, async () => {
+  const dir=path.join(compiled,'kling4-media');fs.mkdirSync(dir,{recursive:true});const ff=process.env.FFMPEG_PATH;
+  for(const duration of [15,30]){
+    await command(ff,['-y','-f','lavfi','-i','color=c=0x67514a:s=180x320:r=24','-f','lavfi','-i','sine=frequency=330:sample_rate=48000','-t',String(duration),'-c:v','libx264','-pix_fmt','yuv420p','-c:a','aac','source.mp4'],dir);
+    const p={...defaultPlan(),duration,videoLayout:'single',originalVolume:1,captions:[{start:duration-2,end:duration,text:'마지막 장면'}]};
+    await render(p,[path.join(dir,'source.mp4')],undefined,dir);
+    const meta=await inspect('finished.mp4',dir);assert.equal(meta.audio,true);assert.ok(Math.abs(meta.duration-duration)<0.1);
+    fs.copyFileSync(path.join(dir,'finished.mp4'),path.join(dir,`verified-${duration}s.mp4`));
+    if(duration===30)await assert.rejects(()=>render({...p,videoLayout:'legacy-clips'},[path.join(dir,'source.mp4')],undefined,dir),/30초/);
+  }
+});
+
 const { spokenNumbers, parseWords, alignCaptions, scheduleNarration, placedWords } = require(path.join(compiled,'src/editor/speech.js'));
 const {readSpeechAnalysis,sourceSpeechTimeline,alignSourceCaptions}=require(path.join(compiled,'src/editor/speech.js'));
 const transcriptResult=annotations=>({status:'completed',steps:[{type:'model_output',content:[{type:'text',text:'안녕 친구야',annotations}]}]});
@@ -427,6 +439,8 @@ test('transcription timing failure returns reviewable metadata after exactly one
   assert.equal(requests,1);assert.ok(analysis.timingWarning);assert.deepEqual(analysis.words,[]);
   httpStatus=429;await assert.rejects(()=>transcribe('test.mp4',dir,new AbortController().signal,4),/429/);assert.equal(requests,2);
   meta={...meta,audio:false};assert.deepEqual(await transcribe('test.mp4',dir,new AbortController().signal,4),{words:[],model:'no-audio'});assert.equal(requests,2);
+  for(const duration of [15,30]){meta={duration:duration+0.04,audio:false,video:true};assert.deepEqual(await transcribe('test.mp4',dir,new AbortController().signal,duration),{words:[],model:'no-audio'});}
+  meta={duration:31,audio:false,video:true};await assert.rejects(()=>transcribe('test.mp4',dir,new AbortController().signal,30),/30초/);
  } finally {if(previousKey===undefined)delete process.env.GEMINI_API_KEY;else process.env.GEMINI_API_KEY=previousKey;fs.rmSync(dir,{recursive:true,force:true});}
 });
 test('Korean readings preserve units and native counters',()=>{

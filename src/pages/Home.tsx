@@ -1,3 +1,6 @@
+import { Kling4Start } from '../workflow/Kling4Start';
+import { Kling4Workspace } from '../workflow/Kling4Workspace';
+import { getKling4Plan, legacyKling4Copy } from '../kling4';
 import { ImageChecks } from '../components/ImageChecks';
 import { useEffect, useState, useCallback } from 'react';
 import { SourceEpisode } from '../types';
@@ -14,7 +17,7 @@ import { recordDraftId, recordProgress } from '../workflow/progress';
 import { VideoEditor } from '../editor/VideoEditor';
 import { Sparkles, Clapperboard, AlertCircle } from 'lucide-react';
 import { CHARACTERS } from '../constants';
-import { extractScenes, extractOverview } from '../utils/extractors';
+import { extractScenes, extractOverview, extractClips } from '../utils/extractors';
 import { prepareReelsCaption } from '../utils/socialCaption';
 
 import { MobileNavigation } from '../components/MobileNavigation';
@@ -109,7 +112,7 @@ export default function App() {
   usePromptRefresh(history,locked,applyPromptRevision);
   const rebuildHistoryPrompts=async()=>{
     const item=history.find(h=>h.id===viewingHistoryId);
-    if(locked||!item?.episode||isAuthoredPlan(item.result))return;
+    if(locked||!item?.episode||isAuthoredPlan(item.result)||getKling4Plan(item.result))return;
     setWorkflowBusy(true);
     try{
       const media=await db.get(item.id);
@@ -141,6 +144,21 @@ export default function App() {
   const resumeEditor=(id:string)=>{setResumeId(id);setView('editor');remember({kind:'editor',id});};
   const openRecordEditor=(item:HistoryItem)=>{try{if(document.documentElement.dataset.oriEditorReady!=='1')throw Error('편집 화면을 준비 중입니다. 잠시 후 다시 눌러주세요.');setResumeId(undefined);window.dispatchEvent(new CustomEvent('orihani-editor-import',{detail:{version:1,key:item.editorKey||'history-'+item.id,episode:editorEpisode(item)}}));}catch(e){showToast((e as Error).message,'error');}};
   const importWork=async(file:File)=>{try{if(file.size>MAX_PACKAGE_BYTES)throw Error('작업 파일은 48MB 이하로 넣어주세요.');const pack=readPackage(await file.text());const item=importIdentity(pack.item,history);const importedRefs=Object.fromEntries(Object.entries(pack.clipReferences||{}).map(([title,ref])=>[title,ref.sourceId===pack.item.id?{...ref,sourceId:item.id}:ref]));await db.set(item.id,{images:pack.images,...(pack.sceneReference?{sceneReference:pack.sceneReference}:{}),clipReferences:importedRefs});saveHistory(item);selectHistory(item.id);showToast('기획·사진·대본을 가져왔습니다.');}catch(e){showToast((e as Error).message,'error');}};
+  const updateCurrentPlan=(raw:string)=>{
+    const item=history.find(h=>h.id===targetId);if(!item||locked)return;
+    saveHistory({...item,result:raw});if(item.id===currentWorkboardId)setResult(raw);
+  };
+  const copyToKling4=async()=>{
+    const item=history.find(h=>h.id===targetId);if(!item||locked||!mediaReady)return;
+    setWorkflowBusy(true);
+    try {
+      const copied=legacyKling4Copy(item,extractClips(item.result),extractOverview(item.result));
+      const media=await db.get(item.id);
+      const refs=Object.fromEntries(Object.entries(readClipReferences(media?.clipReferences)).map(([title,ref])=>[title,ref.sourceId===item.id?{...ref,sourceId:copied.id}:ref]));
+      await db.set(copied.id,{...media,images:media?.images||{},clipReferences:refs});
+      saveHistory(copied);selectHistory(copied.id);setView('history');showToast('Kling 4.0 작업을 복사했습니다. 전체 영상 프롬프트를 확인해주세요.');
+    } catch(e){showToast((e as Error).message,'error');} finally{setWorkflowBusy(false);}
+  };
   const currentOverview = extractOverview(result);
   const currentEpisode = history.find(item => item.id === currentWorkboardId)?.episode;
   const reelsCaption = prepareReelsCaption(currentOverview, currentEpisode).text;
@@ -175,7 +193,8 @@ export default function App() {
     if (index < 0) { showToast('이 그림의 원래 장면을 찾지 못했습니다.', 'error'); return; }
     void handleReviewImage(title, scenes[index].prompt, index, scenes, plan, candidate, repair);
   };
-  const workboardContent = <><ImageChecks targetId={targetId} busy={locked} onCheck={checkImageCandidate} onApply={handleApplyImage}/><WorkboardContent
+  const workboardContent = <><ImageChecks targetId={targetId} busy={locked} onCheck={checkImageCandidate} onApply={handleApplyImage}/>{getKling4Plan(result)&&view==='prompts'?<Kling4Workspace key={currentWorkboardId} result={result} images={sceneImages} busy={locked} ready={mediaReady} onApply={handleApplyImage} onGenerate={handleGenerateImage} onUpdate={updateCurrentPlan} onEdit={()=>{const item=history.find(h=>h.id===currentWorkboardId);if(item)openRecordEditor(item);}}/>:<WorkboardContent
+    onApplyImage={handleApplyImage} onKling4Copy={getKling4Plan(result)?undefined:()=>void copyToKling4()} busy={locked||!mediaReady}
     activeTab={view === 'prompts' ? 'prompts' : 'scenario'}
     selectedCharacter={selectedCharacter}
     result={result}
@@ -190,7 +209,7 @@ export default function App() {
     handleGenerateImage={handleGenerateImage}
     handleCompareImages={handleCompareImages}
     onReferenceScene={useInAnotherEpisode}
-  /></>;
+  />}</>;
 
   return (
     <div className="ori-app flex flex-col h-[100dvh] w-full bg-[#f5f2ed] font-sans text-[#552c24] overflow-hidden md:border-8 md:border-[#552c24]">
@@ -214,14 +233,15 @@ export default function App() {
           <div className="ori-start-screen flex-1 min-h-0 w-full bg-[#f9f7f4] flex flex-col items-center p-4 md:p-6 overflow-y-auto">
             <div className="ori-page-heading"><h2>새 영상 만들기</h2></div>
             <RecentWork history={history} drafts={drafts} media={mediaSummaries} recent={recent} onHistory={item=>{selectHistory(item.id);setView('history');}} onEditor={resumeEditor}/>
+            <Kling4Start/>
             <WeeklyScript disabled={locked} onPrepared={(entry,revision)=>{
               if(locked)return;
               const item=handleLoadPrepared(entry,revision);
               setSelectedCharacter(item.characterId);setSceneImages({});setPendingReference(null);setSource(null);setCustomPrompt('');setView('prompts');
-              showToast('완성 제작안을 불러왔습니다. 장면 1부터 이미지를 만드세요.');
+              showToast('완성 제작안을 불러왔습니다. 주요장면 이미지를 가져오세요.');
             }} onChoose={(episode,character)=>{if(source&&source.title!==episode.title)setPendingReference(null);setSource(episode);setManualPlanOpen(true);setCustomPrompt(episodePrompt(episode));setSelectedCharacter(character);setView(episode.duration===5?'5s-plan':'15s-plan');}}/>
             <details className="ori-manual-plan" open={manualPlanOpen} onToggle={e=>setManualPlanOpen(e.currentTarget.open)}>
-              <summary><span>직접 기획하기</span><small>아이디어로 새 기획 만들기</small></summary>
+              <summary><span>Gemini로 기획하기 · 선택</span><small>이전 클립 방식 · API 비용 발생</small></summary>
               <div className="ori-duration-switch" role="group" aria-label="직접 기획할 영상 길이">
                 <button type="button" aria-pressed={view === '15s-plan'} onClick={()=>setView('15s-plan')}>15초 · 4개 클립</button>
                 <button type="button" aria-pressed={view === '5s-plan'} onClick={()=>setView('5s-plan')}>5초 · 짧은 영상</button>
@@ -257,7 +277,7 @@ export default function App() {
             <div className="max-w-4xl w-full mx-auto flex flex-col gap-6">
               {view === 'prompts' && !isGenerating && result ? (
                 <WorkspaceTabs reelsCaption={reelsCaption} key={currentWorkboardId} label="시각화 작업" defaultTab="clips" tabs={[
-                  { id: 'clips', label: '클립·이미지', content: workboardContent },
+                  { id: 'clips', label: '주요장면·이미지', content: workboardContent },
                   { id: 'reference', label: '다른 화 참고', content: referenceSettings() },
                   { id: 'props', label: '장면별 소품', content: clipReferenceSettings() },
                   { id: 'background', label: '배경 에셋', content: backgroundSettings(result) },
@@ -276,6 +296,7 @@ export default function App() {
             <div className="max-w-4xl w-full mx-auto flex flex-col gap-6">
               <ImageChecks targetId={targetId} busy={locked} onCheck={checkImageCandidate} onApply={handleApplyImage}/>
               <HistoryContent key={viewingHistoryId}
+                onApplyImage={handleApplyImage} onUpdatePlan={updateCurrentPlan} onKling4Copy={()=>void copyToKling4()}
                 onRebuildPrompts={()=>void rebuildHistoryPrompts()} busy={locked}
                 referenceSettings={referenceSettings()}
                 clipReferenceSettings={clipReferenceSettings()}

@@ -1,3 +1,4 @@
+import { validateKling4Plan } from '../kling4';
 import type { HistoryItem, SourceEpisode } from '../types';
 import { sourceEpisode } from './package';
 import { parseWeekly } from './weekly';
@@ -39,6 +40,12 @@ export function readProductionPackage(raw: string): ProductionPackage {
     const number = episode.title.match(/^\[에피소드\s*(\d+)\]/)?.[1];
     if (Number(number) !== entry.number) fail('제목의 회차 번호가 다릅니다.');
     if (!Array.isArray(plan.hashtags) || plan.hashtags.length !== 5 || plan.hashtags.some((t: unknown) => typeof t !== 'string' || !t.trim() || t.length > 100)) fail('해시태그 5개가 필요합니다.');
+    if (plan.workflow === 'kling4') {
+      validateKling4Plan(plan);
+      if(plan.duration !== episode.duration) fail('대본과 전체 영상 길이가 다릅니다.');
+      if(plan.needsVideoReview) fail('전체 영상 프롬프트 확인을 완료해주세요.');
+      return { number: entry.number, characterId: entry.characterId, episode, plan };
+    }
     validateClipTiming(JSON.stringify(plan), `${episode.duration}s`);
     compileProductionPlan(plan);
     const references = parseReferencePlans(episode.scenario);

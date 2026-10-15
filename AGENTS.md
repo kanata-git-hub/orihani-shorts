@@ -33,6 +33,32 @@ sources and archives, not a reason to regenerate the authored prompts.
 
 ## Current release standard
 
+### Kling 4.0 keyframes and subscription image creation — 2026-10-16
+
+For NEW authored packages use `plan.workflow: "kling4"`, one whole-video
+`videoPrompt`, and `keyframes` instead of `clips`; see docs/authored-production.md.
+Defaults: 5 seconds / 2 images, 15 seconds / 3 images, 30 seconds / 5 images.
+These images anchor important moments within ONE video, not separate video clips.
+The old four-shot 4/4/3/4 timing applies only to legacy clip packages and does not
+override this new format. Story beats and image count are independent. An end
+keyframe depicts the actual payoff; it is not another clip's starting state.
+Reuse the first approved image of the same set for later image edits. Keep fixed
+prop geometry, quantity, scale, material and ownership explicit in `continuity`.
+Do not silently migrate an approved screenplay or discard previously paid images.
+
+The user prefers image generation inside their current ChatGPT subscription.
+Do NOT connect or call their OpenAI API, or silently substitute another paid API.
+Use the conversation's built-in image generation capability within its availability.
+Paid API fallback requires separate explicit user agreement. The app imports local
+images without generation, automatic review, or provider API calls; optional Gemini
+generation remains explicit. Do not claim subscription quotas or successful image
+generation without evidence. No automatic image generation is authorized by an app fix.
+
+The old 1,900-character clip budget below applies to legacy clips, not the new
+whole-video prompt. The app preserves Kling 4.0 prompts exactly, without clip headers,
+audio rewriting or truncation. Its 30,000-character file guard is an app safety bound,
+not a claim about Kling's token limit.
+
 ### Kling prompt budget — 2026-10-15
 
 The user's current Kling input truncates at 2,000 characters. Author every scene's

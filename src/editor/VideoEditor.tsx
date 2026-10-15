@@ -8,7 +8,7 @@ import { clipLengths, validateMediaSizes, validateMediaDuration, mediaDuration }
 import './editor.css';
 import { shareFile } from '../workflow/share';
 
-const fresh = (): Draft => ({ id: crypto.randomUUID(), plan: defaultPlan(), original: '', voice: 'Zubenelgenubi', style: '털털하고 편안한 남성 말투. 과장하지 않고 짧은 농담을 담백하게 말한다.', videos: [] });
+const fresh = (): Draft => ({ id: crypto.randomUUID(), plan: {...defaultPlan(),videoLayout:'single'}, original: '', voice: 'Zubenelgenubi', style: '털털하고 편안한 남성 말투. 과장하지 않고 짧은 농담을 담백하게 말한다.', videos: [] });
 function useURL(blob?: Blob) {
   const [url, setURL] = useState('');
   useEffect(() => { if (!blob) { setURL(''); return; } const value = URL.createObjectURL(blob); setURL(value); return () => URL.revokeObjectURL(value); }, [blob]); return url;
@@ -134,11 +134,11 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
   const voiceCurrent = voiceIsCurrent(d);
   const syncCurrent = d.syncKey === syncKey(d);
   const finishedCurrent = resultIsCurrent(d);
-  const lengths = clipLengths(d.plan.duration);
+  const lengths = clipLengths(d.plan.duration,d.plan.videoLayout);
   const createVoice = () => run(async () => {
     const cleaned = restoreDraft(d); if (cleaned !== d) { setD(cleaned); throw Error('깨질 수 있는 문자를 정리했습니다. 대본을 확인한 뒤 다시 준비해주세요.'); }
     if (!consent) throw Error('음성 생성·분석 비용 확인란을 체크해주세요.');
-    validateMediaSizes(d.videos,d.plan.duration,d.plan.narration.trim()?(d.voiceBlob?.size||0):0);
+    validateMediaSizes(d.videos,d.plan.duration,d.plan.narration.trim()?(d.voiceBlob?.size||0):0,d.plan.videoLayout);
     setMessage('영상 길이와 파일을 확인 중입니다. 아직 유료 분석은 시작하지 않았습니다.');
     for(let i=0;i<lengths.length;i++)validateMediaDuration(await mediaDuration(d.videos[i]!,'video'),lengths[i],i);
     if(d.plan.importWarning)throw Error(d.plan.importWarning);
@@ -171,7 +171,7 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
     if (!voiceCurrent) throw Error('현재 대본에 맞는 음성을 먼저 만들어주세요.');
     if (d.videos.filter(Boolean).length !== lengths.length) throw Error('각 칸에 Kling 영상 파일을 넣어주세요.');
     if (d.plan.narration.trim() && !d.plan.voiceSegments?.length && audioLength / d.plan.voiceSpeed > d.plan.duration + 0.05) throw Error('음성이 영상보다 깁니다. 대본이나 속도를 조절해주세요.');
-    validateMediaSizes(d.videos,d.plan.duration,d.plan.narration.trim()?(d.voiceBlob?.size||0):0);
+    validateMediaSizes(d.videos,d.plan.duration,d.plan.narration.trim()?(d.voiceBlob?.size||0):0,d.plan.videoLayout);
     const body = new FormData(); body.append('plan', JSON.stringify(d.plan));
     d.videos.forEach(f => body.append('videos', f)); if(d.plan.narration.trim())body.append('voice', d.voiceBlob, 'narration.wav');
     setMessage('영상·음성·자막을 합치는 중입니다. 완료될 때까지 이 창을 열어두세요.');
@@ -191,7 +191,8 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
         <article hidden={stage!=='videos'}><h3>1. Kling 영상 넣기</h3>
           <details className="ori-video-settings"><summary>{d.plan.duration}초 · 영상 {lengths.length}개 / 이름·길이 설정</summary>
           <label>콘텐츠 이름<input value={d.plan.title} maxLength={300} onChange={e => change({ title: e.target.value })} onBlur={cleanText} placeholder="이번 밈 제목" /></label>
-          <div className="ori-row"><button aria-pressed={d.plan.duration === 5} disabled={d.plan.duration === 5} onClick={() => { change({ duration: 5, captions: [], voiceSegments:undefined, dialogueRanges:undefined }); setD(v => ({ ...v, videos: [] })); }}>5초 · 영상 한 개</button><button aria-pressed={d.plan.duration === 15} disabled={d.plan.duration === 15} onClick={() => { change({ duration: 15, captions: [], voiceSegments:undefined, dialogueRanges:undefined }); setD(v => ({ ...v, videos: [] })); }}>15초 · 영상 네 개</button></div>
+          <div className="ori-row">{([5,15,30] as const).map(duration=><button key={duration} aria-pressed={d.plan.duration===duration&&d.plan.videoLayout==='single'} disabled={d.plan.duration===duration&&d.plan.videoLayout==='single'} onClick={()=>{change({duration,videoLayout:'single',captions:[],voiceSegments:undefined,dialogueRanges:undefined});setD(v=>({...v,videos:[]}));}}>{duration}초 · 영상 한 개</button>)}</div>
+          <button aria-pressed={d.plan.duration===15&&d.plan.videoLayout!=='single'} disabled={d.plan.duration===15&&d.plan.videoLayout!=='single'} onClick={()=>{change({duration:15,videoLayout:'legacy-clips',captions:[],voiceSegments:undefined,dialogueRanges:undefined});setD(v=>({...v,videos:[]}));}}>이전 방식 · 4초·4초·3초·4초 영상 네 개</button>
           </details>
           <div className="ori-files">{lengths.map((length, i) => <label key={`${d.id}-${d.plan.duration}-${i}`} className="ori-file"><span className="ori-file-heading">{i + 1}번 영상 · {length}초<small>{d.videos[i]?.name || '미선택'}</small></span><span className="ori-file-button">{d.videos[i]?'바꾸기':'영상 선택'}<input aria-label={`${i + 1}번 영상 선택`} type="file" accept="video/mp4,video/quicktime,video/webm" onChange={e => { const f = e.target.files?.[0]; if (f) setD(v => ({ ...v, syncKey: undefined, resultKey: undefined, videos: Array.from({ length: lengths.length }, (_, n) => n === i ? f : v.videos[n] || null) })); }} /></span></label>)}</div>
         </article>
@@ -207,7 +208,7 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
           <details><summary>원본 대본 확인 / 직접 가져오기</summary>{d.original && <pre>{d.original}</pre>}{d.textBackup&&<details><summary>문자 정리 전 편집 원문</summary><pre>{JSON.stringify(d.textBackup,null,2)}</pre></details>}<textarea aria-label="가져올 원본 대본" rows={6} value={raw} onChange={e=>setRaw(e.target.value)} placeholder="한글 나레이션 및 자막 부분을 붙여넣으세요"/><button onClick={()=>{try{const p=importEpisode({duration:d.plan.duration,korean:raw,title:d.plan.title,thumbnail:d.plan.thumbnail});setD(v=>({...v,plan:{...v.plan,narration:p.narration,captions:p.captions,importWarning:p.importWarning},original:raw}));setMessage('대본을 가져오고 깨질 수 있는 문자를 정리했습니다. 해설과 자막을 확인해주세요.');}catch(e){setMessage(e.message);}}}>대본에서 나레이션·자막 가져오기</button></details>
         </article>
         <article hidden={stage!=='captions'}><h3>3. 대사 자막</h3><p>제목자막과 별도 도입 없이 본편부터 시작합니다. 대사자막은 실제 발화 시간에 맞추며, 등장인물의 원본 목소리는 유지합니다. 확인 표시가 있는 문장만 검토하세요.</p><p className="ori-note">이모티콘과 지원되지 않는 장식 문자는 자동 정리합니다. 한글·영문·숫자·일반 문장부호는 유지합니다.</p>
-          <details><summary>원본 영상·대사 들으며 시간 확인</summary><p>원본 재생 시간은 각 영상의 0초부터 시작합니다. 자막 시간은 완성 영상 전체 기준입니다{d.plan.duration===15?' (1번: 0초, 2번: 4초, 3번: 8초, 4번: 11초부터).':'.'}</p>{stage==='captions'&&d.videos.map((file,index)=>file&&<SourcePreview key={`${d.id}-${index}`} file={file} index={index}/>)}</details>
+          <details><summary>원본 영상·대사 들으며 시간 확인</summary><p>원본 재생 시간은 각 영상의 0초부터 시작합니다. 자막 시간은 완성 영상 전체 기준입니다{d.plan.duration===15&&d.plan.videoLayout!=='single'?' (1번: 0초, 2번: 4초, 3번: 8초, 4번: 11초부터).':'.'}</p>{stage==='captions'&&d.videos.map((file,index)=>file&&<SourcePreview key={`${d.id}-${index}`} file={file} index={index}/>)}</details>
           {d.plan.captions.map((c, i) => <div className="ori-caption-card" key={i}>
             <div className="ori-caption-heading"><strong>{i+1}. {c.source==='dialogue'?'등장인물 대사':c.source==='screen'?'화면 문구':'해설'}</strong><span>{c.start.toFixed(2)}–{c.end.toFixed(2)}초</span></div>
             <label>자막 {i+1}<textarea rows={2} maxLength={160} value={c.text} onChange={e=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,text:e.target.value}:r)})} onBlur={cleanText}/></label>

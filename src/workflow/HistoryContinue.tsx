@@ -1,6 +1,8 @@
 import { PromptLength } from '../components/PromptLength';
 import { ImagePreview } from '../components/ImagePreview';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { getKling4Plan } from '../kling4';
+import { ImageImport } from '../components/ImageImport';
 import { HistoryItem } from '../types';
 import { extractClips, extractOverview, extractScenes } from '../utils/extractors';
 import { makePackage, recordDuration } from './package';
@@ -12,15 +14,16 @@ import { videoPromptForCopy, clipVideoText } from '../videoPrompt';
 import { IMAGE_GENERATION_NOTICE } from '../imageQuality';
 import { prepareReelsCaption, prepareSocialCaption } from '../utils/socialCaption';
 
-export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy,draft,mediaReady,onReferenceScene}:{item:HistoryItem;images:Record<string,string>;generating:Record<string,boolean>;onGenerate:(title:string,prompt:string,i:number,scenes:any[],result?:string)=>Promise<boolean>;onEdit:()=>void;onBusy:(v:boolean)=>void;draft?:DraftSummary;mediaReady:boolean;onReferenceScene?:(title:string)=>void}) {
+export function HistoryContinue({onApplyImage,klingWorkspace,item,images,generating,onGenerate,onEdit,onBusy,draft,mediaReady,onReferenceScene}:{onApplyImage:(title:string,image:string)=>Promise<boolean>;klingWorkspace?:ReactNode;item:HistoryItem;images:Record<string,string>;generating:Record<string,boolean>;onGenerate:(title:string,prompt:string,i:number,scenes:any[],result?:string)=>Promise<boolean>;onEdit:()=>void;onBusy:(v:boolean)=>void;draft?:DraftSummary;mediaReady:boolean;onReferenceScene?:(title:string)=>void}) {
   const clips=extractClips(item.result).map(clip=>({...clip,videoPrompt:videoPromptForCopy(clip.videoPrompt)})), scenes=extractScenes(item.result);
   const [chosenStep,setStep]=useState<'images'|'kling'|null>(null);
   const [index,setIndex]=useState(0),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
   const editLocked=busy||Object.values(generating).some(Boolean);
-  let duration:5|15;try{duration=recordDuration(item);}catch{return <p>이 기록의 클립 수를 확인해주세요.</p>;}
+  const kling4=getKling4Plan(item.result);
+  let duration:5|15|30;try{duration=recordDuration(item);}catch{return <p>이 기록의 클립 수를 확인해주세요.</p>;}
   const missing=clips.filter(c=>!images[c.imageTitle]);
   const step=chosenStep||(mediaReady&&clips.length>0&&!missing.length?'kling':'images');
-  const clipCountValid=clips.length===(duration===5?2:4)&&new Set(clips.map(c=>c.imageTitle)).size===clips.length;
+  const clipCountValid=(!!kling4||clips.length===(duration===5?2:4))&&new Set(clips.map(c=>c.imageTitle)).size===clips.length;
   const lengths=duration===5?[2,3]:[4,4,3,4];
   const action=async(fn:()=>Promise<void>)=>{if(busy)return;setBusy(true);onBusy(true);try{await fn();}catch(e){setMessage((e as Error).message);}finally{setBusy(false);onBusy(false);}};
   const copy=async(text:string,label:string)=>{if(!text.trim())throw Error('복사할 내용이 없습니다.');await navigator.clipboard.writeText(text);setMessage(label+' 복사 완료');};
@@ -33,21 +36,22 @@ export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy
   return <article className="ori-workflow ori-continue">
     <p className="ori-workflow-label">{duration}초 밈 · 이 기록에서 이어하기</p>
     {draft&&<p className="ori-workflow-current">{draftProgress(draft).label}</p>}
-    <div className="ori-workflow-steps" role="group" aria-label="제작 단계">
+    {!kling4&&<div className="ori-workflow-steps" role="group" aria-label="제작 단계">
       <button disabled={busy} aria-pressed={step==='images'} onClick={()=>setStep('images')}>1. 사진</button>
       <button disabled={busy} aria-pressed={step==='kling'} onClick={()=>setStep('kling')}>2. Kling</button>
       <button disabled={editLocked} onClick={onEdit}>3. 편집 열기</button>
-    </div>
+    </div>}
     <p role="status" aria-live="polite">{message||(!mediaReady?'이 기록의 사진을 확인 중입니다.':!clipCountValid?'기록의 클립 수를 확인해주세요.':`사진 ${clips.length-missing.length}/${clips.length}장 준비됨`)}</p>
     <fieldset disabled={busy||Object.values(generating).some(Boolean)||!mediaReady||!clipCountValid}>
-      {step==='images'&&<>
+      {kling4&&klingWorkspace}
+      {!kling4&&step==='images'&&<>
         <p>없는 사진만 생성합니다. 이미지 생성·자동 검수 시 비용이 발생합니다.</p>
         <button className="ori-workflow-primary" onClick={()=>missing.length?action(async()=>{for(let i=0;i<clips.length;i++){const c=clips[i];if(images[c.imageTitle])continue;setMessage(`사진 ${i+1}/${clips.length} 생성 중`);if(!await onGenerate(c.imageTitle,c.imagePrompt,i,scenes,item.result))throw Error(`사진 ${i+1} 생성을 완료하지 못했습니다. 이미 만든 사진은 보관했습니다.`);}setStep('kling');setMessage('사진이 준비되었습니다. Kling에서 사용할 자료를 확인하세요.');}):setStep('kling')}>{missing.length?`남은 사진 ${missing.length}장 만들기`:'사진 준비 완료 → Kling'}</button>
         <details><summary>사진 생성 안내</summary>        <p>이미 있는 사진은 그대로 사용합니다. {IMAGE_GENERATION_NOTICE} 완료될 때까지 화면을 열어두세요.</p></details>
-        <div className="ori-workflow-pictures">{clips.map((c,i)=><div key={i}>{images[c.imageTitle]?<img src={images[c.imageTitle]} alt={`클립 ${i+1} 시작 사진`}/>:<span>사진 없음</span>}<span>Clip {i+1} · {lengths[i]}초</span>{images[c.imageTitle]&&onReferenceScene&&<button onClick={()=>onReferenceScene(c.imageTitle)}>다른 화에서 참고하기</button>}</div>)}</div>
+        <div className="ori-workflow-pictures">{clips.map((c,i)=><div key={i}>{images[c.imageTitle]?<img src={images[c.imageTitle]} alt={`클립 ${i+1} 시작 사진`}/>:<span>사진 없음</span>}<span>Clip {i+1} · {lengths[i]}초</span><ImageImport title={c.imageTitle} hasImage={!!images[c.imageTitle]} disabled={editLocked||!mediaReady} onApply={onApplyImage}/>{images[c.imageTitle]&&onReferenceScene&&<button onClick={()=>onReferenceScene(c.imageTitle)}>다른 화에서 참고하기</button>}</div>)}</div>
 
       </>}
-      {step==='kling'&&<>
+      {!kling4&&step==='kling'&&<>
 
         <div className="ori-workflow-steps">{clips.map((_,i)=><button key={i} aria-pressed={index===i} onClick={()=>setIndex(i)}>Clip {i+1}</button>)}</div>
         {clips[index]&&<div className="ori-workflow-clip">

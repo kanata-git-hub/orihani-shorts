@@ -1,3 +1,4 @@
+import { getKling4Plan } from '../kling4';
 import { authFetch } from '../authFetch';
 import { readApiResponse } from '../utils/apiResponse';
 import { useRef } from 'react';
@@ -164,6 +165,19 @@ ${promptText}`;
       // A manually edited prompt is authoritative over the original shot metadata.
       if (promptText === allScenes[sceneIdx]?.prompt) {
         finalPrompt += '\n\n' + shotDirectionInstruction(scenes[sceneIdx]?.shot);
+      }
+      const kling4 = getKling4Plan(fullPlanText || '');
+      if (kling4) {
+        const frame = kling4.keyframes[sceneIdx];
+        if (!frame || frame.imageTitle !== sceneTitle) throw Error('주요장면 연결을 확인해주세요.');
+        // A keyframe can depict the payoff. Never apply the legacy rule that
+        // every still must hide the outcome until after a new clip begins.
+        finalPrompt = `Create ONE clean vertical 9:16 still at ${frame.time}s of a ${kling4.duration}s video. This is a timed KEYFRAME, not necessarily the start of the story. At the ending timestamp, depict the final payoff exactly as specified. No panels, collage, titles, subtitles, labels or watermarks.
+ORIGINAL character sheets define identity, adult proportions, anatomy and costume. SCRIPT REFERENCE images define only the labelled set and named prop designs. Preserve their count, geometry, materials and scale while applying the CURRENT timestamp's pose, contact, ownership and object state. An earlier image is not the current pose. Do not reset changed props or invent new limbs. Reframe the same physical location without redesigning it.
+CONTINUITY: ${kling4.continuity}
+CURRENT KEYFRAME: ${promptText}
+${background ? backgroundInstruction(background.id) : ''}
+${propReference ? clipReferenceInstruction(propReference, sceneIdx + 1) : ''}`;
       }
       finalPrompt += '\n\n' + connectedAnatomyInstruction;
       const parts = buildReferenceParts(references, finalPrompt);
