@@ -41,6 +41,7 @@ export function WorkboardContent({
   const [copiedAllPrompts, setCopiedAllPrompts] = useState(false);
   const [copiedInstagram, setCopiedInstagram] = useState(false);
   const [activeClipIndex, setActiveClipIndex] = useState(0);
+  const [clipCopy, setClipCopy] = useState<{index:number; status:'done'|'error'} | null>(null);
   const { showToast } = useToast();
 
   const overview = extractOverview(result);
@@ -76,7 +77,7 @@ export function WorkboardContent({
         <div className="flex-1 flex flex-col items-center justify-center text-center opacity-40">
           <Clapperboard size={48} className="mb-4" />
           <p className="font-bold uppercase tracking-widest text-sm">기획이 없습니다</p>
-          <p className="text-xs mt-2">사이드바에서 설정을 완료하고 새로운 숏폼 기획을 생성하세요.</p>
+          <p className="text-xs mt-2">하단의 만들기에서 제작안을 선택하세요.</p>
         </div>
       )}
 
@@ -152,10 +153,11 @@ export function WorkboardContent({
           {/* Bottom: Clip-by-clip Card List */}
           {activeTab === 'prompts' && clips.length > 0 && (
              <div className="flex flex-col gap-4">
-               <div className="flex gap-2 overflow-x-auto pb-2 shrink-0 hide-scrollbar">
+               <div className="ori-clip-picker flex gap-2 overflow-x-auto pb-2 shrink-0" role="group" aria-label="작업할 클립">
                  {clips.map((clip, idx) => (
                    <button
                      key={idx}
+                     aria-pressed={activeClipIndex === idx}
                      onClick={() => setActiveClipIndex(idx)}
                      className={`px-4 py-2 font-bold text-xs uppercase border-2 transition-colors shrink-0 ${activeClipIndex === idx ? 'bg-[#552c24] border-[#552c24] text-[#ffcd4a] shadow-[2px_2px_0px_#ffcd4a]' : 'bg-[#f9f7f4] border-[#552c24] text-[#552c24] opacity-70 hover:opacity-100'}`}
                    >
@@ -164,6 +166,7 @@ export function WorkboardContent({
                  ))}
                </div>
                
+               <details className="ori-copy-options"><summary>여러 클립 프롬프트 복사</summary>
                <button
                  onClick={handleCopyAllVideoPrompts}
                  disabled={clips.some(c => !c.videoPrompt)}
@@ -194,21 +197,21 @@ export function WorkboardContent({
                  </div>
                )}
 
+               </details>
                {clips[activeClipIndex] && (() => {
                   const clip = clips[activeClipIndex];
                   const idx = activeClipIndex;
                   return (
-                  <div className="bg-[#ffffff] border-2 border-[#552c24] p-4 flex flex-col gap-3 relative shadow-[4px_4px_0px_#552c24] max-w-md w-full self-center">
+                  <div className="ori-clip-card bg-[#ffffff] border-2 border-[#552c24] p-4 flex flex-col gap-3 relative shadow-[4px_4px_0px_#552c24] max-w-md w-full self-center">
                     <div className="font-bold text-sm uppercase text-[#552c24] border-b border-[#552c24]/10 pb-2">
                       {clip.title}
                     </div>
 
-                <p className="text-xs">{IMAGE_GENERATION_NOTICE}</p>
-                {handleCompareImages && <details className="ori-prompt-comparison">
-                  <summary>이미지 모델 비교</summary>
-                  <p>동일한 프롬프트와 참고 사진으로 Flash Image와 Pro Image를 각각 한 번 생성하고 Flash로 검수합니다. 비교에서는 자동 수정하지 않습니다. 이미지 2회와 검수 2회 비용이 발생합니다. 기존 장면은 유지합니다.</p>
-                  <button type="button" disabled={Object.values(generatingImages).some(Boolean) || !clip.imagePrompt} onClick={() => void handleCompareImages(clip.imageTitle, clip.imagePrompt, idx, currentScenes, result)}>현재 장면 두 이미지 모델 비교</button>
-                </details>}
+                <button type="button" className="ori-clip-copy" disabled={!clip.videoPrompt} onClick={async()=>{
+                  try { await navigator.clipboard.writeText(`[CLIP ${idx + 1}: ${clip.title}]\n${clip.videoPrompt}`); setClipCopy({index:idx,status:'done'}); }
+                  catch { setClipCopy({index:idx,status:'error'}); }
+                }}><Copy size={16} aria-hidden="true" /><span aria-live="polite">{clipCopy?.index === idx ? clipCopy.status === 'done' ? '이 클립 프롬프트 복사 완료' : '복사 실패 · 다시 시도' : '이 클립 영상 프롬프트 복사'}</span></button>
+                <p className="text-xs text-[#79655d]">이미지 생성·자동 검수 시 비용이 발생합니다.</p>
                     {/* Image Generation Area */}
                     {!sceneImages[clip.imageTitle] ? (
                       <button 
@@ -236,6 +239,12 @@ export function WorkboardContent({
                         </div>
                       </div>
                     )}
+                <details className="ori-prompt-comparison"><summary>이미지 생성·검수 안내</summary><p>{IMAGE_GENERATION_NOTICE}</p></details>
+                {handleCompareImages && <details className="ori-prompt-comparison">
+                  <summary>이미지 모델 비교</summary>
+                  <p>동일한 프롬프트와 참고 사진으로 Flash Image와 Pro Image를 각각 한 번 생성하고 Flash로 검수합니다. 비교에서는 자동 수정하지 않습니다. 이미지 2회와 검수 2회 비용이 발생합니다. 기존 장면은 유지합니다.</p>
+                  <button type="button" disabled={Object.values(generatingImages).some(Boolean) || !clip.imagePrompt} onClick={() => void handleCompareImages(clip.imageTitle, clip.imagePrompt, idx, currentScenes, result)}>현재 장면 두 이미지 모델 비교</button>
+                </details>}
                   </div>
                   );
                })()}

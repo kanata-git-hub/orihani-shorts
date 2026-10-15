@@ -14,3 +14,19 @@
  .ori-caption{grid-template-columns:1fr 1fr;grid-template-areas:"source source" "start end" "text text" "note note" ". delete"}
  .ori-caption label{margin:4px 0}.ori-files{grid-template-columns:1fr}.ori-editor button{white-space:normal}
 }
+
+@media(max-width:1023px){
+ .ori-editor { padding: 18px 14px 28px; scroll-padding-top: 84px; overscroll-behavior-y: contain; }
+ .ori-editor h2 { font-size: 24px; line-height: 1.35; }
+ .ori-editor h3 { font-size: 18px; }
+ .ori-editor article { padding: 16px; margin: 16px 0; }
+ .ori-editor .ori-eyebrow { font-size: 11px; letter-spacing: .05em; }
+ .ori-editor .ori-save-status { font-size: 12px; line-height: 1.5; }
+ .ori-editor-steps { position: sticky; top: -18px; z-index: 4; gap: 6px; margin: 14px -14px; padding: 10px 14px; background: #faf8f4; border-bottom: 1px solid #e5dbd3; }
+ .ori-editor-steps button { min-height: 46px; padding: 10px 3px; font-size: 13px; font-weight: 700; }
+ .ori-editor .ori-file { border: 1px dashed #cbbbac; }
+ .ori-editor input[type=file] { padding: 10px 6px; font-size: 13px; }
+ .ori-editor input[type=file]::file-selector-button { min-height: 40px; padding: 8px 12px; margin-right: 8px; border: 1px solid #d9cdc4; border-radius: 8px; background: #fff4d8; color: #552c24; }
+ .ori-editor .ori-primary, .ori-editor .ori-step-next { width: 100%; min-height: 50px; font-weight: 700; }
+ .ori-editor .ori-caption-card { padding: 12px; }
+}

@@ -36,6 +36,13 @@ export function WorkspaceTabs({ label, tabs, defaultTab, reelsCaption }: {
   const select = (id: string) => {
     if (id === active) return;
     setSelected(id);
+    const button = buttons.current[tabs.findIndex(tab => tab.id === id)];
+    const list = button?.parentElement;
+    if (button && list) {
+      const left = button.offsetLeft - list.offsetLeft;
+      if (left < list.scrollLeft) list.scrollTo({ left });
+      else if (left + button.offsetWidth > list.scrollLeft + list.clientWidth) list.scrollTo({ left: left + button.offsetWidth - list.clientWidth });
+    }
     root.current?.closest('[data-workspace-scroll]')?.scrollTo({ top: 0 });
   };
   const navigate = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
