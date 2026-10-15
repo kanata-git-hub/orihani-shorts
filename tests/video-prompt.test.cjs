@@ -81,8 +81,8 @@ test('the actual workboard, history and Kling copy buttons use the same correcte
  const hookMocks={react:{useState:value=>[value==='scenario'?'prompts':value,noop],useEffect:noop},'../hooks/useToast':{useToast:()=>({showToast:noop})},'../constants':{CHARACTERS:[]},'react-markdown':{default:noop},'./share':{imageFile:noop,shareFile:noop},'../workflow/HistoryContinue':{HistoryContinue:noop}};
  const item={id:'synthetic',timestamp:1,characterId:'owonjang',duration:15,result:JSON.stringify({title:'검사',clips:[quiet,speaking,quiet,speaking].map((videoPrompt,i)=>({title:`장면 ${i+1}`,imageTitle:`image${i}`,imagePrompt:'Duck',videoPrompt}))})};
  const images=Object.fromEntries([0,1,2,3].map(i=>['image'+i,'data:image/png;base64,AAAA']));
- // Workspace panels are passed as tab content; inspect the initially active panel too.
- const flatten=node=>Array.isArray(node)?node.flatMap(flatten):node&&typeof node==='object'?[node,...flatten(node.props?.children),...flatten(node.props?.tabs?.find(tab=>tab.id===node.props.defaultTab)?.content)]:[];
+ // Workspace panels stay mounted; inspect every tab's content, including the separate history image tab.
+ const flatten=node=>Array.isArray(node)?node.flatMap(flatten):node&&typeof node==='object'?[node,...flatten(node.props?.children),...flatten(node.props?.tabs?.map(tab=>tab.content))]:[];
  const label=node=>Array.isArray(node)?node.map(label).join(''):node&&typeof node==='object'?label(node.props?.children):typeof node==='string'||typeof node==='number'?String(node):'';
  try{
   for(const name of ['WorkboardContent','HistoryContent']){
