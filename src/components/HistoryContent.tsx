@@ -1,3 +1,4 @@
+import { PromptLength } from './PromptLength';
 import { ImagePreview } from './ImagePreview';
 import { HistoryContinue } from '../workflow/HistoryContinue';
 import type { DraftSummary } from '../editor/draft';
@@ -8,7 +9,7 @@ import { WorkspaceTabs } from './WorkspaceTabs';
 import { HistoryItem } from '../types';
 import { extractOverview, extractClips } from '../utils/extractors';
 import { useToast } from '../hooks/useToast';
-import { videoPromptForCopy } from '../videoPrompt';
+import { videoPromptForCopy, clipVideoText } from '../videoPrompt';
 import { IMAGE_GENERATION_NOTICE } from '../imageQuality';
 import { prepareSocialCaption } from '../utils/socialCaption';
 import { isAuthoredPlan } from '../workflow/productionPackage';
@@ -68,7 +69,7 @@ export function HistoryContent({
   const clips = extractClips(result).map(clip=>({...clip,videoPrompt:videoPromptForCopy(clip.videoPrompt)}));
 
   const handleCopyAllVideoPrompts = () => {
-    const allPrompts = clips.map((c, idx) => `[CLIP ${idx + 1}: ${c.title}]\n${c.videoPrompt}`).join('\n\n');
+    const allPrompts = clips.map((c, idx) => clipVideoText(c.videoPrompt, idx, c.title)).join('\n\n');
     navigator.clipboard.writeText(allPrompts);
     setCopiedAllPrompts(true);
     showToast("비디오 프롬프트 전체 복사 완료!");
@@ -174,12 +175,12 @@ export function HistoryContent({
               const idx = activeClipIndex;
               return (
               <div className="ori-clip-card bg-[#ffffff] border-2 border-[#552c24] p-4 flex flex-col gap-3 relative shadow-[4px_4px_0px_#552c24] max-w-md w-full self-center">
-                <div className="font-bold text-sm uppercase text-[#552c24] border-b border-[#552c24]/10 pb-2">
-                  {clip.title}
+                <div className="ori-clip-title font-bold text-sm uppercase text-[#552c24] border-b border-[#552c24]/10 pb-2">
+                  <span>{clip.title}</span><PromptLength text={clipVideoText(clip.videoPrompt, idx, clip.title)} />
                 </div>
 
                 <button type="button" className="ori-clip-copy" disabled={!clip.videoPrompt} onClick={async()=>{
-                  try { await navigator.clipboard.writeText(`[CLIP ${idx + 1}: ${clip.title}]\n${clip.videoPrompt}`); setClipCopy({index:idx,status:'done'}); }
+                  try { await navigator.clipboard.writeText(clipVideoText(clip.videoPrompt, idx, clip.title)); setClipCopy({index:idx,status:'done'}); }
                   catch { setClipCopy({index:idx,status:'error'}); }
                 }}><Copy size={16} aria-hidden="true" /><span aria-live="polite">{clipCopy?.index === idx ? clipCopy.status === 'done' ? '이 클립 프롬프트 복사 완료' : '복사 실패 · 다시 시도' : '이 클립 영상 프롬프트 복사'}</span></button>
                 <p className="text-xs text-[#79655d]">이미지 생성·자동 검수 시 비용이 발생합니다.</p>
@@ -241,7 +242,7 @@ export function HistoryContent({
                  <button
                    key={idx}
                    onClick={() => {
-                     navigator.clipboard.writeText(`[CLIP ${idx + 1}: ${c.title}]\n${c.videoPrompt}`);
+                     navigator.clipboard.writeText(clipVideoText(c.videoPrompt, idx, c.title));
                      showToast(`클립 ${idx + 1} 프롬프트 복사 완료!`);
                    }}
                    disabled={!c.videoPrompt}

@@ -4,7 +4,8 @@ import { SourceEpisode } from '../types';
 import { HistoryItem } from '../types';
 import { WeeklyScript } from '../workflow/WeeklyScript';
 import { episodePrompt } from '../workflow/weekly';
-import { isAuthoredPlan } from '../workflow/productionPackage';
+import { isAuthoredPlan, type ProductionPackage } from '../workflow/productionPackage';
+import { usePromptRefresh } from '../workflow/usePromptRefresh';
 import { editorEpisode, readPackage, importIdentity, MAX_PACKAGE_BYTES } from '../workflow/package';
 import { db, MEDIA_CHANGED, MediaSummary } from '../utils/db';
 import { DraftSummary } from '../editor/draft';
@@ -40,7 +41,7 @@ import { useMediaGeneration } from '../hooks/useMediaGeneration';
 export default function App() {
   const { toast, showToast } = useToast();
   const { apiKeys } = useSettings();
-  const { history, viewingHistoryId, setViewingHistoryId, saveHistory, setBackgroundChoice, handleDeleteHistory, handleClearHistory } = useHistory();
+  const { history, viewingHistoryId, setViewingHistoryId, saveHistory, applyVideoPromptRevision, setBackgroundChoice, handleDeleteHistory, handleClearHistory } = useHistory();
   
   const [source,setSource]=useState<SourceEpisode|null>(null);
   const [pendingReference,setPendingReference]=useState<SceneReference|null>(null);
@@ -68,6 +69,7 @@ export default function App() {
   const {
     isGenerating,
     result,
+    setResult,
     error,
     currentWorkboardId,
     handleGenerate: generatePlan, handleLoadPrepared
@@ -98,6 +100,13 @@ export default function App() {
   };
 
   const locked=workflowBusy||editorBusy||referenceBusy||isGenerating||Object.values(generatingImages).some(Boolean);
+  const applyPromptRevision=useCallback((pack:ProductionPackage)=>{
+    const changed=applyVideoPromptRevision(pack);
+    const current=changed.find(item=>item.id===currentWorkboardId);
+    if(current)setResult(current.result);
+    if(changed.length)showToast('영상 프롬프트를 짧은 수정본으로 갱신했습니다.');
+  },[applyVideoPromptRevision,currentWorkboardId,setResult,showToast]);
+  usePromptRefresh(history,locked,applyPromptRevision);
   const rebuildHistoryPrompts=async()=>{
     const item=history.find(h=>h.id===viewingHistoryId);
     if(locked||!item?.episode||isAuthoredPlan(item.result))return;

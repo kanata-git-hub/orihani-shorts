@@ -55,6 +55,10 @@ The abbreviated example is explanatory, not importable. Required details:
   endpoint. Each video includes the established headings with real newlines and
   exactly the required `OUTPUT SPECS` duration. Keep motion prompts concise;
   do not repeat every appearance fact already established by the start image.
+  The final clipboard string must be at most **1,900 UTF-16 code units**, including
+  the clip/title prefix, whitespace and any legacy audio normalization. The user's
+  current Kling field truncates at 2,000; the UI shows that observed limit. Use
+  `clipVideoText` for both copying and measurement. Never silently truncate a prompt.
 - The validator uses the production compiler for structural checks but discards
   its output: it does not replace either supplied prompt. Authorship markers are
   provenance, not a claim of generated-image QA or predicted audience success.
@@ -71,6 +75,7 @@ requires no provider credentials or model requests:
 ```sh
 node scripts/check-weekly-review.mjs /path/to/screenplay.txt /path/to/review.json
 node --test tests/production-package.test.cjs
+node --import tsx scripts/check-production-prompts.ts /path/to/production.json
 ```
 
 Bind the review to the exact screenplay hash and record the production JSON hash.
@@ -79,6 +84,13 @@ Save the production JSON in the established folder with this exact dated pattern
 `[YYYY-MM-DD] 3D 오리 삼총사 릴스 개그 시리즈 주간 패키지.json`.
 Read it back, validate the returned bytes/text and preserve the older files. A
 future normal three-episode package uses the default review gate without `--episodes`.
+
+Prompt-only shortening keeps the existing screenplay/image/continuity data unchanged.
+Record three compression review passes and the revised production hash separately from
+the unchanged screenplay review. Existing over-budget authored work can receive the
+latest prompts only when its complete screenplay, character and every non-video plan
+field match. Preserve the record ID, image names, media, editor link and all other fields;
+customized or different stories must not be matched by episode number/title alone.
 
 For immediate compatibility with the older deployed app, wrap each prepared
 history record using `makePackage(item,{})`. The old **기록 → 작업 파일 가져오기**

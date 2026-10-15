@@ -1,4 +1,12 @@
 const LEGACY_PROP_MARKER = '[RECURRING PROP DESIGN — START FRAME PRIORITY]';
+// The user's current Kling input truncates at 2,000. Leave room when authoring.
+export const KLING_PROMPT_LIMIT = 2000;
+export const KLING_PROMPT_TARGET = 1900;
+
+/** Exact clipboard text. Count AFTER legacy audio normalization; never truncate. */
+export function clipVideoText(raw: string, index: number, title?: string): string {
+  return `[CLIP ${index + 1}${title ? `: ${title}` : ''}]\n${videoPromptForCopy(raw)}`;
+}
 const LEGACY_PROP_TEXT = 'The supplied start-frame image defines the exact design of recurring props. Preserve their silhouette, materials, colors, proportions and attached components throughout this clip. If an incidental prop description above conflicts with the visible start frame, keep the start-frame design and perform the current scripted action with it. Animate only the specified action and state changes; do not redesign the prop or add unpictured components. Character identity stays consistent with the bound character assets.';
 
 export const SILENT_CLIP_AUDIO = `[CLIP AUDIO — NO VOICES IN THIS CLIP]

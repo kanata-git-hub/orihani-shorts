@@ -14,6 +14,71 @@ const {extractClips}=compile('src/utils/extractors.ts');
 const {videoPromptForCopy}=compile('src/videoPrompt.ts');
 const fresh=()=>JSON.parse(raw);
 
+test('the 1900-character budget includes the actual heading, Unicode and legacy normalization',()=>{
+  const {clipVideoText,KLING_PROMPT_TARGET}=compile('src/videoPrompt.ts');
+  const pack=fresh(),clip=pack.episodes[0].plan.clips[0];
+  clip.videoPrompt=videoPromptForCopy(clip.videoPrompt);
+  clip.videoPrompt=clip.videoPrompt.replace('ACTION:', 'ACTION:'+'x'.repeat(KLING_PROMPT_TARGET-clipVideoText(clip.videoPrompt,0,clip.title).length));
+  assert.equal(clipVideoText(clip.videoPrompt,0,clip.title).length,1900);
+  assert.doesNotThrow(()=>readProductionPackage(JSON.stringify(pack)));
+  clip.videoPrompt=clip.videoPrompt.replace('ACTION:', 'ACTION:x');
+  assert.throws(()=>readProductionPackage(JSON.stringify(pack)),/1901/);
+  clip.videoPrompt=clip.videoPrompt.replace('ACTION:x', 'ACTION:😀');
+  assert.equal(clipVideoText(clip.videoPrompt,0,clip.title).length,1902);
+  assert.throws(()=>readProductionPackage(JSON.stringify(pack)),/1902/);
+  const long='ACTION: '+ 'x'.repeat(2200)+'\nDIALOGUE: No speech.\nAUDIO: Wind.';
+  assert.ok(clipVideoText(long,1).startsWith('[CLIP 2]\n'+long),'copy never truncates an old prompt');
+  assert.ok(clipVideoText(long,1).length>long.length+9,'legacy audio expansion is counted too');
+});
+
+test('prompt-only refresh preserves source, images, media keys and edits; mismatched or customized plans stay intact',()=>{
+  const {refreshAuthoredVideoPrompts,needsVideoPromptRefresh}=compile('src/workflow/promptRevision.ts');
+  const pack=readProductionPackage(raw),item=preparedHistory(pack.episodes[0],'previous');
+  item.editorKey='existing-editor';item.backgroundChoices={'Scene 1':{mode:'previous',scene:1}};
+  const plan=JSON.parse(item.result);
+  plan.clips[0].videoPrompt+='\n'+ 'old long instruction '.repeat(130);
+  item.result=JSON.stringify(plan);
+  assert.equal(needsVideoPromptRefresh(item),true);
+  const updated=refreshAuthoredVideoPrompts(item,pack),expected=structuredClone(item);
+  const expectedPlan=JSON.parse(expected.result);
+  expectedPlan.productionRevision=pack.revision;
+  expectedPlan.clips.forEach((clip,i)=>clip.videoPrompt=pack.episodes[0].plan.clips[i].videoPrompt);
+  expected.result=JSON.stringify(expectedPlan);
+  assert.deepEqual(updated,expected);
+  assert.equal(needsVideoPromptRefresh(updated),false);
+  assert.equal(refreshAuthoredVideoPrompts(updated,pack),updated);
+  for(const mutate of [
+    p=>p.clips[0].imagePrompt+=' customized image',
+    p=>p.clips[0].frame.action+=' different action',
+    p=>p.clips[0].referencePlan.background=2,
+    p=>p.productionSource='generated',
+  ]){
+    const custom=structuredClone(item),p=JSON.parse(custom.result);mutate(p);custom.result=JSON.stringify(p);
+    assert.equal(refreshAuthoredVideoPrompts(custom,pack),custom);
+  }
+  const differentSource={...item,episode:{...item.episode,title:'Different story'}};
+  assert.equal(refreshAuthoredVideoPrompts(differentSource,pack),differentSource);
+});
+
+test('the history hook persists prompt revisions without touching IndexedDB or changing record order',()=>{
+  const pack=readProductionPackage(raw),item=preparedHistory(pack.episodes[0],'previous');
+  const plan=JSON.parse(item.result);plan.clips[0].videoPrompt+='x'.repeat(2200);item.result=JSON.stringify(plan);
+  const other={...item,id:'unrelated',result:'legacy text'};
+  let stored=JSON.stringify([other,item]);const writes=[];
+  const previous=global.localStorage;
+  global.localStorage={getItem:()=>stored,setItem:(key,value)=>{assert.equal(key,'pov_director_history');stored=value;writes.push(value);}};
+  try{
+    const {useHistory}=compile('src/hooks/useHistory.ts',{
+      react:{useState:v=>[typeof v==='function'?v():v,()=>{}],useRef:v=>({current:v}),useCallback:f=>f,useEffect:()=>{}},
+      '../utils/db':{db:new Proxy({},{get:()=>{throw Error('Media must not be changed');}})},
+    });
+    const hook=useHistory(),changed=hook.applyVideoPromptRevision(pack);
+    assert.equal(changed.length,1);assert.equal(changed[0].id,item.id);
+    assert.deepEqual(JSON.parse(stored).map(i=>i.id),[other.id,item.id]);
+    assert.equal(hook.applyVideoPromptRevision(pack).length,0);assert.equal(writes.length,1);
+  }finally{global.localStorage=previous;}
+});
+
 test('authored package loads all 16 prompts unchanged, links the script and round-trips through old work files',()=>{
   const pack=readProductionPackage(raw),choices=readWeeklyInput(raw);
   assert.deepEqual(pack.episodes.map(e=>e.number),[1,2]);
