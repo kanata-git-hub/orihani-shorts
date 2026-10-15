@@ -17,7 +17,7 @@ interface HistorySidebarProps {
 export function HistorySidebar({ history, viewingHistoryId, setViewingHistoryId, handleDeleteHistory, handleClearHistory, onImport, busy, progress, onContinue }: HistorySidebarProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   return (
-    <aside inert={busy||undefined} className={` ${viewingHistoryId?'ori-history-list-selected':''} w-full md:w-72 bg-[#ffffff] border-b md:border-b-0 md:border-r border-[#552c24]/10 p-4 md:p-5 flex flex-col shrink-0 overflow-y-auto max-h-full md:max-h-none`}>
+    <aside inert={busy||undefined} className={`ori-history-sidebar ${viewingHistoryId?'ori-history-list-selected':''} w-full md:w-72 bg-[#ffffff] border-b md:border-b-0 md:border-r border-[#552c24]/10 p-4 md:p-5 flex flex-col shrink-0 overflow-y-auto max-h-full md:max-h-none`}>
       <p className="text-sm mb-4">같은 기기·같은 브라우저에 저장된 기록입니다.</p>
       <div className="mb-6 space-y-6 flex-1">
         <div>
@@ -41,7 +41,7 @@ export function HistorySidebar({ history, viewingHistoryId, setViewingHistoryId,
                   <div 
                     key={item.id} 
                     role="button" tabIndex={0} onKeyDown={e=>{if(e.target===e.currentTarget&&['Enter',' '].includes(e.key)){e.preventDefault();setViewingHistoryId(item.id);}}} onClick={() => setViewingHistoryId(item.id)}
-                    className={`group p-3 border rounded text-xs cursor-pointer transition-colors relative ${viewingHistoryId === item.id ? 'bg-[#ffcd4a]/10 border-[#ffcd4a]/40' : 'border-[#552c24]/10 hover:bg-gray-50 opacity-70 hover:opacity-100'}`}
+                    className={`ori-record-card group p-3 border rounded text-xs cursor-pointer transition-colors relative ${viewingHistoryId === item.id ? 'bg-[#ffcd4a]/10 border-[#ffcd4a]/40' : 'border-[#552c24]/10 hover:bg-gray-50 opacity-70 hover:opacity-100'}`}
                   >
                     <div className="font-bold truncate pr-6">{displayTitle}</div>
                     <div className="text-xs opacity-60 mt-1">{new Date(item.timestamp).toLocaleString()}</div>
@@ -50,7 +50,7 @@ export function HistorySidebar({ history, viewingHistoryId, setViewingHistoryId,
                     <button
                       onClick={(e) => handleDeleteHistory(item.id, e)}
                       className="absolute right-2 top-2 p-3 text-[#552c24]/40 hover:text-red-500 opacity-70 md:opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                      title="기획 삭제"
+                      title="기획 삭제" aria-label={`${displayTitle} 기획 삭제`}
                     >
                       <Trash2 size={14} />
                     </button>

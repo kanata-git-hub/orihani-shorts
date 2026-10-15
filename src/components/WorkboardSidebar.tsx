@@ -33,7 +33,9 @@ export function WorkboardSidebar({
           </h2>
           <div className="flex flex-wrap gap-2">
             {CHARACTERS.map(char => (
-              <div
+              <button type="button"
+                aria-label={char.name}
+                aria-pressed={selectedCharacter === char.id}
                 key={char.id}
                 onClick={() => setSelectedCharacter(char.id)}
                 className={`w-12 h-12 border-2 rounded flex items-center justify-center cursor-pointer transition-all ${
@@ -43,8 +45,8 @@ export function WorkboardSidebar({
                 }`}
                 title={char.name}
               >
-                <img src={char.img} alt={char.name} className="w-10 h-10 rounded object-cover shrink-0" />
-              </div>
+                <img src={char.img} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
+              </button>
             ))}
           </div>
         </div>
@@ -55,6 +57,7 @@ export function WorkboardSidebar({
             <Sparkles size={14} /> 제작 방향
           </h2>
           <textarea
+            aria-label="제작 방향"
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
             placeholder="아이디어를 적어주세요. 비워두면 무작위로 생성됩니다."

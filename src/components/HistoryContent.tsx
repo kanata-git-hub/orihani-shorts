@@ -46,6 +46,7 @@ export function HistoryContent({
   const [copiedAllPrompts, setCopiedAllPrompts] = useState(false);
   const [copiedInstagram, setCopiedInstagram] = useState(false);
   const [activeClipIndex, setActiveClipIndex] = useState(0);
+  const [clipCopy, setClipCopy] = useState<{index:number; status:'done'|'error'} | null>(null);
   const [activeTab, setActiveTab] = useState<'scenario' | 'prompts'>('scenario');
   const { showToast } = useToast();
 
@@ -103,10 +104,6 @@ export function HistoryContent({
 
   return (
     <WorkspaceTabs reelsCaption={socialCaption.text} label="기록 작업" defaultTab="content" tabs={[
-      { id: 'reference', label: '다른 화 참고', content: referenceSettings },
-      { id: 'props', label: '장면별 소품', content: clipReferenceSettings },
-      { id: 'background', label: '배경 에셋', content: backgroundSettings },
-      { id: 'kling', label: 'Kling 영상 대기', content: viewingItem&&<HistoryContinue key={viewingItem.id} item={viewingItem} images={sceneImages} generating={generatingImages} onGenerate={handleGenerateImage} onEdit={onEdit} onBusy={onBusy} draft={draft} mediaReady={mediaReady} onReferenceScene={onReferenceScene}/> },
       { id: 'content', label: '기획·시각화', content: <div className="flex-1 flex flex-col gap-6 pb-8">
       {renderTabs()}
       {isAuthoredPlan(result) && <p className="ori-workflow">완성 제작안 · 기획과 이미지·영상 프롬프트를 그대로 사용합니다.</p>}
@@ -176,11 +173,12 @@ export function HistoryContent({
       {/* Bottom: Clip-by-clip Card List */}
       {activeTab === 'prompts' && clips.length > 0 && (
          <div className="flex flex-col gap-4">
-           <div className="flex gap-2 overflow-x-auto pb-2 shrink-0 hide-scrollbar">
+           <div className="ori-clip-picker flex gap-2 overflow-x-auto pb-2 shrink-0" role="group" aria-label="작업할 클립">
              {clips.map((clip, idx) => (
                <button
                  key={idx}
-                 onClick={() => setActiveClipIndex(idx)}
+                 aria-pressed={activeClipIndex === idx}
+                     onClick={() => setActiveClipIndex(idx)}
                  className={`px-4 py-2 font-bold text-xs uppercase border-2 transition-colors shrink-0 ${activeClipIndex === idx ? 'bg-[#552c24] border-[#552c24] text-[#ffcd4a] shadow-[2px_2px_0px_#ffcd4a]' : 'bg-[#f9f7f4] border-[#552c24] text-[#552c24] opacity-70 hover:opacity-100'}`}
                >
                  CLIP {idx + 1}
@@ -188,6 +186,7 @@ export function HistoryContent({
              ))}
            </div>
            
+               <details className="ori-copy-options"><summary>여러 클립 프롬프트 복사</summary>
            <button
              onClick={handleCopyAllVideoPrompts}
              disabled={clips.some(c => !c.videoPrompt)}
@@ -218,22 +217,22 @@ export function HistoryContent({
              </div>
            )}
 
-           {clips[activeClipIndex] && (() => {
+               </details>
+               {clips[activeClipIndex] && (() => {
               const clip = clips[activeClipIndex];
               const idx = activeClipIndex;
               return (
-              <div className="bg-[#ffffff] border-2 border-[#552c24] p-4 flex flex-col gap-3 relative shadow-[4px_4px_0px_#552c24] max-w-md w-full self-center">
+              <div className="ori-clip-card bg-[#ffffff] border-2 border-[#552c24] p-4 flex flex-col gap-3 relative shadow-[4px_4px_0px_#552c24] max-w-md w-full self-center">
                 <div className="font-bold text-sm uppercase text-[#552c24] border-b border-[#552c24]/10 pb-2">
                   {clip.title}
                 </div>
 
-                <p className="text-xs">{IMAGE_GENERATION_NOTICE}</p>
-                {handleCompareImages && <details className="ori-prompt-comparison">
-                  <summary>이미지 모델 비교</summary>
-                  <p>동일한 프롬프트와 참고 사진으로 Flash Image와 Pro Image를 각각 한 번 생성하고 Flash로 검수합니다. 비교에서는 자동 수정하지 않습니다. 이미지 2회와 검수 2회 비용이 발생합니다. 기존 장면은 유지합니다.</p>
-                  <button type="button" disabled={Object.values(generatingImages).some(Boolean) || !clip.imagePrompt} onClick={() => void handleCompareImages(clip.imageTitle, clip.imagePrompt, idx, viewingScenes, result)}>현재 장면 두 이미지 모델 비교</button>
-                </details>}
-                {/* Image Generation Area */}
+                <button type="button" className="ori-clip-copy" disabled={!clip.videoPrompt} onClick={async()=>{
+                  try { await navigator.clipboard.writeText(`[CLIP ${idx + 1}: ${clip.title}]\n${clip.videoPrompt}`); setClipCopy({index:idx,status:'done'}); }
+                  catch { setClipCopy({index:idx,status:'error'}); }
+                }}><Copy size={16} aria-hidden="true" /><span aria-live="polite">{clipCopy?.index === idx ? clipCopy.status === 'done' ? '이 클립 프롬프트 복사 완료' : '복사 실패 · 다시 시도' : '이 클립 영상 프롬프트 복사'}</span></button>
+                <p className="text-xs text-[#79655d]">이미지 생성·자동 검수 시 비용이 발생합니다.</p>
+                    {/* Image Generation Area */}
                 {!sceneImages[clip.imageTitle] ? (
                   <button 
                     onClick={() => handleGenerateImage(clip.imageTitle, clip.imagePrompt, idx, viewingScenes, result)}
@@ -260,12 +259,23 @@ export function HistoryContent({
                     </div>
                   </div>
                 )}
+                <details className="ori-prompt-comparison"><summary>이미지 생성·검수 안내</summary><p>{IMAGE_GENERATION_NOTICE}</p></details>
+                {handleCompareImages && <details className="ori-prompt-comparison">
+                  <summary>이미지 모델 비교</summary>
+                  <p>동일한 프롬프트와 참고 사진으로 Flash Image와 Pro Image를 각각 한 번 생성하고 Flash로 검수합니다. 비교에서는 자동 수정하지 않습니다. 이미지 2회와 검수 2회 비용이 발생합니다. 기존 장면은 유지합니다.</p>
+                  <button type="button" disabled={Object.values(generatingImages).some(Boolean) || !clip.imagePrompt} onClick={() => void handleCompareImages(clip.imageTitle, clip.imagePrompt, idx, viewingScenes, result)}>현재 장면 두 이미지 모델 비교</button>
+                </details>}
               </div>
               );
            })()}
          </div>
       )}
     </div> },
+      { id: 'kling', label: 'Kling 영상 대기', content: viewingItem&&<HistoryContinue key={viewingItem.id} item={viewingItem} images={sceneImages} generating={generatingImages} onGenerate={handleGenerateImage} onEdit={onEdit} onBusy={onBusy} draft={draft} mediaReady={mediaReady} onReferenceScene={onReferenceScene}/> },
+      { id: 'reference', label: '다른 화 참고', content: referenceSettings },
+      { id: 'props', label: '장면별 소품', content: clipReferenceSettings },
+      { id: 'background', label: '배경 에셋', content: backgroundSettings },
+
     ]}/>
   );
 }

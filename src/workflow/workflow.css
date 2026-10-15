@@ -6,3 +6,29 @@
 .ori-recent{width:100%;max-width:672px;margin:0 0 20px;border:2px solid #552c24;background:#fff}.ori-recent h2{font-size:22px;font-weight:800;line-height:1.4}.ori-recent .ori-local-note{font-size:13px}.ori-record-state{font-size:14px;margin:12px 0 8px}.ori-record-action{width:100%;min-height:44px;border:1px solid #552c24;border-radius:8px;background:#552c24;color:#ffcd4a;padding:10px;font-size:14px;text-align:left}.ori-workflow-current{border-bottom:1px solid #d8c9b9;margin-bottom:16px}.ori-workflow :focus-visible,.ori-record-action:focus-visible{outline:3px solid #b88649;outline-offset:2px}
 .ori-background-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.ori-background-gallery figure{min-width:0;margin:0}.ori-background-gallery img{width:100%;aspect-ratio:9/16;object-fit:contain;border-radius:8px;background:#eee9e3}.ori-background-gallery figcaption{text-align:center;font-weight:bold}.ori-backgrounds small{display:block;margin:6px 0;line-height:1.6}.ori-backgrounds h2{margin:0}.ori-backgrounds select{margin-top:6px}.ori-background-gallery .ori-workflow-link{padding:8px 4px;font-size:13px}
 .ori-scene-reference h2{margin:0;font-size:19px;font-weight:bold}.ori-reference-selected{display:flex;gap:14px;align-items:center}.ori-reference-selected>img{width:105px;height:170px;object-fit:contain;flex-shrink:0;background:#eee9e3;border-radius:9px}.ori-reference-selected>div{min-width:0}.ori-reference-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}.ori-reference-grid img,.ori-reference-empty{width:100%;height:180px;object-fit:contain;background:#eee9e3;border-radius:9px}.ori-reference-empty{display:flex;align-items:center;justify-content:center;padding:12px;font-size:13px}.ori-reference-grid span{display:block;margin:8px 0;font-size:13px}.ori-reference-grid button{width:100%}.ori-scene-reference .ori-reference-note{font-size:13px;color:#77584f}.ori-reference-shortcut{min-height:44px;padding:10px 12px;border:1px solid #552c24;border-radius:9px;background:#fff8df;color:#552c24;font-size:14px;font-weight:bold}.ori-reference-shortcut:disabled{opacity:.45}
+
+.ori-weekly { background: #fff; border-color: #dec68e; }
+.ori-weekly > summary { font-size: 19px; font-weight: 800; }
+.ori-weekly > p:first-of-type { color: #79655d; }
+.ori-weekly .ori-episode-select { font-weight: 700; }
+.ori-episode-select select { display: block; margin-top: 8px; min-height: 52px; font-weight: 600; }
+.ori-weekly .ori-episode-meta { padding: 10px 12px; background: #f7f3ec; border-radius: 9px; font-size: 13px; }
+.ori-weekly .ori-weekly-source { margin: 0; }
+.ori-weekly-source summary { color: #79655d; font-size: 13px; }
+.ori-weekly .ori-workflow-primary { min-height: 52px; font-size: 16px; background: #ffcd4a; border-color: #e1b13b; color: #552c24; }
+@media (max-width: 1023px) {
+ .ori-workflow { border-radius: 16px; }
+ .ori-workflow p, .ori-workflow label { line-height: 1.65; }
+ .ori-recent { border: 1px solid #e8dfd1; padding: 14px; margin-bottom: 16px; background: #f1ece3; }
+ .ori-recent .ori-workflow-label { margin-top: 0; color: #79655d; font-size: 12px; }
+ .ori-recent h2 { font-size: 18px; }
+ .ori-recent .ori-workflow-primary { margin: 10px 0; min-height: 46px; }
+ .ori-recent .ori-local-note { font-size: 12px; margin: 8px 0 0; }
+ .ori-workflow-steps { flex-wrap: nowrap; }
+ .ori-workflow-steps button { min-width: 0; padding: 10px 4px; font-size: 13px; }
+ .ori-workflow-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .ori-reference-selected { gap: 10px; align-items: flex-start; }
+ .ori-reference-selected>img { width: 84px; height: 140px; }
+ .ori-reference-selected>div { overflow-wrap: anywhere; }
+ .ori-workflow input[type=file] { font-size: 13px; }
+}

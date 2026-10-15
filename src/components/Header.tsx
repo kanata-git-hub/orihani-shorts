@@ -1,4 +1,4 @@
-import { Settings, Shield } from 'lucide-react';
+import { CircleUserRound, LogOut, Shield } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface HeaderProps {
@@ -11,15 +11,22 @@ export function Header({ view, setView, setViewingHistoryId }: HeaderProps) {
   const { isAdmin, logout } = useAuth();
   
   return (
-    <header className="h-14 md:h-16 bg-white text-[#552c24] flex items-center justify-between px-4 md:px-6 shrink-0 shadow-sm z-10 border-b-2 border-[#552c24]">
-      <div className="flex items-center gap-2 md:gap-3">
+    <header className="ori-header h-14 md:h-16 bg-white text-[#552c24] flex items-center justify-between px-4 md:px-6 shrink-0 shadow-sm z-10 border-b-2 border-[#552c24]">
+      <div className="ori-brand flex items-center gap-2 md:gap-3">
         <img src="/icon.png" alt="App Icon" className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover shrink-0 bg-white" />
         <h1 className="text-xl md:text-2xl font-black tracking-tight uppercase truncate mt-0.5">
-          오리쇼츠 <span className="hidden md:inline text-[10px] md:text-xs font-bold opacity-70 ml-1.5">v4.2 PRO</span>
+          오리쇼츠 <span className="hidden xl:inline text-[10px] md:text-xs font-bold opacity-70 ml-1.5">v4.2 PRO</span>
         </h1>
       </div>
       <div className="flex items-center gap-6">
-        <div className="hidden md:flex items-center gap-6 text-base font-bold">
+        <details className="ori-account lg:hidden">
+          <summary aria-label="계정 메뉴"><CircleUserRound size={22} aria-hidden="true" /></summary>
+          <div>
+            {isAdmin && <a href="/admin"><Shield size={16} aria-hidden="true" />관리자</a>}
+            <button type="button" onClick={logout}><LogOut size={16} aria-hidden="true" />로그아웃</button>
+          </div>
+        </details>
+        <div className="ori-desktop-nav hidden lg:flex items-center gap-4 text-sm font-bold">
           <button 
             onClick={() => setView('15s-plan')}
             className={`${view === '15s-plan' ? 'border-b-2 border-[#552c24] pb-1 cursor-default opacity-100' : 'opacity-60 hover:opacity-100 cursor-pointer'} uppercase`}

@@ -104,3 +104,12 @@
   .ori-workspace-tablist-five button,
   .ori-workspace-tablist-five button:nth-child(n + 4) { grid-column: auto; }
 }
+
+@media (max-width: 1023px) {
+  .ori-workspace-tabs { gap: 16px; }
+  .ori-workspace-menu { top: -18px; margin: -18px -14px 0; padding: 10px 14px; border: 0; border-bottom: 1px solid #e8dfd1; border-radius: 0; box-shadow: 0 4px 10px #552c2408; }
+  .ori-workspace-tablist, .ori-workspace-tablist-five { display: flex; overflow-x: auto; gap: 6px; padding: 2px 1px 7px; scrollbar-width: thin; scroll-padding-inline: 4px; }
+  .ori-workspace-tablist button { flex: 0 0 auto; min-height: 44px; padding: 10px 13px; font-size: 13px; border-radius: 10px; white-space: nowrap; }
+  .ori-workspace-copy { min-height: 44px; margin-top: 2px; padding: 8px 12px; font-size: 13px; border-color: #e0c77c; background: #fff2cc; }
+  .ori-workspace-panel { gap: 16px; }
+}

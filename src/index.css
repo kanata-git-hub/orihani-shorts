@@ -46,3 +46,72 @@
   color: var(--color-brand-brown);
   font-weight: 600;
 }
+
+/* App chrome is separate from the font used in generated video captions. */
+.ori-app { min-height: 0; }
+.ori-app button, .ori-app summary, .ori-app a { touch-action: manipulation; }
+.ori-app :focus-visible { outline: 3px solid #a56f21; outline-offset: 3px; }
+.ori-header { position: relative; }
+.ori-brand { min-width: 0; }
+.ori-desktop-nav { white-space: nowrap; }
+.ori-desktop-nav button, .ori-desktop-nav a { min-height: 44px; }
+.ori-page-heading { width: 100%; max-width: 672px; margin: 0 0 20px; }
+.ori-page-heading p { color: #816858; font-size: 12px; font-weight: 700; margin-bottom: 5px; }
+.ori-page-heading h2 { font-size: 28px; font-weight: 800; line-height: 1.3; }
+.ori-page-heading span { display: block; margin-top: 7px; font-size: 14px; color: #79655d; }
+.ori-manual-plan { width: 100%; max-width: 672px; flex-shrink: 0; background: #fff; border: 1px solid #dfd5c9; border-radius: 16px; overflow: hidden; }
+.ori-manual-plan > summary { padding: 16px; min-height: 56px; cursor: pointer; font-size: 16px; font-weight: 700; }
+.ori-manual-plan > summary small { display: block; margin-top: 5px; margin-left: 17px; font-size: 13px; font-weight: 400; color: #79655d; }
+.ori-manual-plan > .ori-workflow { margin: 0 16px; }
+.ori-duration-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 16px 16px; }
+.ori-duration-switch button { min-height: 48px; padding: 10px; border: 1px solid #d8c9b9; border-radius: 10px; font-size: 14px; }
+.ori-duration-switch button[aria-pressed=true] { background: #552c24; border-color: #552c24; color: #fff; font-weight: 700; }
+.ori-account { position: relative; }
+.ori-account summary { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid #e5dbd3; border-radius: 50%; list-style: none; cursor: pointer; }
+.ori-account summary::-webkit-details-marker { display: none; }
+.ori-account > div { position: absolute; right: 0; top: 50px; width: 160px; z-index: 30; padding: 6px; border: 1px solid #dfd5c9; border-radius: 14px; box-shadow: 0 8px 28px #552c2426; background: #fff; }
+.ori-account button, .ori-account a { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 44px; padding: 10px; border-radius: 8px; font-size: 14px; }
+.ori-account button:hover, .ori-account a:hover { background: #f5f2ed; }
+.ori-clip-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.ori-clip-picker button { min-height: 44px; padding: 10px 4px; border-radius: 10px; }
+.ori-copy-options { border: 1px solid #e5dbd3; border-radius: 12px; padding: 0 12px; }
+.ori-copy-options summary { min-height: 44px; padding: 12px 0; cursor: pointer; font-size: 13px; font-weight: 600; }
+.ori-copy-options[open] { padding-bottom: 14px; }
+.ori-copy-options > button { margin: 8px auto 12px; }
+.ori-copy-options > div { margin-left: auto; margin-right: auto; }
+.ori-clip-copy { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 10px; border: 1px solid #552c24; border-radius: 10px; background: #fff5d7; font-size: 14px; font-weight: 700; }
+.ori-clip-copy:disabled { opacity: .45; }
+
+@media (max-width: 1023px) {
+  html { font-size: 16px; }
+  .ori-app { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', 'KyoboHandwriting2024_ParkSeoWoo', sans-serif; border: 0; }
+  .ori-app h1 { font-family: var(--font-sans); }
+  .ori-app button, .ori-app summary, .ori-app select { min-height: 44px; }
+  .ori-app input:not([type=checkbox]):not([type=range]), .ori-app textarea, .ori-app select { font-size: 16px; }
+  .ori-app .text-xs { font-size: 13px; line-height: 1.55; }
+  .ori-app .text-sm { font-size: 14px; line-height: 1.6; }
+  .ori-header { height: calc(60px + env(safe-area-inset-top, 0px)); padding: env(safe-area-inset-top, 0px) 16px 0; border-bottom: 1px solid #e5dbd3; box-shadow: none; }
+  .ori-header img { width: 38px; height: 38px; }
+  .ori-header h1 { font-size: 25px; }
+  .ori-mobile-nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); flex-shrink: 0; padding: 5px 8px calc(5px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid #e5dbd3; background: #fffdf9; box-shadow: 0 -4px 18px #552c2408; z-index: 10; }
+  .ori-mobile-nav button { display: flex; min-width: 0; min-height: 54px; flex-direction: column; align-items: center; justify-content: center; gap: 4px; margin: 0 2px; border-radius: 12px; color: #826e65; font-size: 11px; line-height: 1.3; font-weight: 600; }
+  .ori-mobile-nav button[aria-current=page] { color: #552c24; background: #ffebaf; font-weight: 800; }
+  .ori-mobile-nav button:disabled { opacity: .45; }
+  .ori-toast { bottom: calc(78px + env(safe-area-inset-bottom, 0px)); left: 14px; right: 14px; border-radius: 12px; box-shadow: 0 6px 24px #552c2426; font-size: 14px; }
+  .ori-start-screen, .ori-workspace-scroll { padding: 18px 14px 24px; overscroll-behavior-y: contain; scroll-padding-top: 130px; }
+  .ori-workspace-scroll > div { gap: 16px; }
+  .ori-page-heading { margin-bottom: 18px; }
+  .ori-page-heading h2 { font-size: 25px; }
+  .ori-history-back { padding: 10px 14px; border: 1px solid #dfd5c9; border-radius: 10px; background: #f9f7f4; font-size: 14px; font-weight: 600; }
+  .ori-record-card { border-radius: 14px; opacity: 1; padding: 16px; }
+  .ori-record-card > div:first-child { font-size: 16px; padding-right: 38px; }
+  .ori-record-card > button[title] { width: 44px; height: 44px; }
+  .ori-clip-card { padding: 14px; border: 1px solid #dfd5c9; border-radius: 16px; box-shadow: 0 4px 16px #552c2408; }
+  .ori-clip-card a[download] { min-height: 44px; }
+  .ori-clip-card .ori-prompt-comparison { padding: 10px 12px; border-radius: 10px; background: #f9f7f4; font-size: 13px; }
+  .ori-clip-card .ori-prompt-comparison summary { display: flex; align-items: center; cursor: pointer; }
+}
+
+@media (max-width: 767px) {
+  .ori-history-sidebar { flex: 1; min-height: 0; }
+}
