@@ -8,6 +8,7 @@ import { Draft, syncKey, resultKey, summarizeDraft } from '../src/editor/draft';
 import { editorStore, persistDraft } from '../src/editor/storage';
 import { db } from '../src/utils/db';
 import '../src/index.css';
+import '../src/compact-mobile.css';
 
 // The internal QA preview is HTTP. Production remains HTTPS with native UUIDs.
 if (!crypto.randomUUID) Object.defineProperty(crypto, 'randomUUID', {value:()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>n.toString(16).padStart(2,'0')).join('')});

@@ -201,7 +201,7 @@ export default function App() {
         <VideoEditor visible={view === 'editor'} open={() => setView('editor')} onIndex={setDrafts} onBusy={setEditorBusy} resumeId={resumeId} onResumeHandled={resumeHandled} onActive={editorActive}/>
         {(view === '15s-plan' || view === '5s-plan') && (
           <div className="ori-start-screen flex-1 min-h-0 w-full bg-[#f9f7f4] flex flex-col items-center p-4 md:p-6 overflow-y-auto">
-            <div className="ori-page-heading"><p>오리쇼츠 스튜디오</p><h2>새 영상 만들기</h2><span>제작안을 고르고, 한 편씩 완성하세요.</span></div>
+            <div className="ori-page-heading"><h2>새 영상 만들기</h2></div>
             <RecentWork history={history} drafts={drafts} media={mediaSummaries} recent={recent} onHistory={item=>{selectHistory(item.id);setView('history');}} onEditor={resumeEditor}/>
             <WeeklyScript disabled={locked} onPrepared={(entry,revision)=>{
               if(locked)return;

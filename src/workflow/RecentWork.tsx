@@ -22,10 +22,11 @@ export function RecentWork({history,drafts,media,recent,onHistory,onEditor}:{his
   const linked = item ? drafts.find(d=>d.id===recordDraftId(item!)) : undefined;
   const progress = item ? recordProgress(item,media[item.id],linked) : draftProgress(draft);
   return <section className="ori-workflow ori-recent" aria-label="최근 작업 이어하기">
-    <p className="ori-workflow-label">최근 작업 이어하기</p>
-    <h2>{item ? extractOverview(item.result).title || '저장된 기획' : draft!.title}</h2>
-    <p>{progress.label}</p>
-    <button className="ori-workflow-primary" onClick={()=>item ? linked ? onEditor(linked.id) : onHistory(item) : onEditor(draft!.id)}>{progress.action}</button>
-    <p className="ori-local-note">같은 기기·같은 브라우저의 기록입니다. 다른 기기와 자동 동기화되지 않습니다.</p>
+    <div className="ori-recent-info">
+      <p className="ori-workflow-label">최근 작업 · 이 기기에 저장</p>
+      <h2>{item ? extractOverview(item.result).title || '저장된 기획' : draft!.title}</h2>
+      <p className="ori-recent-progress">{progress.label}</p>
+    </div>
+    <button className="ori-workflow-primary" aria-label={`최근 작업 ${progress.action}`} onClick={()=>item ? linked ? onEditor(linked.id) : onHistory(item) : onEditor(draft!.id)}>이어하기</button>
   </section>;
 }

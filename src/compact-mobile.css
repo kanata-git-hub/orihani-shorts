@@ -1,0 +1,107 @@
+/* Compact presentation only. Original images, media and production handlers are retained. */
+.ori-workspace-select { display: none; }
+.ori-weekly-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ori-weekly-heading h2 { font-size: 19px; font-weight: 800; }
+.ori-weekly-heading button { display: flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; padding: 0; flex-shrink: 0; }
+.ori-image-preview { min-width: 0; }
+.ori-image-preview .ori-image-preview-open { display: block; position: relative; width: 100%; padding: 0; border: 1px solid #e5dbd3; border-radius: 10px; background: #f4f1ed; overflow: hidden; cursor: zoom-in; }
+.ori-image-preview-open > img { display: block; width: 100%; max-height: 360px; object-fit: contain; }
+.ori-image-preview-open > span { position: absolute; right: 8px; bottom: 8px; display: flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 6px; color: #552c24; background: #fffef2ee; font-size: 12px; }
+.ori-image-dialog { position: fixed; inset: 0; margin: auto; width: min(960px, 96vw); max-width: 96vw; max-height: 94dvh; padding: 12px; border: 0; border-radius: 14px; background: #fff; color: #552c24; }
+.ori-image-dialog::backdrop { background: #211510bf; }
+.ori-image-dialog:not([open]) { display: none; }
+.ori-image-dialog header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 14px; }
+.ori-image-dialog header span { min-width: 0; overflow-wrap: anywhere; }
+.ori-image-dialog header button { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex-shrink: 0; border: 1px solid #e5dbd3; border-radius: 9px; }
+.ori-image-dialog-content > img { display: block; width: 100%; max-height: calc(94dvh - 90px); object-fit: contain; }
+.ori-clip-extra { border-top: 1px solid #e5dbd3; font-size: 13px; }
+.ori-clip-extra > summary { min-height: 44px; padding: 12px 0; cursor: pointer; }
+.ori-clip-extra .ori-reference-shortcut { width: 100%; margin: 8px 0; }
+.ori-review-scene { display: block; font-size: 13px; margin-top: 10px; }
+.ori-review-scene select { display: block; width: 100%; min-height: 44px; margin-top: 6px; padding: 8px; border: 1px solid #d8c9b9; border-radius: 8px; background: white; }
+.ori-authored-note { font-size: 12px; color: #79655d; }
+.ori-recent { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.ori-recent-info { min-width: 0; }
+.ori-recent h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ori-recent .ori-workflow-primary { width: auto; padding: 10px 14px; margin: 0; }
+.ori-recent .ori-recent-progress { margin: 4px 0 0; }
+.ori-video-settings > summary { min-height: 44px; padding: 10px 0; }
+.ori-editor .ori-file { display: flex; flex-direction: row; align-items: center; gap: 12px; min-width: 0; }
+.ori-file-heading { flex: 1; min-width: 0; }
+.ori-file-heading small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 3px; color: #79655d; font-size: 12px; }
+.ori-file .ori-file-button { position: relative; display: flex; align-items: center; justify-content: center; min-height: 44px; flex: 0 0 86px; padding: 8px; border: 1px solid #d8c9b9; border-radius: 9px; background: #fff5d7; font-size: 13px; font-weight: 700; overflow: hidden; }
+.ori-file-button input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; opacity: 0; cursor: pointer; }
+.ori-file-button:focus-within { outline: 3px solid #a56f21; outline-offset: 2px; }
+
+@media (min-width: 1024px) {
+  .ori-workspace-tablist { grid-template-columns: repeat(var(--ori-tab-count, 4), minmax(0, 1fr)); }
+}
+
+@media (max-width: 1023px) {
+  .ori-header { height: calc(56px + env(safe-area-inset-top, 0px)); }
+  .ori-start-screen, .ori-workspace-scroll { padding: 12px; }
+  .ori-workspace-scroll > div, .ori-workspace-panel, .ori-workspace-tabs { gap: 10px; }
+  .ori-page-heading { margin-bottom: 10px; }
+  .ori-page-heading h2 { font-size: 22px; }
+  .ori-recent { padding: 10px 12px; margin-bottom: 10px; gap: 8px; }
+  .ori-recent h2 { font-size: 16px; }
+  .ori-recent .ori-workflow-label { margin: 0 0 3px; font-size: 11px; }
+  .ori-recent .ori-recent-progress { font-size: 12px; }
+  .ori-recent .ori-workflow-primary { min-height: 44px; margin: 0; padding: 8px 12px; }
+  .ori-weekly { padding: 10px 12px; margin-bottom: 10px; }
+  .ori-weekly .ori-episode-select { margin: 6px 0; }
+  .ori-weekly .ori-episode-select select { margin-top: 0; min-height: 48px; }
+  .ori-weekly .ori-episode-meta { padding: 0; margin: 8px 0; font-size: 13px; background: none; }
+  .ori-weekly .ori-workflow-primary { margin: 10px 0 4px; min-height: 48px; }
+  .ori-weekly .ori-weekly-outline, .ori-weekly .ori-weekly-source { margin: 0; }
+  .ori-weekly-outline > summary, .ori-weekly-source > summary { padding: 10px 0; }
+  .ori-manual-plan > summary { min-height: 48px; padding: 12px 14px; }
+  .ori-manual-plan > summary small { display: none; }
+  .ori-workspace-menu { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; top: -12px; margin: 0 -12px; padding: 8px 12px; }
+  .ori-workspace-select { display: block; min-width: 0; width: 100%; min-height: 44px; padding: 8px; border: 1px solid #d8c9b9; border-radius: 9px; background: #fff; color: #552c24; font-size: 16px; font-weight: 700; }
+  .ori-workspace-tablist { display: none; }
+  .ori-workspace-copy { width: auto; min-height: 44px; margin: 0; padding: 8px 10px; font-size: 12px; white-space: nowrap; }
+  .ori-workspace-copy svg { width: 15px; }
+  .ori-clips-workspace, .ori-clip-card { gap: 8px; }
+  .ori-clip-picker { gap: 6px; padding-bottom: 0; }
+  .ori-clip-card { padding: 10px; }
+  .ori-clip-card .ori-image-preview-open > img { max-height: clamp(130px, 26dvh, 220px); aspect-ratio: auto; }
+  .ori-clip-card .ori-prompt-comparison { margin: 6px 0; padding: 0 10px; }
+  .ori-clip-card .ori-clip-copy { min-height: 44px; padding: 8px; font-size: 13px; }
+  .ori-clip-card .ori-clip-extra > summary { padding: 10px 0; }
+  .ori-image-checks > summary { font-size: 14px; min-height: 44px; padding: 8px 12px; }
+  .ori-image-checks__scene { margin-top: 12px; }
+  .ori-image-checks__scene h3 { font-size: 15px; margin-bottom: 8px; }
+  .ori-image-checks .ori-image-preview-open > img { max-height: 220px; }
+  .ori-image-checks__card { padding: 10px; }
+  .ori-image-checks__actions { margin: 10px 0; gap: 6px; }
+  .ori-image-checks .ori-image-checks__button { min-height: 44px; padding: 8px; font-size: 14px; }
+  .ori-history-content { gap: 8px; }
+  .ori-history-back { padding: 8px 12px; }
+  .ori-workspace-panel > .flex-col { gap: 10px; padding-bottom: 0; }
+  .ori-editor { padding: 12px; }
+  .ori-editor h2 { font-size: 20px; }
+  .ori-editor header p { margin: 3px 0; font-size: 12px; }
+  .ori-editor .ori-status { margin: 6px 0; padding: 8px 10px; font-size: 13px; }
+  .ori-editor .ori-save-status { margin: 4px 0; font-size: 12px; }
+  .ori-editor-steps { top: -12px; margin: 8px -12px; padding: 6px 12px; }
+  .ori-editor-steps button { min-height: 44px; }
+  .ori-editor article { padding: 12px; margin: 10px 0; }
+  .ori-editor h3 { margin-bottom: 6px; font-size: 16px; }
+  .ori-editor .ori-video-settings { margin: 0 0 8px; }
+  .ori-files { grid-template-columns: 1fr; gap: 6px; }
+  .ori-editor .ori-file { padding: 8px 10px; margin: 0; border-style: solid; }
+  .ori-file .ori-file-heading { font-size: 14px; }
+  .ori-editor .ori-step-next { margin: 8px 0; }
+  .ori-step-next .ori-next { padding: 6px 8px; margin: 4px 0; font-size: 12px; }
+  .ori-editor .ori-finish { margin-top: 6px; min-height: 46px; }
+  .ori-editor .ori-result { max-height: 40dvh; width: auto; max-width: 100%; }
+  .ori-continue { padding: 10px; }
+  .ori-continue > .ori-workflow-label { margin: 0 0 6px; }
+  .ori-continue > .ori-workflow-current { margin: 0; padding-bottom: 6px; font-size: 12px; }
+  .ori-continue .ori-workflow-steps, .ori-continue .ori-workflow-actions { margin: 8px 0; gap: 6px; }
+  .ori-continue .ori-workflow-clip > strong { display: block; margin: 8px 0; font-size: 14px; }
+  .ori-continue .ori-image-preview-open > img { max-height: 18dvh; }
+  .ori-continue details { margin: 4px 0; }
+  .ori-continue .ori-workflow-primary, .ori-continue .ori-workflow-link { margin: 6px 0; }
+}

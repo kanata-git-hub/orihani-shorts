@@ -1,3 +1,4 @@
+import { ImagePreview } from '../components/ImagePreview';
 import { useState } from 'react';
 import { HistoryItem } from '../types';
 import { extractClips, extractOverview, extractScenes } from '../utils/extractors';
@@ -27,9 +28,9 @@ export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy
   const title=caption.replace(/#[^\s#]+/g,'').trim();
   const shortsTitle=Array.from(caption).length<=100?caption:Array.from(title).slice(0,100).join('');
   const exportFile=()=>action(async()=>{const media=await db.get(item.id);const raw=makePackage(item,images,media?.sceneReference,media?.clipReferences);const name=(extractOverview(item.result).title||'오리쇼츠').replace(/[\\/:*?"<>|]/g,'').slice(0,60);await shareFile(new File([raw],name+'.ori.json',{type:'application/json'}));setMessage('다른 기기에서 기록 → 작업 파일 가져오기로 열면 됩니다. 영상 파일과 편집 중인 음성은 별도로 보관해주세요.');});
-  return <article className="ori-workflow">
+  return <article className="ori-workflow ori-continue">
     <p className="ori-workflow-label">{duration}초 밈 · 이 기록에서 이어하기</p>
-    {draft?<div className="ori-workflow-current"><strong>{draftProgress(draft).label}</strong><button disabled={editLocked} className="ori-workflow-primary" onClick={onEdit}>{draftProgress(draft).action}</button></div>:<button disabled={editLocked} className="ori-workflow-link" onClick={onEdit}>Kling 영상을 이미 받았다면 바로 편집</button>}
+    {draft&&<p className="ori-workflow-current">{draftProgress(draft).label}</p>}
     <div className="ori-workflow-steps" role="group" aria-label="제작 단계">
       <button disabled={busy} aria-pressed={step==='images'} onClick={()=>setStep('images')}>1. 사진</button>
       <button disabled={busy} aria-pressed={step==='kling'} onClick={()=>setStep('kling')}>2. Kling</button>
@@ -38,23 +39,25 @@ export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy
     <p role="status" aria-live="polite">{message||(!mediaReady?'이 기록의 사진을 확인 중입니다.':!clipCountValid?'기록의 클립 수를 확인해주세요.':`사진 ${clips.length-missing.length}/${clips.length}장 준비됨`)}</p>
     <fieldset disabled={busy||Object.values(generating).some(Boolean)||!mediaReady||!clipCountValid}>
       {step==='images'&&<>
-        <p>이미 있는 사진은 그대로 사용합니다. {IMAGE_GENERATION_NOTICE} 완료될 때까지 화면을 열어두세요.</p>
-        <div className="ori-workflow-pictures">{clips.map((c,i)=><div key={i}>{images[c.imageTitle]?<img src={images[c.imageTitle]} alt={`클립 ${i+1} 시작 사진`}/>:<span>사진 없음</span>}<span>Clip {i+1} · {lengths[i]}초</span>{images[c.imageTitle]&&onReferenceScene&&<button onClick={()=>onReferenceScene(c.imageTitle)}>다른 화에서 참고하기</button>}</div>)}</div>
+        <p>없는 사진만 생성합니다. 이미지 생성·자동 검수 시 비용이 발생합니다.</p>
         <button className="ori-workflow-primary" onClick={()=>missing.length?action(async()=>{for(let i=0;i<clips.length;i++){const c=clips[i];if(images[c.imageTitle])continue;setMessage(`사진 ${i+1}/${clips.length} 생성 중`);if(!await onGenerate(c.imageTitle,c.imagePrompt,i,scenes,item.result))throw Error(`사진 ${i+1} 생성을 완료하지 못했습니다. 이미 만든 사진은 보관했습니다.`);}setStep('kling');setMessage('사진이 준비되었습니다. Kling에서 사용할 자료를 확인하세요.');}):setStep('kling')}>{missing.length?`남은 사진 ${missing.length}장 만들기`:'사진 준비 완료 → Kling'}</button>
+        <details><summary>사진 생성 안내</summary>        <p>이미 있는 사진은 그대로 사용합니다. {IMAGE_GENERATION_NOTICE} 완료될 때까지 화면을 열어두세요.</p></details>
+        <div className="ori-workflow-pictures">{clips.map((c,i)=><div key={i}>{images[c.imageTitle]?<img src={images[c.imageTitle]} alt={`클립 ${i+1} 시작 사진`}/>:<span>사진 없음</span>}<span>Clip {i+1} · {lengths[i]}초</span>{images[c.imageTitle]&&onReferenceScene&&<button onClick={()=>onReferenceScene(c.imageTitle)}>다른 화에서 참고하기</button>}</div>)}</div>
+
       </>}
       {step==='kling'&&<>
-        <p>{duration===5?'한 영상으로 만듭니다. Clip 1 사진은 시작 프레임, Clip 2 사진은 마지막 프레임에 넣고 프롬프트를 순서대로 붙여넣으세요.':'클립마다 별도 영상을 만듭니다. 각 사진을 시작 프레임에 넣고 마지막 프레임은 비워두세요. 순서는 4초·4초·3초·4초입니다.'}</p>
+
         <div className="ori-workflow-steps">{clips.map((_,i)=><button key={i} aria-pressed={index===i} onClick={()=>setIndex(i)}>Clip {i+1}</button>)}</div>
         {clips[index]&&<div className="ori-workflow-clip">
           <strong>{duration===5?(index===0?'시작 프레임 · 2초':'마지막 프레임 · 3초'):`${index+1}번 영상 · ${lengths[index]}초`}</strong>
-          {images[clips[index].imageTitle]&&<img src={images[clips[index].imageTitle]} alt={`Clip ${index+1} 사진`}/>}
-          {images[clips[index].imageTitle]&&onReferenceScene&&<button className="ori-reference-shortcut" onClick={()=>onReferenceScene(clips[index].imageTitle)}>다른 화에서 참고하기</button>}
+          {images[clips[index].imageTitle]&&<ImagePreview src={images[clips[index].imageTitle]} alt={`Clip ${index+1} 사진`}/>}
+
           <div className="ori-workflow-actions"><button disabled={!images[clips[index].imageTitle]} onClick={()=>action(async()=>{await shareFile(imageFile(images[clips[index].imageTitle],`clip-${index+1}`));})}>사진 저장·공유</button>
           <button disabled={!clips[index].videoPrompt} onClick={()=>action(()=>copy(`[CLIP ${index+1}]\n${clips[index].videoPrompt}`,`Clip ${index+1} 프롬프트`))}>프롬프트 복사</button></div>
-          <details><summary>프롬프트 보기</summary><textarea readOnly value={clips[index].videoPrompt} rows={5} aria-label="Kling 프롬프트"/></details>
+          <details><summary>프롬프트·참고 설정</summary>          {images[clips[index].imageTitle]&&onReferenceScene&&<button className="ori-reference-shortcut" onClick={()=>onReferenceScene(clips[index].imageTitle)}>다른 화에서 참고하기</button>}<textarea readOnly value={clips[index].videoPrompt} rows={5} aria-label="Kling 프롬프트"/></details>
         </div>}
         <a className="ori-workflow-link" href="https://kling.ai/app/video/new?ac=1" target="_blank" rel="noopener noreferrer">Kling 열기</a>
-        <p>에셋·오디오·영상 길이를 확인하고 생성하세요. 완성 영상을 휴대폰에 저장한 뒤 편집으로 넘어오면 됩니다.</p>
+        <details><summary>Kling 제작 안내</summary>        <p>{duration===5?'한 영상으로 만듭니다. Clip 1 사진은 시작 프레임, Clip 2 사진은 마지막 프레임에 넣고 프롬프트를 순서대로 붙여넣으세요.':'클립마다 별도 영상을 만듭니다. 각 사진을 시작 프레임에 넣고 마지막 프레임은 비워두세요. 순서는 4초·4초·3초·4초입니다.'}</p>        <p>에셋·오디오·영상 길이를 확인하고 생성하세요. 완성 영상을 휴대폰에 저장한 뒤 편집으로 넘어오면 됩니다.</p></details>
         <button className="ori-workflow-primary" onClick={onEdit}>Kling 영상 준비됨 → 바로 편집</button>
       </>}
       <details><summary>대본 연결 안내 / 릴스·쇼츠 문구</summary>
