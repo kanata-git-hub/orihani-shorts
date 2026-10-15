@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { HistoryItem } from '../types';
 import { db } from '../utils/db';
 import { sourceEpisode, recordDuration } from '../workflow/package';
 import { BackgroundChoice } from '../backgroundAssets';
+import { refreshAuthoredVideoPrompts } from '../workflow/promptRevision';
+import type { ProductionPackage } from '../workflow/productionPackage';
 
 export function useHistory() {
   const [history,setHistory]=useState<HistoryItem[]>(()=>{try{return JSON.parse(localStorage.getItem('pov_director_history')||'[]');}catch{return [];}});
@@ -10,6 +12,13 @@ export function useHistory() {
   const [viewingHistoryId,setViewingHistoryId]=useState<string|null>(null);
   const persist=(next:HistoryItem[])=>{localStorage.setItem('pov_director_history',JSON.stringify(next));current.current=next;setHistory(next);};
   const saveHistory=(item:HistoryItem)=>persist([item,...current.current.filter(h=>h.id!==item.id)]);
+  const applyVideoPromptRevision=useCallback((pack:ProductionPackage)=>{
+    const before=current.current;
+    const next=before.map(item=>refreshAuthoredVideoPrompts(item,pack));
+    const changed=next.filter((item,i)=>item!==before[i]);
+    if(changed.length)persist(next);
+    return changed;
+  },[]);
   const setBackgroundChoice=(id:string,title:string,choice:BackgroundChoice)=>persist(current.current.map(item=>item.id===id?{...item,backgroundChoices:{...item.backgroundChoices,[title]:choice}}:item));
   useEffect(()=>{
     const handler=(event:Event)=>{try{
@@ -29,5 +38,5 @@ export function useHistory() {
   },[]);
   const handleDeleteHistory=async(id:string,e:React.MouseEvent)=>{e.stopPropagation();persist(current.current.filter(h=>h.id!==id));if(viewingHistoryId===id)setViewingHistoryId(null);await db.delete(id).catch(console.warn);};
   const handleClearHistory=async()=>{persist([]);setViewingHistoryId(null);await db.clear().catch(console.warn);};
-  return {history,setHistory,viewingHistoryId,setViewingHistoryId,saveHistory,setBackgroundChoice,handleDeleteHistory,handleClearHistory};
+  return {history,setHistory,viewingHistoryId,setViewingHistoryId,saveHistory,applyVideoPromptRevision,setBackgroundChoice,handleDeleteHistory,handleClearHistory};
 }

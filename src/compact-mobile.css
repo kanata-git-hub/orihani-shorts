@@ -1,5 +1,9 @@
 /* Compact presentation only. Original images, media and production handlers are retained. */
 .ori-workspace-select { display: none; }
+.ori-clip-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.ori-prompt-length { font-size: 11px; line-height: 1.4; font-weight: 500; color: #79655d; white-space: nowrap; }
+.ori-prompt-length--over { color: #9b3027; white-space: normal; font-weight: 700; }
+.ori-workflow-clip > strong { display: flex !important; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ori-weekly-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .ori-weekly-heading h2 { font-size: 19px; font-weight: 800; }
 .ori-weekly-heading button { display: flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; padding: 0; flex-shrink: 0; }

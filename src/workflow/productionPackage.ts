@@ -5,6 +5,7 @@ import { compileProductionPlan } from '../productionContinuity';
 import { validateClipTiming } from '../utils/clipTiming';
 import { parseReferencePlans, readReferencePlan } from '../referencePlan';
 import { readShotDirection, readSceneTransition } from '../shotDirection';
+import { clipVideoText, KLING_PROMPT_TARGET } from '../videoPrompt';
 
 export const MAX_PRODUCTION_CHARS = 300000;
 export type PreparedEpisode = { number: number; characterId: string; episode: SourceEpisode; plan: Record<string, any> };
@@ -45,6 +46,8 @@ export function readProductionPackage(raw: string): ProductionPackage {
     const names = new Set<string>();
     plan.clips.forEach((clip: any, i: number) => {
       for (const key of ['title', 'imageTitle', 'videoTitle', 'imagePrompt', 'videoPrompt', 'locationId']) text(clip[key], `장면 ${i + 1} ${key}`);
+      const copyLength = clipVideoText(clip.videoPrompt, i, clip.title).length;
+      if (copyLength > KLING_PROMPT_TARGET) fail(`${entry.number}화 장면 ${i + 1} 영상 프롬프트가 복사 머리말 포함 ${copyLength}자입니다. ${KLING_PROMPT_TARGET}자 이내로 작성해주세요. 내용을 자동으로 자르지 않습니다.`);
       if (names.has(clip.imageTitle) || ['__proto__', 'constructor', 'prototype'].includes(clip.imageTitle)) fail('장면 이름이 중복되거나 올바르지 않습니다.');
       names.add(clip.imageTitle);
       if (!['pantry', 'treatment', 'reception', 'none'].includes(clip.backgroundAsset)) fail('배경 에셋을 확인해주세요.');

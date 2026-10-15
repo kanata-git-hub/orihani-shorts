@@ -1,3 +1,4 @@
+import { PromptLength } from '../components/PromptLength';
 import { ImagePreview } from '../components/ImagePreview';
 import { useState } from 'react';
 import { HistoryItem } from '../types';
@@ -7,7 +8,7 @@ import { imageFile, shareFile } from './share';
 import './workflow.css';
 import { DraftSummary, draftProgress } from '../editor/draft';
 import { db } from '../utils/db';
-import { videoPromptForCopy } from '../videoPrompt';
+import { videoPromptForCopy, clipVideoText } from '../videoPrompt';
 import { IMAGE_GENERATION_NOTICE } from '../imageQuality';
 import { prepareSocialCaption } from '../utils/socialCaption';
 
@@ -49,11 +50,11 @@ export function HistoryContinue({item,images,generating,onGenerate,onEdit,onBusy
 
         <div className="ori-workflow-steps">{clips.map((_,i)=><button key={i} aria-pressed={index===i} onClick={()=>setIndex(i)}>Clip {i+1}</button>)}</div>
         {clips[index]&&<div className="ori-workflow-clip">
-          <strong>{duration===5?(index===0?'시작 프레임 · 2초':'마지막 프레임 · 3초'):`${index+1}번 영상 · ${lengths[index]}초`}</strong>
+          <strong>{duration===5?(index===0?'시작 프레임 · 2초':'마지막 프레임 · 3초'):`${index+1}번 영상 · ${lengths[index]}초`}<PromptLength text={clipVideoText(clips[index].videoPrompt,index)} /></strong>
           {images[clips[index].imageTitle]&&<ImagePreview src={images[clips[index].imageTitle]} alt={`Clip ${index+1} 사진`}/>}
 
           <div className="ori-workflow-actions"><button disabled={!images[clips[index].imageTitle]} onClick={()=>action(async()=>{await shareFile(imageFile(images[clips[index].imageTitle],`clip-${index+1}`));})}>사진 저장·공유</button>
-          <button disabled={!clips[index].videoPrompt} onClick={()=>action(()=>copy(`[CLIP ${index+1}]\n${clips[index].videoPrompt}`,`Clip ${index+1} 프롬프트`))}>프롬프트 복사</button></div>
+          <button disabled={!clips[index].videoPrompt} onClick={()=>action(()=>copy(clipVideoText(clips[index].videoPrompt,index),`Clip ${index+1} 프롬프트`))}>프롬프트 복사</button></div>
           <details><summary>프롬프트·참고 설정</summary>          {images[clips[index].imageTitle]&&onReferenceScene&&<button className="ori-reference-shortcut" onClick={()=>onReferenceScene(clips[index].imageTitle)}>다른 화에서 참고하기</button>}<textarea readOnly value={clips[index].videoPrompt} rows={5} aria-label="Kling 프롬프트"/></details>
         </div>}
         <a className="ori-workflow-link" href="https://kling.ai/app/video/new?ac=1" target="_blank" rel="noopener noreferrer">Kling 열기</a>

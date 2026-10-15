@@ -33,6 +33,22 @@ sources and archives, not a reason to regenerate the authored prompts.
 
 ## Current release standard
 
+### Kling prompt budget — 2026-10-15
+
+The user's current Kling input truncates at 2,000 characters. Author every scene's
+FINAL clipboard string within 1,900 UTF-16 code units, including `[CLIP N: title]`,
+spaces, line breaks and any legacy audio normalization. Use `clipVideoText` from
+`src/videoPrompt.ts` to measure the actual copy path, not just the raw prompt body.
+Keep all eight headings, exact speech if any, action/cause, timing, start/end state,
+body/prop ownership, support and essential restrictions. Merge redundant appearance,
+environment and prohibition prose already established by the start frame. Do not cut
+off the tail, remove a key event or invoke a paid model to repair an authored package.
+Run `node --import tsx scripts/check-production-prompts.ts production.json` before
+publishing. An over-budget prompt fails release and must be rewritten. For a prompt-only
+compression, preserve the screenplay and image prompts exactly, retain the unchanged
+screenplay review, and separately record three content/continuity/length review passes
+bound to the revised production hash. No new footage is implied by that review.
+
 Do not prepend a teaser, highlight replay, still card or extra one-second intro.
 Start the actual story at frame one. Keep a 15-second episode at 4/4/3/4 seconds.
 Do not burn an episode title or thumbnail slogan into the video. Upload titles remain
