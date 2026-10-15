@@ -15,7 +15,7 @@ import { VideoEditor } from '../editor/VideoEditor';
 import { Sparkles, Clapperboard, AlertCircle } from 'lucide-react';
 import { CHARACTERS } from '../constants';
 import { extractScenes, extractOverview } from '../utils/extractors';
-import { prepareSocialCaption } from '../utils/socialCaption';
+import { prepareReelsCaption } from '../utils/socialCaption';
 
 import { MobileNavigation } from '../components/MobileNavigation';
 import { Header } from '../components/Header';
@@ -142,7 +142,8 @@ export default function App() {
   const openRecordEditor=(item:HistoryItem)=>{try{if(document.documentElement.dataset.oriEditorReady!=='1')throw Error('편집 화면을 준비 중입니다. 잠시 후 다시 눌러주세요.');setResumeId(undefined);window.dispatchEvent(new CustomEvent('orihani-editor-import',{detail:{version:1,key:item.editorKey||'history-'+item.id,episode:editorEpisode(item)}}));}catch(e){showToast((e as Error).message,'error');}};
   const importWork=async(file:File)=>{try{if(file.size>MAX_PACKAGE_BYTES)throw Error('작업 파일은 48MB 이하로 넣어주세요.');const pack=readPackage(await file.text());const item=importIdentity(pack.item,history);const importedRefs=Object.fromEntries(Object.entries(pack.clipReferences||{}).map(([title,ref])=>[title,ref.sourceId===pack.item.id?{...ref,sourceId:item.id}:ref]));await db.set(item.id,{images:pack.images,...(pack.sceneReference?{sceneReference:pack.sceneReference}:{}),clipReferences:importedRefs});saveHistory(item);selectHistory(item.id);showToast('기획·사진·대본을 가져왔습니다.');}catch(e){showToast((e as Error).message,'error');}};
   const currentOverview = extractOverview(result);
-  const reelsCaption = prepareSocialCaption(currentOverview.instagramCaption, currentOverview.hashtags).text;
+  const currentEpisode = history.find(item => item.id === currentWorkboardId)?.episode;
+  const reelsCaption = prepareReelsCaption(currentOverview, currentEpisode).text;
   const currentScenes = extractScenes(result);
   const viewingScenes = viewingHistoryId ? extractScenes(history.find(h => h.id === viewingHistoryId)?.result || '') : [];
 
@@ -178,6 +179,7 @@ export default function App() {
     activeTab={view === 'prompts' ? 'prompts' : 'scenario'}
     selectedCharacter={selectedCharacter}
     result={result}
+    episode={currentEpisode}
     isGenerating={isGenerating}
     error={error}
     currentScenes={currentScenes}

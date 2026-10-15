@@ -103,3 +103,67 @@ test('the actual workboard, history and Kling copy buttons use the same correcte
   assert.equal(flatten(tree).find(n=>n.type==='textarea').props.value,prepare(quiet));
  }finally{if(oldNavigator)Object.defineProperty(global,'navigator',oldNavigator);else delete global.navigator;global.setTimeout=oldTimeout;}
 });
+
+const {prepareReelsCaption,prepareSocialCaption}=compile('src/utils/socialCaption.ts');
+test('reel captions include the title, plan prose and unique hashtags even with a title-only screenplay caption',()=>{
+ const title='42화 구름산책 (하찮은 오리 일상)',prose='오늘도 한 걸음.',hashtags=['#구름산책','#일상'];
+ const overview={title,instagramCaption:prose,hashtags};
+ const episode={title:'[에피소드 42] '+title,caption:title+'\n#구름산책 #일상'};
+ const result=prepareReelsCaption(overview,episode);
+ assert.equal(result.text,title+'\n\n'+prose+'\n\n#구름산책 #일상');
+ assert.equal(result.title,title);
+ assert.equal(prepareReelsCaption({...overview,instagramCaption:result.text},episode).text,result.text);
+});
+test('existing title lines are not duplicated and prose, inline tags and legacy captions are preserved',()=>{
+ const title='42화 구름산책 (하찮은 오리 일상)';
+ for(const heading of [title,'42화 구름산책','[에피소드 42] '+title]){
+  const result=prepareReelsCaption({title,instagramCaption:heading+'\\n\\n오늘은 #일상 산책.\\n#일상 #구름',hashtags:['#일상','#구름']});
+  assert.equal(result.text,title+'\n\n오늘은 #일상 산책.\n\n#구름');
+ }
+ assert.equal(prepareReelsCaption({title,instagramCaption:'42화 구름산책을 함께 봐요.'}).body,title+'\n\n42화 구름산책을 함께 봐요.');
+ const legacy=prepareReelsCaption({instagramCaption:'  '},{title:'[에피소드 42] '+title,caption:title+'\n\n옛 본문도 그대로.\n#구름'});
+ assert.equal(legacy.text,title+'\n\n옛 본문도 그대로.\n\n#구름');
+ assert.equal(prepareReelsCaption({title}).text,title);
+ assert.equal(prepareReelsCaption({}).text,'');
+ assert.equal(prepareReelsCaption({instagramCaption:'제목 없는 본문',hashtags:['#일상']}).text,'제목 없는 본문\n\n#일상');
+ const bonus=prepareReelsCaption({title:'번외 03 구름산책 (하찮은 오리 일상)'},{caption:'[번외] 구름산책 (하찮은 오리 일상)\n#구름'});
+ assert.equal(bonus.text,'번외 03 구름산책 (하찮은 오리 일상)\n\n#구름');
+});
+test('all workboard, history and continue reel buttons copy the same visible title/body/tags',async()=>{
+ const copies=[],noop=()=>{},oldNavigator=Object.getOwnPropertyDescriptor(global,'navigator'),oldTimeout=global.setTimeout;
+ Object.defineProperty(global,'navigator',{configurable:true,value:{clipboard:{writeText:async text=>copies.push(text)}}});global.setTimeout=noop;
+ const mocks={react:{useState:value=>[value,noop],useEffect:noop,useId:()=> 'test',useRef:value=>({current:value})},'../hooks/useToast':{useToast:()=>({showToast:noop})},'../constants':{CHARACTERS:[]},'react-markdown':{default:noop},'./share':{imageFile:noop,shareFile:noop},'../workflow/HistoryContinue':{HistoryContinue:noop}};
+ const flatten=node=>Array.isArray(node)?node.flatMap(flatten):node&&typeof node==='object'?[node,...flatten(node.props?.children),...flatten(node.props?.tabs?.map(tab=>tab.content))]:[];
+ const label=node=>Array.isArray(node)?node.map(label).join(''):node&&typeof node==='object'?label(node.props?.children):typeof node==='string'||typeof node==='number'?String(node):'';
+ const title='42화 구름산책 (하찮은 오리 일상)',prose='오늘도 한 걸음.',hashtags=['#구름산책','#일상'];
+ const episode={duration:5,title:'[에피소드 42] '+title,caption:title+'\n#구름산책 #일상'};
+ const base={title,hashtags,clips:[2,3].map((duration,i)=>({title:'장면',imageTitle:'사진'+i,imagePrompt:'test',videoPrompt:'OUTPUT SPECS: '+duration+'s'}))};
+ try{
+  for(const legacy of [false,true]){
+   const overview={...base,instagramCaption:legacy?'':prose};
+   const item={id:'synthetic-caption',timestamp:1,characterId:'owonjang',duration:5,result:JSON.stringify(overview),episode};
+   const expected=title+(legacy?'':'\n\n'+prose)+'\n\n#구름산책 #일상';
+   for(const name of ['WorkboardContent','HistoryContent']){
+    const Component=compile('src/components/'+name+'.tsx',mocks)[name];
+    const tree=Component({activeTab:'scenario',result:item.result,episode,isGenerating:false,error:null,currentScenes:[],sceneImages:{},generatingImages:{},selectedCharacter:'owonjang',viewingHistoryId:item.id,history:[item],viewingScenes:[],onEdit:noop,onBusy:noop,mediaReady:true});
+    const button=flatten(tree).find(n=>n.type==='button'&&label(n)==='복사하기');
+    assert.ok(button,name);await button.props.onClick();assert.equal(copies.at(-1),expected,name);
+    const preview=flatten(tree).find(n=>n.type==='div'&&n.props.className==='text-sm text-[#552c24] whitespace-pre-wrap mb-3');
+    assert.equal(label(preview),title+(legacy?'':'\n\n'+prose),name+' preview');
+    if(name==='HistoryContent'){
+     const {WorkspaceTabs}=compile('src/components/WorkspaceTabs.tsx',mocks);
+     const tabs=WorkspaceTabs(tree.props);
+     await flatten(tabs).find(n=>n.type==='button'&&label(n)==='릴스 본문 복사').props.onClick();
+     assert.equal(copies.at(-1),expected,'history tab bar');
+    }
+   }
+   const {HistoryContinue}=compile('src/workflow/HistoryContinue.tsx',mocks);
+   const tree=HistoryContinue({item,images:{},generating:{},onGenerate:noop,onEdit:noop,onBusy:noop,mediaReady:true});
+   await flatten(tree).find(n=>n.type==='button'&&label(n)==='릴스 내용·쇼츠 설명 복사').props.onClick();
+   assert.equal(copies.at(-1),expected,'continue');
+   await flatten(tree).find(n=>n.type==='button'&&label(n)==='쇼츠 제목 복사').props.onClick();
+   assert.equal(copies.at(-1),prepareSocialCaption(title,hashtags).text);
+   assert.ok(!copies.at(-1).includes(prose));
+  }
+ }finally{if(oldNavigator)Object.defineProperty(global,'navigator',oldNavigator);else delete global.navigator;global.setTimeout=oldTimeout;}
+});

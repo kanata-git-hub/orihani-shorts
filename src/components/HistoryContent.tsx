@@ -11,7 +11,7 @@ import { extractOverview, extractClips } from '../utils/extractors';
 import { useToast } from '../hooks/useToast';
 import { videoPromptForCopy, clipVideoText } from '../videoPrompt';
 import { IMAGE_GENERATION_NOTICE } from '../imageQuality';
-import { prepareSocialCaption } from '../utils/socialCaption';
+import { prepareReelsCaption } from '../utils/socialCaption';
 import { isAuthoredPlan } from '../workflow/productionPackage';
 
 interface HistoryContentProps {
@@ -65,7 +65,7 @@ export function HistoryContent({
   const result = viewingItem?.result || '';
 
   const overview = extractOverview(result);
-  const socialCaption = prepareSocialCaption(overview.instagramCaption, overview.hashtags);
+  const socialCaption = prepareReelsCaption(overview, viewingItem?.episode);
   const clips = extractClips(result).map(clip=>({...clip,videoPrompt:videoPromptForCopy(clip.videoPrompt)}));
 
   const handleCopyAllVideoPrompts = () => {
