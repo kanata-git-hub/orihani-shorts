@@ -1,3 +1,4 @@
+import { ImagePreview } from './ImagePreview';
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { AlertCircle, Clapperboard, Copy, CheckCircle2, Download, RefreshCw, Image as ImageIcon, Loader2 } from 'lucide-react';
@@ -83,7 +84,7 @@ export function WorkboardContent({
 
       {(result || isGenerating) && (
         <div className="flex-1 flex flex-col gap-6 pb-8">
-          
+
 
           {activeTab === 'scenario' && (
             <div className="flex flex-col gap-4">
@@ -95,7 +96,7 @@ export function WorkboardContent({
                   <p className="text-sm text-[#552c24]/70 font-medium mt-1">📍 {overview.location}</p>
                 )}
               </div>
-              
+
               {overview.scenario && (
                 <div className="text-sm leading-relaxed text-[#552c24] whitespace-pre-wrap">
                   {overview.scenario}
@@ -126,7 +127,7 @@ export function WorkboardContent({
               )}
 
               {result && (
-                <button 
+                <button
                   onClick={() => setShowRawPrompt(!showRawPrompt)}
                   className="text-xs uppercase font-bold text-[#552c24]/60 hover:text-[#552c24] underline underline-offset-2 flex items-center gap-1 self-start mt-2"
                 >
@@ -152,7 +153,7 @@ export function WorkboardContent({
 
           {/* Bottom: Clip-by-clip Card List */}
           {activeTab === 'prompts' && clips.length > 0 && (
-             <div className="flex flex-col gap-4">
+             <div className="ori-clips-workspace flex flex-col gap-4">
                <div className="ori-clip-picker flex gap-2 overflow-x-auto pb-2 shrink-0" role="group" aria-label="작업할 클립">
                  {clips.map((clip, idx) => (
                    <button
@@ -165,7 +166,61 @@ export function WorkboardContent({
                    </button>
                  ))}
                </div>
-               
+
+
+               {clips[activeClipIndex] && (() => {
+                  const clip = clips[activeClipIndex];
+                  const idx = activeClipIndex;
+                  return (
+                  <div className="ori-clip-card bg-[#ffffff] border-2 border-[#552c24] p-4 flex flex-col gap-3 relative shadow-[4px_4px_0px_#552c24] max-w-md w-full self-center">
+                    <div className="font-bold text-sm uppercase text-[#552c24] border-b border-[#552c24]/10 pb-2">
+                      {clip.title}
+                    </div>
+
+                <button type="button" className="ori-clip-copy" disabled={!clip.videoPrompt} onClick={async()=>{
+                  try { await navigator.clipboard.writeText(`[CLIP ${idx + 1}: ${clip.title}]\n${clip.videoPrompt}`); setClipCopy({index:idx,status:'done'}); }
+                  catch { setClipCopy({index:idx,status:'error'}); }
+                }}><Copy size={16} aria-hidden="true" /><span aria-live="polite">{clipCopy?.index === idx ? clipCopy.status === 'done' ? '이 클립 프롬프트 복사 완료' : '복사 실패 · 다시 시도' : '이 클립 영상 프롬프트 복사'}</span></button>
+                <p className="text-xs text-[#79655d]">이미지 생성·자동 검수 시 비용이 발생합니다.</p>
+                    {/* Image Generation Area */}
+                    {!sceneImages[clip.imageTitle] ? (
+                      <button
+                        onClick={() => handleGenerateImage(clip.imageTitle, clip.imagePrompt, idx, currentScenes, result)}
+                        disabled={generatingImages[clip.imageTitle] || isGenerating || !clip.imagePrompt}
+                        className="w-full bg-[#f9f7f4] border-2 border-dashed border-[#552c24]/20 text-[#552c24] hover:border-[#552c24] hover:bg-[#ffcd4a]/20 transition-all py-8 flex flex-col items-center justify-center gap-2 text-xs font-bold uppercase disabled:opacity-50 min-h-[160px] rounded"
+                      >
+                        {generatingImages[clip.imageTitle] ? (
+                          <><Loader2 size={24} className="animate-spin" /> 이미지 생성 중...</>
+                        ) : (
+                          <><ImageIcon size={24} className="opacity-50" /> 시작 이미지 생성</>
+                        )}
+                      </button>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        <ImagePreview src={sceneImages[clip.imageTitle]} alt={clip.imageTitle} />
+
+                        <div className="flex justify-end gap-2">
+                          <a href={sceneImages[clip.imageTitle]} download={`${clip.imageTitle}.png`} className="flex items-center gap-1 px-3 py-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a] text-xs font-bold uppercase transition-colors">
+                            <Download size={14} /> 다운로드
+                          </a>
+                          <button onClick={() => handleGenerateImage(clip.imageTitle, clip.imagePrompt, idx, currentScenes, result)} className="flex items-center gap-1 px-3 py-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a] text-xs font-bold uppercase transition-colors">
+                            <RefreshCw size={14} /> 재시도
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                <details className="ori-clip-extra"><summary>추가 작업·생성 안내</summary>
+                {onReferenceScene&&<button className="ori-reference-shortcut" disabled={isGenerating||Object.values(generatingImages).some(Boolean)} onClick={()=>onReferenceScene(clip.imageTitle)}>다른 화에서 참고하기</button>}
+                <details className="ori-prompt-comparison"><summary>이미지 생성·검수 안내</summary><p>{IMAGE_GENERATION_NOTICE}</p></details>
+                {handleCompareImages && <details className="ori-prompt-comparison">
+                  <summary>이미지 모델 비교</summary>
+                  <p>동일한 프롬프트와 참고 사진으로 Flash Image와 Pro Image를 각각 한 번 생성하고 Flash로 검수합니다. 비교에서는 자동 수정하지 않습니다. 이미지 2회와 검수 2회 비용이 발생합니다. 기존 장면은 유지합니다.</p>
+                  <button type="button" disabled={Object.values(generatingImages).some(Boolean) || !clip.imagePrompt} onClick={() => void handleCompareImages(clip.imageTitle, clip.imagePrompt, idx, currentScenes, result)}>현재 장면 두 이미지 모델 비교</button>
+                </details>}
+                </details>
+                  </div>
+                  );
+               })()}
                <details className="ori-copy-options"><summary>여러 클립 프롬프트 복사</summary>
                <button
                  onClick={handleCopyAllVideoPrompts}
@@ -198,56 +253,6 @@ export function WorkboardContent({
                )}
 
                </details>
-               {clips[activeClipIndex] && (() => {
-                  const clip = clips[activeClipIndex];
-                  const idx = activeClipIndex;
-                  return (
-                  <div className="ori-clip-card bg-[#ffffff] border-2 border-[#552c24] p-4 flex flex-col gap-3 relative shadow-[4px_4px_0px_#552c24] max-w-md w-full self-center">
-                    <div className="font-bold text-sm uppercase text-[#552c24] border-b border-[#552c24]/10 pb-2">
-                      {clip.title}
-                    </div>
-
-                <button type="button" className="ori-clip-copy" disabled={!clip.videoPrompt} onClick={async()=>{
-                  try { await navigator.clipboard.writeText(`[CLIP ${idx + 1}: ${clip.title}]\n${clip.videoPrompt}`); setClipCopy({index:idx,status:'done'}); }
-                  catch { setClipCopy({index:idx,status:'error'}); }
-                }}><Copy size={16} aria-hidden="true" /><span aria-live="polite">{clipCopy?.index === idx ? clipCopy.status === 'done' ? '이 클립 프롬프트 복사 완료' : '복사 실패 · 다시 시도' : '이 클립 영상 프롬프트 복사'}</span></button>
-                <p className="text-xs text-[#79655d]">이미지 생성·자동 검수 시 비용이 발생합니다.</p>
-                    {/* Image Generation Area */}
-                    {!sceneImages[clip.imageTitle] ? (
-                      <button 
-                        onClick={() => handleGenerateImage(clip.imageTitle, clip.imagePrompt, idx, currentScenes, result)}
-                        disabled={generatingImages[clip.imageTitle] || isGenerating || !clip.imagePrompt}
-                        className="w-full bg-[#f9f7f4] border-2 border-dashed border-[#552c24]/20 text-[#552c24] hover:border-[#552c24] hover:bg-[#ffcd4a]/20 transition-all py-8 flex flex-col items-center justify-center gap-2 text-xs font-bold uppercase disabled:opacity-50 min-h-[160px] rounded"
-                      >
-                        {generatingImages[clip.imageTitle] ? (
-                          <><Loader2 size={24} className="animate-spin" /> 이미지 생성 중...</>
-                        ) : (
-                          <><ImageIcon size={24} className="opacity-50" /> 시작 이미지 생성</>
-                        )}
-                      </button>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        <img src={sceneImages[clip.imageTitle]} alt={clip.imageTitle} className="w-full object-cover rounded aspect-[9/16] bg-gray-100 border-2 border-[#552c24]" referrerPolicy="no-referrer" />
-                        {onReferenceScene&&<button className="ori-reference-shortcut" disabled={isGenerating||Object.values(generatingImages).some(Boolean)} onClick={()=>onReferenceScene(clip.imageTitle)}>다른 화에서 참고하기</button>}
-                        <div className="flex justify-end gap-2">
-                          <a href={sceneImages[clip.imageTitle]} download={`${clip.imageTitle}.png`} className="flex items-center gap-1 px-3 py-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a] text-xs font-bold uppercase transition-colors">
-                            <Download size={14} /> 다운로드
-                          </a>
-                          <button onClick={() => handleGenerateImage(clip.imageTitle, clip.imagePrompt, idx, currentScenes, result)} className="flex items-center gap-1 px-3 py-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a] text-xs font-bold uppercase transition-colors">
-                            <RefreshCw size={14} /> 재시도
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                <details className="ori-prompt-comparison"><summary>이미지 생성·검수 안내</summary><p>{IMAGE_GENERATION_NOTICE}</p></details>
-                {handleCompareImages && <details className="ori-prompt-comparison">
-                  <summary>이미지 모델 비교</summary>
-                  <p>동일한 프롬프트와 참고 사진으로 Flash Image와 Pro Image를 각각 한 번 생성하고 Flash로 검수합니다. 비교에서는 자동 수정하지 않습니다. 이미지 2회와 검수 2회 비용이 발생합니다. 기존 장면은 유지합니다.</p>
-                  <button type="button" disabled={Object.values(generatingImages).some(Boolean) || !clip.imagePrompt} onClick={() => void handleCompareImages(clip.imageTitle, clip.imagePrompt, idx, currentScenes, result)}>현재 장면 두 이미지 모델 비교</button>
-                </details>}
-                  </div>
-                  );
-               })()}
              </div>
           )}
         </div>

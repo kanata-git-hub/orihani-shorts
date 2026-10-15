@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { SourceEpisode } from '../types';
 import { auth } from '../lib/firebase';
 import { readWeeklyInput, type PreparedEpisode, type WeeklyChoice } from './productionPackage';
@@ -43,21 +44,21 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
       else{onChoose(chosen,chosen.characters[0]||'owonjang');setMessage('아래 기획에 넣었습니다. 주인공을 확인하고 영상 기획 생성을 누르세요.');}
     }catch(e){setMessage((e as Error).message);}
   };
-  return <details open className="ori-workflow ori-weekly w-full max-w-2xl mb-4 shrink-0"><summary>제작안에서 시작</summary>
-    <p>만들 에피소드를 고르면 이미지 제작으로 이어집니다.</p>
-    {source&&<details className="ori-weekly-source"><summary>불러온 제작안 정보</summary><p><a className="ori-workflow-link" href={source.url} target="_blank" rel="noopener noreferrer">{source.name}</a></p></details>}
-    <p role="status" aria-live="polite">{message}</p>
-    {chosen&&<><label className="ori-episode-select">만들 에피소드<select disabled={disabled} value={index} onChange={e=>{interrupt();const n=Number(e.target.value);setIndex(n);selectedTitle.current=episodes[n].title;}}>{episodes.map((e,i)=><option key={i} value={i}>{e.title}</option>)}</select></label>
-      <p className="ori-episode-preview">{chosen.prepared?chosen.scenario.split('\n')[0]:chosen.scenario}</p>
-      {chosen.prepared&&<p className="ori-episode-meta">완성 제작안 · {chosen.duration}초 · 이미지 {chosen.prepared.plan.clips.length}장 · 영상 프롬프트 {chosen.prepared.plan.clips.length}개</p>}
+  return <section className="ori-workflow ori-weekly w-full max-w-2xl mb-4 shrink-0" aria-label="제작안에서 시작">
+    <div className="ori-weekly-heading"><h2>제작안에서 시작</h2><button type="button" disabled={disabled||loading} aria-label="최신 제작안 다시 확인" title="최신 제작안 다시 확인" onClick={()=>void latest(true)}><RefreshCw size={18} className={loading?'animate-spin':''} aria-hidden="true"/></button></div>
+    <p role="status" aria-live="polite" className={chosen&&!loading?'sr-only':''}>{message}</p>
+    {chosen&&<>
+      <label className="ori-episode-select"><span className="sr-only">만들 에피소드</span><select disabled={disabled} value={index} onChange={e=>{interrupt();const n=Number(e.target.value);setIndex(n);selectedTitle.current=episodes[n].title;}}>{episodes.map((e,i)=><option key={i} value={i}>{e.title}</option>)}</select></label>
+      <p className="ori-episode-meta">{chosen.duration}초{chosen.prepared&&` · 이미지 ${chosen.prepared.plan.clips.length}장 · 영상 ${chosen.prepared.plan.clips.length}개`}</p>
       <button disabled={disabled||loading} className="ori-workflow-primary" onClick={choose}>{chosen.prepared?'이 제작안으로 시작':'이 에피소드로 기획 준비'}</button>
-      {chosen.prepared&&<details><summary>장면별 기획 보기</summary><p>{chosen.scenario}</p></details>}</>}
-    <button disabled={disabled||loading} onClick={()=>void latest(true)}>{loading?'최신 제작안 확인 중…':'최신 제작안 다시 확인'}</button>
+      <details className="ori-weekly-outline"><summary>줄거리·장면별 기획</summary><p>{chosen.scenario}</p></details>
+    </>}
     {!!episodes.length&&!chosen?.prepared&&<PromptComparison episodes={episodes}/>}
-    <details><summary>제작안·이전 대본 파일 가져오기</summary>
+    <details className="ori-weekly-source"><summary>제작안 정보·파일 가져오기</summary>
+      {source&&<a className="ori-workflow-link" href={source.url} target="_blank" rel="noopener noreferrer">{source.name}</a>}
       <a className="ori-workflow-link" href="https://drive.google.com/drive/folders/1O2wOWOLyAXmq96aXOExX0fecwK7jZbq-" target="_blank" rel="noopener noreferrer">제작안 폴더 열기</a>
       <label>제작안 또는 대본 파일<input disabled={disabled} type="file" accept=".json,.md,.txt,application/json,text/plain,text/markdown" onChange={async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;interrupt();const request=revision.current;if(file.size>1000000){setMessage('파일은 1MB 이하로 넣어주세요.');return;}try{const text=await file.text();if(request===revision.current)load(text);}catch{if(request===revision.current)setMessage('파일을 읽지 못했습니다.');}}}/></label>
       <textarea disabled={disabled} aria-label="주간 대본 내용" rows={5} value={raw} maxLength={300000} onChange={e=>{interrupt();setRaw(e.target.value);setEpisodes([]);setSource(null);}}/><button disabled={disabled} onClick={()=>load(raw)}>내용 읽기</button>
     </details>
-  </details>;
+  </section>;
 }

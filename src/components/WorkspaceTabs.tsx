@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { Check, Copy, Loader2 } from 'lucide-react';
 import './workspace-tabs.css';
 
@@ -61,7 +61,10 @@ export function WorkspaceTabs({ label, tabs, defaultTab, reelsCaption }: {
 
   return <div ref={root} className="ori-workspace-tabs">
     <div className="ori-workspace-menu">
-    <div className={`ori-workspace-tablist ${tabs.length > 4 ? 'ori-workspace-tablist-five' : ''}`} role="tablist" aria-label={label}>
+    <select className="ori-workspace-select" aria-label={`${label} 메뉴`} value={active} onChange={event=>select(event.target.value)}>
+      {tabs.map(tab=><option key={tab.id} value={tab.id}>{tab.label}</option>)}
+    </select>
+    <div className={`ori-workspace-tablist ${tabs.length > 4 ? 'ori-workspace-tablist-five' : ''}`} style={{'--ori-tab-count':tabs.length} as CSSProperties} role="tablist" aria-label={label}>
       {tabs.map((tab, index) => <button
         key={tab.id}
         ref={element => { buttons.current[index] = element; }}
