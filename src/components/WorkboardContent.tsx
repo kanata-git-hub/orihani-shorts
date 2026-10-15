@@ -8,12 +8,14 @@ import { extractOverview, extractClips } from '../utils/extractors';
 import { useToast } from '../hooks/useToast';
 import { videoPromptForCopy, clipVideoText } from '../videoPrompt';
 import { IMAGE_GENERATION_NOTICE } from '../imageQuality';
-import { prepareSocialCaption } from '../utils/socialCaption';
+import { prepareReelsCaption } from '../utils/socialCaption';
+import type { SourceEpisode } from '../types';
 
 interface WorkboardContentProps {
   activeTab: 'scenario' | 'prompts';
   selectedCharacter: string;
   result: string;
+  episode?: SourceEpisode;
   isGenerating: boolean;
   error: string | null;
   currentScenes: any[];
@@ -30,6 +32,7 @@ export function WorkboardContent({
   activeTab,
   selectedCharacter,
   result,
+  episode,
   isGenerating,
   error,
   currentScenes,
@@ -47,7 +50,7 @@ export function WorkboardContent({
   const { showToast } = useToast();
 
   const overview = extractOverview(result);
-  const socialCaption = prepareSocialCaption(overview.instagramCaption, overview.hashtags);
+  const socialCaption = prepareReelsCaption(overview, episode);
   const clips = extractClips(result).map(clip=>({...clip,videoPrompt:videoPromptForCopy(clip.videoPrompt)}));
 
 

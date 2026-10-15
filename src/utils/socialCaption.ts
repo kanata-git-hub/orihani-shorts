@@ -29,3 +29,34 @@ export function prepareSocialCaption(caption: unknown, hashtags: unknown = []) {
   const text = [body, tags.map(tag => `#${tag}`).join(' ')].filter(Boolean).join('\n\n');
   return { body, hashtags: tags, text };
 }
+
+const cleanTitle = (value: unknown) => typeof value === 'string'
+  ? value.trim().replace(/^\[에피소드\s*\d+\]\s*/, '') : '';
+const titleKey = (value: string) => cleanTitle(value)
+  .replace(/\s*\(하찮은 오리 일상\)\s*$/, '')
+  .replace(/^(?:번외\s*\d+|\[번외\])\s*/, '번외 ')
+  .replace(/\s+/g, ' ').normalize('NFC');
+
+// Every preview and copy button uses the same title/body/tag composition.
+// Prefer the plan's prose; older records can fall back to their linked screenplay.
+export function prepareReelsCaption(
+  overview: { title?: unknown; instagramCaption?: unknown; hashtags?: unknown },
+  episode?: { title?: unknown; caption?: unknown } | null,
+) {
+  const title = cleanTitle(overview.title) || cleanTitle(episode?.title);
+  const source = typeof overview.instagramCaption === 'string' && overview.instagramCaption.trim()
+    ? overview.instagramCaption : episode?.caption;
+  const caption = prepareSocialCaption(source, overview.hashtags);
+  let prose = caption.body;
+  if (title) {
+    const lines = prose.split('\n');
+    // Only consume a standalone leading title, never a sentence mentioning it.
+    while (lines.length && titleKey(lines[0]) === titleKey(title)) {
+      lines.shift();
+      while (lines.length && !lines[0].trim()) lines.shift();
+    }
+    prose = lines.join('\n').trim();
+  }
+  const body = [title, prose].filter(Boolean).join('\n\n');
+  return { ...prepareSocialCaption(body, caption.hashtags), title };
+}
