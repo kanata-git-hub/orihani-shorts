@@ -31,10 +31,11 @@ export const extractOverview = (text: string) => {
 export const extractClips = (text: string) => {
   try {
     const data = JSON.parse(text);
+    if (data.workflow === 'kling4') data.clips = data.keyframes;
     if (data.clips && Array.isArray(data.clips)) {
       let plans: ReferencePlan[] | undefined, referencePlanError: string | undefined;
       try {
-        plans = parseReferencePlans(typeof data.scenario === 'string' ? data.scenario : '');
+        plans = data.workflow === 'kling4' ? undefined : parseReferencePlans(typeof data.scenario === 'string' ? data.scenario : '');
         if (plans && plans.length !== data.clips.length) throw Error('대본의 참고 연결 장면 수와 생성된 장면 수가 다릅니다.');
         if (!plans) plans = data.clips.map((c:any,i:number) => readReferencePlan(c.referencePlan,i+1));
       } catch (error) { referencePlanError = (error as Error).message; }

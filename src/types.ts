@@ -14,7 +14,7 @@ export interface HistoryItem {
   timestamp: number;
   characterId: string;
   result: string;
-  duration?: 5 | 15;
+  duration?: 5 | 15 | 30;
   customPrompt?: string;
   episode?: SourceEpisode;
   editorKey?: string;
@@ -22,7 +22,8 @@ export interface HistoryItem {
 }
 
 export interface SourceEpisode {
-  duration: 5 | 15;
+  videoLayout?: 'single' | 'legacy-clips';
+  duration: 5 | 15 | 30;
   title: string;
   scenario: string;
   korean: string;

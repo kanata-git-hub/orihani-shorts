@@ -49,7 +49,7 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
     <p role="status" aria-live="polite" className={chosen&&!loading?'sr-only':''}>{message}</p>
     {chosen&&<>
       <label className="ori-episode-select"><span className="sr-only">만들 에피소드</span><select disabled={disabled} value={index} onChange={e=>{interrupt();const n=Number(e.target.value);setIndex(n);selectedTitle.current=episodes[n].title;}}>{episodes.map((e,i)=><option key={i} value={i}>{e.title}</option>)}</select></label>
-      <p className="ori-episode-meta">{chosen.duration}초{chosen.prepared&&` · 이미지 ${chosen.prepared.plan.clips.length}장 · 영상 ${chosen.prepared.plan.clips.length}개`}</p>
+      <p className="ori-episode-meta">{chosen.duration}초{chosen.prepared&&` · 이미지 ${(chosen.prepared.plan.keyframes||chosen.prepared.plan.clips).length}장 · 영상 ${chosen.prepared.plan.workflow==='kling4'||chosen.duration===5?1:4}개`}</p>
       <button disabled={disabled||loading} className="ori-workflow-primary" onClick={choose}>{chosen.prepared?'이 제작안으로 시작':'이 에피소드로 기획 준비'}</button>
       <details className="ori-weekly-outline"><summary>줄거리·장면별 기획</summary><p>{chosen.scenario}</p></details>
     </>}

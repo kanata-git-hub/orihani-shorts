@@ -1,3 +1,4 @@
+import { ImageImport } from './ImageImport';
 import { PromptLength } from './PromptLength';
 import { ImagePreview } from './ImagePreview';
 import { useState, useEffect } from 'react';
@@ -12,6 +13,9 @@ import { prepareReelsCaption } from '../utils/socialCaption';
 import type { SourceEpisode } from '../types';
 
 interface WorkboardContentProps {
+  onApplyImage: (title:string,image:string)=>Promise<boolean>;
+  onKling4Copy?:()=>void;
+  busy?:boolean;
   activeTab: 'scenario' | 'prompts';
   selectedCharacter: string;
   result: string;
@@ -40,7 +44,7 @@ export function WorkboardContent({
   generatingImages,
   handleSaveDraft,
   handleExportPlan,
-  handleGenerateImage, handleCompareImages, onReferenceScene
+  handleGenerateImage, handleCompareImages, onReferenceScene, onApplyImage, onKling4Copy, busy
 }: WorkboardContentProps) {
   const [showRawPrompt, setShowRawPrompt] = useState(false);
   const [copiedAllPrompts, setCopiedAllPrompts] = useState(false);
@@ -72,6 +76,7 @@ export function WorkboardContent({
 
   return (
     <>
+      {result&&onKling4Copy&&<div className="ori-workflow"><p>이 제작안은 이전 클립 방식입니다.</p><button disabled={busy} onClick={onKling4Copy}>Kling 4.0 작업으로 복사</button><p>기존 이미지와 대본을 보관하고 새 작업을 만듭니다.</p></div>}
       {error && (
         <div className="p-4 bg-red-50 border-2 border-red-200 text-red-700 font-bold text-sm shrink-0 flex gap-2 shadow-[2px_2px_0px_#fca5a5]">
           <AlertCircle size={18} /> {error}
@@ -186,6 +191,7 @@ export function WorkboardContent({
                   catch { setClipCopy({index:idx,status:'error'}); }
                 }}><Copy size={16} aria-hidden="true" /><span aria-live="polite">{clipCopy?.index === idx ? clipCopy.status === 'done' ? '이 클립 프롬프트 복사 완료' : '복사 실패 · 다시 시도' : '이 클립 영상 프롬프트 복사'}</span></button>
                 <p className="text-xs text-[#79655d]">이미지 생성·자동 검수 시 비용이 발생합니다.</p>
+                    <ImageImport title={clip.imageTitle} disabled={busy} hasImage={!!sceneImages[clip.imageTitle]} onApply={onApplyImage}/>
                     {/* Image Generation Area */}
                     {!sceneImages[clip.imageTitle] ? (
                       <button

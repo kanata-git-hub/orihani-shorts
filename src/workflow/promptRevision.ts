@@ -20,7 +20,7 @@ function withoutVideoPrompts(plan: any) {
 export function refreshAuthoredVideoPrompts(item: HistoryItem, pack: ProductionPackage): HistoryItem {
   if (!needsVideoPromptRefresh(item)) return item;
   const plan = planOf(item);
-  const entry = pack.episodes.find(e => e.characterId === item.characterId && stable(e.episode) === stable(item.episode)
+  const entry = pack.episodes.find(e => Array.isArray(e.plan.clips) && e.characterId === item.characterId && stable(e.episode) === stable(item.episode)
     && stable(withoutVideoPrompts(e.plan)) === stable(withoutVideoPrompts(plan)));
   if (!entry || plan.productionRevision === pack.revision || entry.plan.clips.some((c: any, i: number) => clipVideoText(c.videoPrompt, i, c.title).length > KLING_PROMPT_TARGET)) return item;
   return { ...item, result: JSON.stringify({ ...plan, productionRevision: pack.revision,

@@ -1,3 +1,4 @@
+import { getKling4Plan, validateKling4Plan } from '../kling4';
 import { HistoryItem, SourceEpisode } from '../types';
 import { extractClips, extractOverview } from '../utils/extractors';
 import { isBackgroundChoice } from '../backgroundAssets';
@@ -6,10 +7,12 @@ import { readSceneReference, readClipReferences, type ClipReferences, type Scene
 export const MAX_PACKAGE_BYTES = 48 * 1024 * 1024;
 const text = (v: unknown, max: number) => typeof v === 'string' && v.length <= max;
 export function sourceEpisode(v: any): SourceEpisode {
-  if (!v || ![5,15].includes(v.duration) || !text(v.korean,20000) || !text(v.scenario,40000) || !text(v.title,1000) || !text(v.thumbnail,3000) || !text(v.caption || '',5000)) throw Error('주간 대본의 형식을 확인해주세요.');
+  if (!v || ![5,15,30].includes(v.duration) || !text(v.korean,20000) || !text(v.scenario,40000) || !text(v.title,1000) || !text(v.thumbnail,3000) || !text(v.caption || '',5000)) throw Error('주간 대본의 형식을 확인해주세요.');
   return {duration:v.duration,title:v.title,korean:v.korean,scenario:v.scenario,thumbnail:v.thumbnail,caption:v.caption||''};
 }
-export function recordDuration(item: HistoryItem): 5|15 {
+export function recordDuration(item: HistoryItem): 5|15|30 {
+  const plan=getKling4Plan(item.result);
+  if(plan){validateKling4Plan(plan);if(item.duration!==undefined&&item.duration!==plan.duration)throw Error('기획과 영상 길이가 다릅니다.');return plan.duration;}
   if(item.duration!==undefined){if(item.duration!==5&&item.duration!==15)throw Error('5초 또는 15초 기획을 선택해주세요.');return item.duration;}
   const n=extractClips(item.result).length;
   if(n!==2&&n!==4)throw Error('2개 또는 4개 클립이 있는 기획을 선택해주세요.');
@@ -19,7 +22,8 @@ export function editorEpisode(item: HistoryItem): SourceEpisode {
   const clips=extractClips(item.result),overview=extractOverview(item.result);
   const source=item.episode || {duration:recordDuration(item), title:overview.title||'이전 기획', korean:'', thumbnail:'', caption:'', scenario:overview.scenario||''};
   // Use explicit source narration only. A visual scenario is never guessed as narration.
-  return {...source,scenario:source.scenario+'\n'+clips.map(c=>c.videoPrompt).join('\n')};
+  const plan=getKling4Plan(item.result);
+  return {...source,...(plan?{videoLayout:'single' as const}:{}),scenario:source.scenario+'\n'+(plan?plan.videoPrompt:clips.map(c=>c.videoPrompt).join('\n'))};
 }
 export function makePackage(item: HistoryItem, images: Record<string,string>, sceneReference?:SceneReference|null, clipReferences?:ClipReferences) {
   const value={format:'orihani-work',version:1,item,images,...(sceneReference?{sceneReference}:{}),...(clipReferences?{clipReferences}:{})};
@@ -31,7 +35,7 @@ export function readPackage(raw: string): {format:'orihani-work';version:1;item:
   const i=v?.item;
   if(v?.format!=='orihani-work'||v.version!==1||!i||!text(i.id,200)||!i.id||!Number.isFinite(i.timestamp)||!text(i.result,200000)||!['deoki','owonjang','nurse'].includes(i.characterId))throw Error('오리쇼츠 작업 파일의 내용이 올바르지 않습니다.');
   const duration=recordDuration(i);
-  if(extractClips(i.result).length!==(duration===5?2:4))throw Error('영상 길이와 클립 수가 맞지 않습니다.');
+  if(!getKling4Plan(i.result)&&extractClips(i.result).length!==(duration===5?2:4))throw Error('영상 길이와 클립 수가 맞지 않습니다.');
   if(extractClips(i.result).some(c=>!text(c.imageTitle,500)||!c.imageTitle||!text(c.imagePrompt,30000)||!text(c.videoPrompt,30000)))throw Error('클립의 사진과 프롬프트 정보를 확인해주세요.');
   const overview=extractOverview(i.result),clips=extractClips(i.result);
   if(!text(overview.title,1000)||!text(overview.scenario,40000)||!text(overview.location,3000)||!text(overview.instagramCaption,5000)||!Array.isArray(overview.hashtags)||overview.hashtags.some((s:unknown)=>!text(s,500)))throw Error('기획의 제목과 본문 형식을 확인해주세요.');

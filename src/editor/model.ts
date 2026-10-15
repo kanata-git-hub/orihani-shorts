@@ -2,13 +2,15 @@ import type { VoiceSegment } from './speech';
 import { cleanVideoText } from './text';
 import { normalizeScriptTable, isCaptionPlaceholder } from './script';
 export type Caption = { start: number; end: number; text: string; source?: 'narration' | 'dialogue' | 'screen'; review?: string };
-export type EditPlan = { duration: 5 | 15; title: string; narration: string; thumbnail: string; captions: Caption[]; originalVolume: number; voiceVolume: number; voiceSpeed: number; voiceSegments?: VoiceSegment[]; dialogueRanges?: {start:number;end:number}[]; importWarning?: string };
+export type EditPlan = { duration: 5 | 15 | 30; videoLayout?: 'single' | 'legacy-clips'; title: string; narration: string; thumbnail: string; captions: Caption[]; originalVolume: number; voiceVolume: number; voiceSpeed: number; voiceSegments?: VoiceSegment[]; dialogueRanges?: {start:number;end:number}[]; importWarning?: string };
 export const defaultPlan = (): EditPlan => ({ duration: 5, title: '', narration: '', thumbnail: '', captions: [], originalVolume: 0.2, voiceVolume: 1, voiceSpeed: 1 });
 export function cleanPlanText(p: EditPlan): EditPlan {
   return { ...p, title: cleanVideoText(p.title), narration: cleanVideoText(p.narration), thumbnail: cleanVideoText(p.thumbnail), captions: p.captions.map(c => ({ ...c, text: cleanVideoText(c.text) })).filter((c, i) => !isCaptionPlaceholder(c.text) && (c.text || !p.captions[i].text.trim())) };
 }
 export function validatePlan(p: EditPlan) {
-  if (!p || ![5, 15].includes(p.duration)) throw Error('영상 길이를 확인해주세요.');
+  if (!p || ![5, 15, 30].includes(p.duration)) throw Error('영상 길이를 확인해주세요.');
+  if (p.videoLayout !== undefined && !['single','legacy-clips'].includes(p.videoLayout)) throw Error('영상 입력 방식을 확인해주세요.');
+  if(p.duration===30&&p.videoLayout==='legacy-clips')throw Error('30초는 전체 영상 한 개를 넣어주세요.');
   if (typeof p.thumbnail !== 'string' || p.thumbnail.length > 100 || typeof p.title !== 'string' || p.title.length > 300) throw Error('제목 문구가 너무 깁니다.');
   if (!Array.isArray(p.captions) || p.captions.length > 30) throw Error('자막은 30개까지 가능합니다.');
   let last = 0;
@@ -32,8 +34,8 @@ export function validatePlan(p: EditPlan) {
 }
 // Read explicit narration sections only; character dialogue never becomes TTS input.
 export function importEpisode(e: any): EditPlan {
-  if (!e || ![5, 15].includes(e.duration) || typeof e.korean !== 'string' || e.korean.length > 20000) throw Error('에피소드 자료의 형식을 확인해주세요.');
-  const p=defaultPlan();p.duration=e.duration;p.title=String(e.title||'').slice(0,300);
+  if (!e || ![5, 15, 30].includes(e.duration) || typeof e.korean !== 'string' || e.korean.length > 20000) throw Error('에피소드 자료의 형식을 확인해주세요.');
+  const p=defaultPlan();p.duration=e.duration;if(e.videoLayout!==undefined)p.videoLayout=e.videoLayout;p.title=String(e.title||'').slice(0,300);
   const lines=normalizeScriptTable(e.korean).split('\n').map((s:string)=>cleanVideoText(s.replace(/\*\*|__/g,'').replace(/^[\s*#-]+/,''))).filter(Boolean);
   const narration:string[]=[], pending:{text:string;start?:number;end?:number;source?:Caption['source']}[]=[], dialogue:string[]=[];
   let mode:''|'narration'|'caption'|'dialogue'|'screen'='', uncertain=false, noNarration=false;
@@ -59,7 +61,7 @@ export function importEpisode(e: any): EditPlan {
     if(label)mode='';
   }
   p.narration=narration.join(' ');
-  const bounds=p.duration===15?[0,4,8,11,15]:[0,2,5];
+  const bounds=p.duration===30||p.videoLayout==='single'?[0,p.duration]:p.duration===15?[0,4,8,11,15]:[0,2,5];
   p.captions=pending.map((c,i)=>({text:c.text,source:c.source||(p.narration?'narration':'dialogue'),start:c.start??(pending.length===bounds.length-1?bounds[i]:0),end:c.end??(pending.length===bounds.length-1?bounds[i+1]:p.duration),...(!c.start&&!c.end&&pending.length!==bounds.length-1?{review:'발화 시간을 자동으로 찾습니다.'}:{})}));
   const scenario=String(e.scenario||'');
   for(const m of scenario.matchAll(/(?:Dialog(?:ue)?\s*[:：]\s*[^:"“'\n]{1,30}|오원장|소미|덕이)\s*[:：]\s*["“']([^"”'\n]+)["”']/gi))dialogue.push(m[1]);

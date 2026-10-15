@@ -1,9 +1,70 @@
 # Complete production packages
 
-The creator writes the screenplay, initial stills and video direction together. The
+The creator writes the screenplay, still-image requests and video direction together. The
 app imports the approved strings without a Gemini planning/conversion/review call.
-Actual still-image generation and visual review continue through the existing image
-workflow. Kling remains the user's video-generation step.
+The preferred image workflow uses the conversation's built-in image generation within
+the user's subscription, followed by local image import. No OpenAI API connection or
+paid fallback is authorized. Optional Gemini image generation remains explicit.
+Kling remains the user's video-generation step.
+
+## Kling 4.0 — current format for new work
+
+Keep the same `orihani-production` version-1 envelope and episode metadata. In `plan`,
+use `workflow: "kling4"`, numeric `duration` (5, 15 or 30), `continuity`, one
+`videoPrompt` for the entire video, and `keyframes` instead of `clips`.
+Keep title, location, scenario, instagramCaption and five hashtags as before.
+`plan.scenario` and `episode.scenario` must match exactly; so must duration and title.
+
+Defaults are 5 seconds / 2 images, 15 seconds / 3 images, 30 seconds / 5 images.
+These are image-production defaults, not a fixed number of story beats. Use 2–10
+keyframes only when justified by the event; do not create extra stills per camera cut.
+Suggested timestamps are [0,5], [0,7.5,15], [0,7.5,15,22.5,30], adjusted to the story.
+All formats feed **one finished MP4** into the editor.
+
+Each keyframe has:
+
+```json
+{
+  "time": 7.5,
+  "title": "중요 변화",
+  "imageTitle": "keyframe-02",
+  "imagePrompt": "Exact static pose, support, contact, ownership and prop state at this moment.",
+  "locationId": "park",
+  "backgroundAsset": "none",
+  "referencePlan": {"background":1,"props":[{"scene":1,"objects":["벤치"]}]}
+}
+```
+
+`time` starts at 0, increases strictly, and never exceeds duration. A true ending
+frame can use the exact duration; a legacy final clip's start is not an ending frame.
+`imageTitle` is unique and stable so images survive reload/export/import. Reference
+numbers refer to earlier **keyframes**, independently of any screenplay shot numbers.
+The first keyframe uses `{ "background": null, "props": [] }`; later images in the
+same set reuse its canonical background and named prop designs. New locations use null.
+`continuity` explicitly fixes recurring geometry, count, size, color, ownership and set.
+The final image depicts the actual payoff, overriding the legacy start-still restriction.
+
+The app preserves the whole-video prompt byte for byte without clip headers, silent
+audio normalization or truncation. Write timing, causal action, camera, state changes,
+exact Korean dialogue (if any), sound and restrictions in this single prompt. The app's
+30,000-character import bound is not a claim about Kling's model token limit. The legacy
+1,900-character per-clip check does not apply to this format.
+
+Open **주요장면·이미지**, then use **직접 만든 이미지 가져오기** for each PNG/JPG/WebP
+(8MB each). This saves locally without generation, review or paid provider calls.
+Files downloaded from Drive work in the same picker; opening the Drive folder alone
+does not import a file. Use **전체 영상 프롬프트 복사**, place the keyframes at their
+indicated timestamps in Kling, and import its one completed video into the editor.
+The existing 26MB file / 28MB combined upload bound still applies.
+
+Existing records retain their original images, clips, edit drafts and render outputs.
+**Kling 4.0 작업으로 복사** creates a separate ID with all images at their true legacy
+starting timestamps; it does not silently remove the fourth image or fabricate an end
+pose. Its combined video prompt is explicitly a draft requiring review before copying.
+New stories should be authored directly in the smaller keyframe format.
+
+The old contract below remains supported for existing records and the optional legacy
+Gemini text planner. Never run the legacy compiler over Kling 4.0 keyframes.
 
 ## App flow
 
@@ -21,7 +82,7 @@ Manual `.json` file import and paste work in the same picker. Legacy `.md`/`.txt
 scripts keep their existing conversion route. An invalid newest package raises an
 error; it never silently loads an older script or pays a model to repair the data.
 
-## Contract
+## Legacy clip contract
 
 Authoritative validator: `src/workflow/productionPackage.ts`. Actual worked example:
 `tests/fixtures/authored-production.json` (synthetic test data, not a production story).

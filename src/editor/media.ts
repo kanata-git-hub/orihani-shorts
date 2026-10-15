@@ -1,6 +1,6 @@
-export const clipLengths = (duration:5|15) => duration===5?[5]:[4,4,3,4];
-export function validateMediaSizes(videos:({size:number}|null)[], duration:5|15, voiceSize=0) {
-  if(videos.length!==clipLengths(duration).length||videos.some(f=>!f))throw Error('각 칸에 Kling 영상 파일을 넣어주세요.');
+export const clipLengths = (duration:5|15|30, layout?:'single'|'legacy-clips') => layout==='single'||duration!==15?[duration]:[4,4,3,4];
+export function validateMediaSizes(videos:({size:number}|null)[], duration:5|15|30, voiceSize=0, layout?:'single'|'legacy-clips') {
+  if(videos.length!==clipLengths(duration,layout).length||videos.some(f=>!f))throw Error('각 칸에 Kling 영상 파일을 넣어주세요.');
   if(videos.some(f=>f!.size<=0||f!.size>26*1024*1024))throw Error('영상 한 파일은 26MB 이하여야 합니다. Kling에서 1080p로 다운로드해주세요.');
   if(videos.reduce((n,f)=>n+f!.size,voiceSize)>27.8*1024*1024)throw Error('영상과 음성 합계는 28MB 이하여야 합니다. Kling에서 1080p로 다운로드해주세요.');
 }
