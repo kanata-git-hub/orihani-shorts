@@ -16,13 +16,18 @@ function fixture(){
  p.episodes.forEach((e,ep)=>{e.assets=Object.fromEntries(e.plan.clips.map((c,i)=>[c.imageTitle,{fileId:'image_'+ep+'_'+i+'_abcdefghijklmnopqrst',sha256:digest}]));});return p;
 }
 const latest=p=>async()=>({id:'package_abcdefghijklmnopqrst',name:'fixture',date:'2026-10-16',url:'https://drive.google.com/',text:JSON.stringify(p),checkedAt:new Date().toISOString(),episodeCount:p.episodes.length});
-function reader(pack,mutate=(m)=>m,bytes=png){
+function reader(pack,mutate=(m)=>m,bytes=png,listPage){
  const calls=[];
  const load=createWeeklyImagesReader({key:()=> 'test-server-key',weekly:latest(pack),fetch:async(url,init)=>{
   calls.push(String(url)); assert.equal(init.redirect,'error');assert.equal(init.headers['x-goog-api-key'],'test-server-key');
   const u=new URL(url);assert.equal(u.origin,'https://www.googleapis.com');
-  const id=u.pathname.split('/').pop();
-  return u.searchParams.has('alt')?new Response(bytes):Response.json(mutate({id,mimeType:'image/png',parents:[WEEKLY_FOLDER],size:String(png.length),trashed:false}));
+  if(u.pathname==='/drive/v3/files'){
+   assert.equal(u.searchParams.get('q'),`'${WEEKLY_FOLDER}' in parents and trashed = false`);
+   const files=pack.episodes.flatMap(e=>Object.values(e.assets).map(a=>mutate({id:a.fileId,mimeType:'image/png',size:String(png.length)}))).filter(Boolean);
+   return Response.json(listPage?listPage(files,u):{files});
+  }
+  assert.equal(u.searchParams.get('alt'),'media','must not depend on file-level parents metadata');
+  return new Response(bytes);
  }});return {load,calls};
 }
 test('asset metadata survives the picker; malformed or partial manifests fail before fetch',()=>{
@@ -35,16 +40,26 @@ test('asset metadata survives the picker; malformed or partial manifests fail be
 test('selected episode loads exact image bytes and prompts without another episode or generation',async()=>{
  const p=fixture(),{load,calls}=reader(p),entry=p.episodes[0];
  const result=await load(entry.number,p.revision);
- assert.equal(Object.keys(result.images).length,4);assert.equal(calls.length,8);
+ assert.equal(Object.keys(result.images).length,4);assert.equal(calls.length,5);
  assert.ok(calls.every(url=>!url.includes('image_1_')));
  const work=await prepareDriveWork(entry,p.revision,async(url)=>{assert.ok(url.startsWith('/api/editor/weekly/1/images?revision='));return Response.json(result);});
  assert.deepEqual(JSON.parse(work.item.result).clips,entry.plan.clips);
  assert.ok(Object.values(work.images).every(v=>Buffer.from(v.split(',')[1],'base64').equals(png)));
 });
-test('foreign folders, trashed files, wrong types and declared oversize fail before binary download',async()=>{
- for(const mutate of [m=>({...m,parents:['unrelated']}),m=>({...m,trashed:true}),m=>({...m,mimeType:'text/html'}),m=>({...m,size:String(8*1024*1024+1)})]){
+test('missing folder members, trashed files, wrong types and declared oversize fail before binary download',async()=>{
+ for(const mutate of [m=>null,m=>({...m,trashed:true}),m=>({...m,mimeType:'text/html'}),m=>({...m,size:String(8*1024*1024+1)})]){
   const p=fixture(),r=reader(p,mutate);await assert.rejects(r.load(1,p.revision));assert.equal(r.calls.length,1);
  }
+});
+test('folder membership works without parents metadata and paginates before downloading',async()=>{
+ const p=fixture(),r=reader(p,m=>m,png,(files,u)=>u.searchParams.has('pageToken')?{files:files.slice(2)}:{files:files.slice(0,2),nextPageToken:'next'});
+ const result=await r.load(1,p.revision);assert.equal(Object.keys(result.images).length,4);
+ assert.equal(r.calls.length,6);assert.ok(r.calls[1].includes('pageToken=next'));
+ for(const page of [(files)=>({files,incompleteSearch:true}),(files)=>({files:files.slice(0,3)})]){
+  const incomplete=reader(p,m=>m,png,page);await assert.rejects(incomplete.load(1,p.revision));assert.equal(incomplete.calls.length,1);
+ }
+ const endless=reader(p,m=>m,png,()=>({files:[],nextPageToken:'again'}));
+ await assert.rejects(endless.load(1,p.revision),/너무 길어/);assert.equal(endless.calls.length,10);
 });
 test('changed bytes and stale revisions fail without stale or partial fallback',async()=>{
  const p=fixture(),changed=Buffer.from(png);changed[20]^=1;

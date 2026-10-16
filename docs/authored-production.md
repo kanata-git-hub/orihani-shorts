@@ -58,6 +58,11 @@ do not embed base64 images in it. One image is limited to 8MB, one episode to 24
 The authenticated weekly start action loads only the selected episode's images,
 checks folder membership, MIME, byte count and SHA-256, saves the complete set to
 IndexedDB, then publishes its new work record. Errors remain visible for retry.
+Membership comes from a paginated `'<weekly-folder>' in parents and trashed = false`
+listing, not an assumption that public `files.get` metadata contains `parents`.
+Missing/incomplete folder listings fail before downloading; raw bytes must still
+match the authored hashes. Do not substitute an owner-authenticated metadata test
+for verification of the public-folder loading path.
 No generation, review or paid provider call is made. Existing work stays untouched.
 Manual **직접 만든 이미지 가져오기** remains available for local replacements.
 Use **전체 영상 프롬프트 복사**, place the keyframes at their

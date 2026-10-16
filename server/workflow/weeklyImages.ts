@@ -4,6 +4,7 @@ import { imageMime, MAX_IMPORT_IMAGE_BYTES } from '../../src/workflow/importImag
 import { latestWeekly, WEEKLY_FOLDER, type LatestWeekly } from './weekly';
 
 const MAX_EPISODE_BYTES = 24 * 1024 * 1024;
+type DriveImage = {id: string; mimeType: string; size: string; trashed?: boolean};
 async function boundedBytes(response: Response, limit: number): Promise<Buffer> {
   if (!response.ok) throw Error(`Drive 이미지를 읽지 못했습니다(${response.status}).`);
   if (Number(response.headers.get('content-length')) > limit) throw Error('Drive 이미지가 너무 큽니다.');
@@ -35,15 +36,37 @@ export function createWeeklyImagesReader(options: {key: () => string | undefined
     if (!entry?.assets) throw Error('이 제작안에는 Drive 이미지가 연결되어 있지 않습니다.');
     const key = options.key(); if (!key) throw Error('서버의 Drive 연결 키 설정이 필요합니다.');
     const init = {headers: {'x-goog-api-key': key}, signal: AbortSignal.timeout(60000), redirect: 'error' as const};
+    // Public files.get metadata need not expose parents. Prove membership with
+    // the same fixed-folder query used by the working production-package picker.
+    const files = new Map<string, DriveImage>(); let pageToken: string | undefined;
+    for (let page = 0; page < 10; page++) {
+      const url = new URL('https://www.googleapis.com/drive/v3/files');
+      url.search = new URLSearchParams({q: `'${WEEKLY_FOLDER}' in parents and trashed = false`, pageSize: '1000',
+        fields: 'nextPageToken,incompleteSearch,files(id,mimeType,size,trashed)', ...(pageToken ? {pageToken} : {})}).toString();
+      const listing = JSON.parse((await boundedBytes(await request(url, init), 2500000)).toString('utf8'));
+      if (!Array.isArray(listing.files) || listing.incompleteSearch) throw Error('Drive 이미지 목록이 완전하지 않습니다. 다시 시도해주세요.');
+      for (const file of listing.files) {
+        if (typeof file?.id !== 'string' || files.has(file.id)) throw Error('Drive 이미지 목록을 확인하지 못했습니다.');
+        files.set(file.id, file);
+      }
+      pageToken = listing.nextPageToken;
+      if (!pageToken) break;
+      if (typeof pageToken !== 'string' || page === 9) throw Error('Drive 이미지 목록이 너무 길어 확인하지 못했습니다.');
+    }
+    // Validate every selected file before downloading any image bytes.
+    let expectedTotal = 0;
+    for (const asset of Object.values(entry.assets)) {
+      const meta = files.get(asset.fileId);
+      if (!meta || meta.trashed) throw Error('제작안에 연결된 이미지가 Drive 제작안 폴더에 없습니다.');
+      if (!['image/png','image/jpeg','image/webp'].includes(meta.mimeType)) throw Error('제작안 이미지의 파일 형식을 확인해주세요.');
+      const size = Number(meta.size); expectedTotal += size;
+      if (!Number.isSafeInteger(size) || size <= 0 || size > MAX_IMPORT_IMAGE_BYTES || expectedTotal > MAX_EPISODE_BYTES) throw Error('Drive 이미지 용량을 확인해주세요.');
+    }
     const images: Record<string,string> = {}; let total = 0;
     for (const [name, asset] of Object.entries(entry.assets)) {
       const fileUrl = `https://www.googleapis.com/drive/v3/files/${asset.fileId}`;
-      const metaResponse = await request(fileUrl + '?fields=id,mimeType,parents,size,trashed', init);
-      const meta = JSON.parse((await boundedBytes(metaResponse, 16000)).toString('utf8'));
-      if (meta.id !== asset.fileId || meta.trashed || !meta.parents?.includes(WEEKLY_FOLDER) ||
-        !['image/png','image/jpeg','image/webp'].includes(meta.mimeType)) throw Error('제작안 폴더의 원본 이미지를 확인하지 못했습니다.');
+      const meta = files.get(asset.fileId)!;
       const size = Number(meta.size);
-      if (!Number.isSafeInteger(size) || size <= 0 || size > MAX_IMPORT_IMAGE_BYTES || total + size > MAX_EPISODE_BYTES) throw Error('Drive 이미지 용량을 확인해주세요.');
       const bytes = await boundedBytes(await request(fileUrl + '?alt=media', init), Math.min(MAX_IMPORT_IMAGE_BYTES, MAX_EPISODE_BYTES - total));
       if (bytes.length !== size || imageMime(bytes) !== meta.mimeType || createHash('sha256').update(bytes).digest('hex') !== asset.sha256) throw Error('Drive 이미지가 제작안의 원본과 다릅니다.');
       total += bytes.length;
