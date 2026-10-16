@@ -90,8 +90,8 @@ test('optional Gemini keyframe generation reuses the first approved set and rend
  const refs=compile('src/characterReference.ts',{'./authFetch':{authFetch:()=>{throw Error('unexpected auth call');}}});
  const {useMediaGeneration}=compile('src/hooks/useMediaGeneration.ts',{
   react:{useRef:v=>({current:v})},'../utils/db':{db:{get:async()=>({images:{'frame-0':png}}),setImageChecks:async()=>{}}},
-  '../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'doctor.png',imgs:['front.png']}]},
-  '../characterReference':{...refs,loadReferenceImage:async()=>png},
+  '../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'doctor.png',imgs:[png,png,png]}]},
+  '../characterReference':refs,
   '../authFetch':{authFetch:async(url,options)=>{calls.push(JSON.parse(options.body));return Response.json({result:png,review:{status:'pass',issues:[]}});}},
  });
  const hook=useMediaGeneration(()=>{},async()=>{},'modern',()=>{},{},()=>{},{},'owonjang');

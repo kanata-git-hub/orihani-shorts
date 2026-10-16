@@ -516,6 +516,18 @@ future actions, and reviews the compiled prompts against the original screenplay
 
 ## Characters and identity
 
+### Original-face check — 2026-10-17
+
+Compare each generated face at close view with that character's original sheets.
+Do not accept added eyelids, eyelid creases, eyebrows, eyelashes, eye sockets,
+eye whites or hair absent from the originals as expression or improved cuteness.
+Retain the character's own eye shape/color, bill, glasses and head silhouette.
+Treat a visible new facial feature as an identity defect and correct it before release.
+For Gemini generation, attach the actual original front/side/back image bytes for
+every named character; filenames or a previous generated still are not substitutes.
+Recognize Dr.O as O-wonjang and 소미 as Somi. Stop before a provider call if a
+required original cannot be loaded. Apply the same originals to review and repair.
+
 Use the original front/side/back character references:
 - O-wonjang: an anthropomorphic pale cream duck with round glasses, a light-blue shirt
   and white doctor's coat; a capable, caring Korean medicine doctor with ordinary

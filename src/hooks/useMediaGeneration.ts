@@ -4,7 +4,7 @@ import { readApiResponse } from '../utils/apiResponse';
 import { useRef } from 'react';
 import { db } from '../utils/db';
 import { CHARACTERS } from "../constants";
-import { buildReferenceParts, loadReferenceImage, CharacterReference } from '../characterReference';
+import { buildReferenceParts, loadReferenceImage, loadCharacterReferences } from '../characterReference';
 import { BackgroundChoices, resolveBackground, backgroundInstruction, mayUsePreviousScene } from '../backgroundAssets';
 import { readSceneReference, sceneReferenceInstruction, readClipReferences, clipReferenceInstruction } from '../sceneReference';
 import { readReferencePlan, referenceSources, plannedReferenceLabel, plannedReferenceInstruction } from '../referencePlan';
@@ -49,54 +49,7 @@ export function useMediaGeneration(
       const missing = plannedSources.filter(s => !s.imageUrl);
       if (missing.length) throw Error(`장면 ${missing.map(s=>s.scene).join(', ')} 사진을 먼저 만들어주세요. 대본의 참고 연결에 필요한 사진입니다.`);
       const background = resolveBackground(scenes, sceneIdx, fullPlanText, backgroundChoices);
-      let matchedChars = CHARACTERS.filter((c) =>
-        promptText.toLowerCase().includes(c.file.toLowerCase()),
-      );
-
-      // Add missing characters if their keywords are present
-      if (
-        (promptText.toLowerCase().includes("deok-i") ||
-          promptText.includes("덕이")) &&
-        !matchedChars.find((c) => c.id === "deoki")
-      ) {
-        const deoki = CHARACTERS.find((c) => c.id === "deoki");
-        if (deoki) matchedChars.push(deoki);
-      }
-      if (
-        (promptText.toLowerCase().includes("o-wonjang") ||
-          promptText.includes("오원장")) &&
-        !matchedChars.find((c) => c.id === "owonjang")
-      ) {
-        const owon = CHARACTERS.find((c) => c.id === "owonjang");
-        if (owon) matchedChars.push(owon);
-      }
-      if (
-        (promptText.toLowerCase().includes("nurse") ||
-          promptText.includes("간호사") ||
-          promptText.toLowerCase().includes("somi")) &&
-        !matchedChars.find((c) => c.id === "nurse")
-      ) {
-        const nurse = CHARACTERS.find((c) => c.id === "nurse");
-        if (nurse) matchedChars.push(nurse);
-      }
-
-      if (matchedChars.length === 0) {
-        const defaultChar = CHARACTERS.find((c) => c.id === selectedCharacter);
-        if (defaultChar) matchedChars.push(defaultChar);
-      }
-
-      if (!matchedChars.length) throw Error('사용할 캐릭터를 선택해주세요. 원본 사진 없이 생성하지 않습니다.');
-      const references: CharacterReference[] = [];
-
-      for (const matchedChar of matchedChars) {
-        if (matchedChar && matchedChar.imgs) {
-          const labels = ["(Front View)", "(Side View)", "(Back View)"];
-          for (let i = 0; i < matchedChar.imgs.length; i++) {
-            const imgPath = matchedChar.imgs[i];
-            references.push({ url: await loadReferenceImage(imgPath), label: `${matchedChar.name} ${labels[i] || ''}` });
-          }
-        }
-      }
+      const references = await loadCharacterReferences(promptText, CHARACTERS, selectedCharacter);
 
       let previousImage: string | null = null;
       let anchorIndex = -1;
