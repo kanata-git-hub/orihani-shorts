@@ -71,7 +71,7 @@ test('compiled scene reaches the actual image request without later-action text'
  const {useMediaGeneration}=compile('src/hooks/useMediaGeneration.ts',{
   'react':{useRef:v=>({current:v})},'../authFetch':{authFetch:async(url,opts)=>{calls.push(JSON.parse(opts.body));return Response.json({result:png,review:{status:'pass',issues:[]}});}},
   '../utils/db':{db:{setImageChecks:async()=>{},get:async()=>({images:{}})}},
-  '../constants':{CHARACTERS:[{id:'nurse',name:'소미',file:'somi',imgs:[png]}]},
+  '../constants':{CHARACTERS:[{id:'nurse',name:'소미',file:'somi',imgs:[png,png,png]}]},
  });
  const api=useMediaGeneration(()=>{},async()=>{},'new',()=>{},{},()=>{},{},'nurse');
  const scenes=[{title:'test',prompt:scene.imagePrompt,shot:scene.shot,backgroundAsset:'none',referencePlan:{background:null,props:[]}}];
