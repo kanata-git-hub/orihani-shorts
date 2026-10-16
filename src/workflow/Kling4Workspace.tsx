@@ -3,7 +3,7 @@ import { getKling4Plan, validateKling4Plan, CHARACTER_DRIVE_URL } from '../kling
 import { extractScenes } from '../utils/extractors';
 import { ImageImport } from '../components/ImageImport';
 import { ImagePreview } from '../components/ImagePreview';
-import { imageFile, shareFile } from './share';
+import { downloadFile, imageFile } from './share';
 
 export function Kling4Workspace({ result, images, busy, ready = true, onApply, onGenerate, onUpdate, onEdit }: {
   result: string; images: Record<string, string>; busy?: boolean; ready?: boolean;
@@ -33,7 +33,7 @@ export function Kling4Workspace({ result, images, busy, ready = true, onApply, o
     {images[frame.imageTitle] && <ImagePreview src={images[frame.imageTitle]} alt={frame.title}/>}
     <ImageImport key={frame.imageTitle} title={frame.imageTitle} disabled={locked} hasImage={!!images[frame.imageTitle]} onApply={onApply}/>
     <div className="ori-workflow-actions">
-      <button disabled={locked || !images[frame.imageTitle]} onClick={() => action(() => shareFile(imageFile(images[frame.imageTitle], `keyframe-${index + 1}-${frame.time}s`)))}>이 이미지 저장·공유</button>
+      <button disabled={locked || !images[frame.imageTitle]} onClick={() => action(() => downloadFile(imageFile(images[frame.imageTitle], `keyframe-${index + 1}-${frame.time}s`)))}>이미지 다운로드</button>
       <button onClick={() => copy(`${plan.continuity}\n\nKEYFRAME AT ${frame.time}s OF ${plan.duration}s:\n${frame.imagePrompt}`, '이미지 요청문')}>이미지 요청문 복사</button>
     </div>
     <details><summary>Gemini로 이 이미지 생성하기 · 선택</summary>

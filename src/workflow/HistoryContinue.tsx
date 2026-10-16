@@ -6,7 +6,7 @@ import { ImageImport } from '../components/ImageImport';
 import { HistoryItem } from '../types';
 import { extractClips, extractOverview, extractScenes } from '../utils/extractors';
 import { makePackage, recordDuration } from './package';
-import { imageFile, shareFile } from './share';
+import { downloadFile, imageFile, shareFile } from './share';
 import './workflow.css';
 import { DraftSummary, draftProgress } from '../editor/draft';
 import { db } from '../utils/db';
@@ -58,7 +58,7 @@ export function HistoryContinue({onApplyImage,klingWorkspace,item,images,generat
           <strong>{duration===5?(index===0?'시작 프레임 · 2초':'마지막 프레임 · 3초'):`${index+1}번 영상 · ${lengths[index]}초`}<PromptLength text={clipVideoText(clips[index].videoPrompt,index)} /></strong>
           {images[clips[index].imageTitle]&&<ImagePreview src={images[clips[index].imageTitle]} alt={`Clip ${index+1} 사진`}/>}
 
-          <div className="ori-workflow-actions"><button disabled={!images[clips[index].imageTitle]} onClick={()=>action(async()=>{await shareFile(imageFile(images[clips[index].imageTitle],`clip-${index+1}`));})}>사진 저장·공유</button>
+          <div className="ori-workflow-actions"><button disabled={!images[clips[index].imageTitle]} onClick={()=>action(async()=>{downloadFile(imageFile(images[clips[index].imageTitle],`clip-${index+1}`));})}>이미지 다운로드</button>
           <button disabled={!clips[index].videoPrompt} onClick={()=>action(()=>copy(clipVideoText(clips[index].videoPrompt,index),`Clip ${index+1} 프롬프트`))}>프롬프트 복사</button></div>
           <details><summary>프롬프트·참고 설정</summary>          {images[clips[index].imageTitle]&&onReferenceScene&&<button className="ori-reference-shortcut" onClick={()=>onReferenceScene(clips[index].imageTitle)}>다른 화에서 참고하기</button>}<textarea readOnly value={clips[index].videoPrompt} rows={5} aria-label="Kling 프롬프트"/></details>
         </div>}

@@ -1,8 +1,13 @@
+export function downloadFile(file:File) {
+  const url=URL.createObjectURL(file),a=document.createElement('a');
+  a.href=url;a.download=file.name;a.hidden=true;document.body.appendChild(a);
+  try{a.click();}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
+}
 export async function shareFile(file:File) {
   if(navigator.canShare?.({files:[file]})) {
     try{await navigator.share({files:[file],title:file.name});return;}catch(e){if((e as Error).name==='AbortError')return;}
   }
-  const url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
+  downloadFile(file);
 }
 export function imageFile(data:string,name:string):File {
   const match=data.match(/^data:(image\/(?:png|jpeg|webp));base64,(.+)$/);
