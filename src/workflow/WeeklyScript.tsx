@@ -8,20 +8,21 @@ import './workflow.css';
 
 export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
   onChoose:(episode:SourceEpisode,character:string)=>void;
-  onPrepared:(entry:PreparedEpisode,revision:string)=>void;
+  onPrepared:(entry:PreparedEpisode,revision:string)=>void|Promise<void>;
   disabled?:boolean;
 }) {
   const [raw,setRaw]=useState(''),[episodes,setEpisodes]=useState<WeeklyChoice[]>([]),[index,setIndex]=useState(0),[message,setMessage]=useState('');
   const [loading,setLoading]=useState(true),[source,setSource]=useState<{name:string;url:string}|null>(null);
+  const [opening,setOpening]=useState(false),[openError,setOpenError]=useState(false);
   const revision=useRef(0),selectedTitle=useRef('');
   const interrupt=()=>{revision.current++;setLoading(false);};
   const load=(text:string)=>{
-    interrupt();setSource(null);setRaw(text);
+    interrupt();setSource(null);setRaw(text);setOpenError(false);
     try{setEpisodes(readWeeklyInput(text));setIndex(0);selectedTitle.current='';setMessage('만들 에피소드를 골라주세요.');}
     catch(e){setMessage((e as Error).message);setEpisodes([]);}
   };
   const latest=async(refresh=false)=>{
-    const request=++revision.current;setLoading(true);setMessage('Drive에서 최신 제작안을 확인하고 있습니다…');
+    const request=++revision.current;setLoading(true);setOpenError(false);setMessage('Drive에서 최신 제작안을 확인하고 있습니다…');
     try{
       const user=auth.currentUser;if(!user)throw Error('로그인 후 최신 제작안을 확인할 수 있습니다.');
       const response=await fetch('/api/editor/weekly'+(refresh?'?refresh=1':''),{headers:{Authorization:`Bearer ${await user.getIdToken()}`},signal:AbortSignal.timeout(35000)});
@@ -36,21 +37,23 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
   };
   useEffect(()=>{void latest();return()=>{revision.current++;};},[]);
   const chosen=episodes[index];
-  const choose=()=>{
-    if(!chosen||disabled)return;
+  const choose=async()=>{
+    if(!chosen||disabled||opening)return;
     interrupt();
+    setOpening(true);setOpenError(false);setMessage(chosen.prepared?.assets?'Drive에서 이 회차의 그림을 불러오고 있습니다…':'제작안을 열고 있습니다…');
     try{
-      if(chosen.prepared){onPrepared(chosen.prepared,chosen.preparedRevision!);setMessage('완성 제작안을 열었습니다.');}
+      if(chosen.prepared){await onPrepared(chosen.prepared,chosen.preparedRevision!);setMessage('완성 제작안을 열었습니다.');}
       else{onChoose(chosen,chosen.characters[0]||'owonjang');setMessage('아래 기획에 넣었습니다. 주인공을 확인하고 영상 기획 생성을 누르세요.');}
-    }catch(e){setMessage((e as Error).message);}
+    }catch(e){setOpenError(true);setMessage(e instanceof Error&&e.name==='TimeoutError'?'Drive 이미지 불러오기가 지연되고 있습니다. 다시 눌러주세요.':(e as Error).message);}
+    finally{setOpening(false);}
   };
   return <section className="ori-workflow ori-weekly w-full max-w-2xl mb-4 shrink-0" aria-label="제작안에서 시작">
-    <div className="ori-weekly-heading"><h2>제작안에서 시작</h2><button type="button" disabled={disabled||loading} aria-label="최신 제작안 다시 확인" title="최신 제작안 다시 확인" onClick={()=>void latest(true)}><RefreshCw size={18} className={loading?'animate-spin':''} aria-hidden="true"/></button></div>
-    <p role="status" aria-live="polite" className={chosen&&!loading?'sr-only':''}>{message}</p>
+    <div className="ori-weekly-heading"><h2>제작안에서 시작</h2><button type="button" disabled={disabled||loading||opening} aria-label="최신 제작안 다시 확인" title="최신 제작안 다시 확인" onClick={()=>void latest(true)}><RefreshCw size={18} className={loading?'animate-spin':''} aria-hidden="true"/></button></div>
+    <p role="status" aria-live="polite" className={chosen&&!loading&&!opening&&!openError?'sr-only':''}>{message}</p>
     {chosen&&<>
       <label className="ori-episode-select"><span className="sr-only">만들 에피소드</span><select disabled={disabled} value={index} onChange={e=>{interrupt();const n=Number(e.target.value);setIndex(n);selectedTitle.current=episodes[n].title;}}>{episodes.map((e,i)=><option key={i} value={i}>{e.title}</option>)}</select></label>
-      <p className="ori-episode-meta">{chosen.duration}초{chosen.prepared&&` · 이미지 ${(chosen.prepared.plan.keyframes||chosen.prepared.plan.clips).length}장 · 영상 ${chosen.prepared.plan.workflow==='kling4'||chosen.duration===5?1:4}개`}</p>
-      <button disabled={disabled||loading} className="ori-workflow-primary" onClick={choose}>{chosen.prepared?'이 제작안으로 시작':'이 에피소드로 기획 준비'}</button>
+      <p className="ori-episode-meta">{chosen.duration}초{chosen.prepared&&` · 이미지 ${(chosen.prepared.plan.keyframes||chosen.prepared.plan.clips).length}장${chosen.prepared.assets?' 준비됨':''} · 영상 ${chosen.prepared.plan.workflow==='kling4'||chosen.duration===5?1:4}개`}</p>
+      <button disabled={disabled||loading||opening} className="ori-workflow-primary" onClick={choose}>{opening?'그림까지 불러오는 중…':chosen.prepared?'이 제작안으로 시작':'이 에피소드로 기획 준비'}</button>
       <details className="ori-weekly-outline"><summary>줄거리·장면별 기획</summary><p>{chosen.scenario}</p></details>
     </>}
     {!!episodes.length&&!chosen?.prepared&&<PromptComparison episodes={episodes}/>}

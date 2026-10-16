@@ -3,7 +3,7 @@
 The creator writes the screenplay, still-image requests and video direction together. The
 app imports the approved strings without a Gemini planning/conversion/review call.
 The preferred image workflow uses the conversation's built-in image generation within
-the user's subscription, followed by local image import. No OpenAI API connection or
+the user's subscription, followed by Drive image loading. No OpenAI API connection or
 paid fallback is authorized. Optional Gemini image generation remains explicit.
 Kling remains the user's video-generation step.
 
@@ -50,10 +50,17 @@ exact Korean dialogue (if any), sound and restrictions in this single prompt. Th
 30,000-character import bound is not a claim about Kling's model token limit. The legacy
 1,900-character per-clip check does not apply to this format.
 
-Open **주요장면·이미지**, then use **직접 만든 이미지 가져오기** for each PNG/JPG/WebP
-(8MB each). This saves locally without generation, review or paid provider calls.
-Files downloaded from Drive work in the same picker; opening the Drive folder alone
-does not import a file. Use **전체 영상 프롬프트 복사**, place the keyframes at their
+Upload finished PNG/JPG/WebP images directly into the existing weekly Drive folder.
+Add an optional episode-level `assets` map keyed by each exact `imageTitle`; every
+entry contains `{ "fileId": "actual-Drive-file-id", "sha256": "64-lowercase-hex" }`.
+The map must cover all images in that episode. Keep the production JSON small;
+do not embed base64 images in it. One image is limited to 8MB, one episode to 24MB.
+The authenticated weekly start action loads only the selected episode's images,
+checks folder membership, MIME, byte count and SHA-256, saves the complete set to
+IndexedDB, then publishes its new work record. Errors remain visible for retry.
+No generation, review or paid provider call is made. Existing work stays untouched.
+Manual **직접 만든 이미지 가져오기** remains available for local replacements.
+Use **전체 영상 프롬프트 복사**, place the keyframes at their
 indicated timestamps in Kling, and import its one completed video into the editor.
 The existing 26MB file / 28MB combined upload bound still applies.
 
@@ -70,10 +77,11 @@ Gemini text planner. Never run the legacy compiler over Kling 4.0 keyframes.
 
 1. The weekly picker reads the newest file from the existing Drive folder. For the
    same date, an authored `.json` takes priority over the legacy text/Google Doc.
-2. Select an episode and press **이 제작안으로 시작**. This validates and creates a
-   separate local work record, then opens the existing image/prompt workspace.
-3. Generate stills in scene order, inspect them against the written starting states,
-   and use each still with its corresponding Kling prompt. Check actual end frames
+2. Select an episode and press **이 제작안으로 시작**. When `assets` is present,
+   its approved Drive images are loaded together with the unchanged prompts before
+   a separate local work record opens. No download/ZIP/import step is required.
+3. Inspect the prepared images and use them with the whole-video Kling prompt.
+   For older packages without assets, local import remains available. Check actual end frames
    before proceeding across a cut. A prompt validation pass is not a footage pass.
 4. Reopening/exporting the work preserves prompts and the source screenplay. The
    legacy prompt-regeneration button is hidden for authored records.

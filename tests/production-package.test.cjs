@@ -120,7 +120,7 @@ test('bad timing, missing prompts, stale sources, duplicate names and forward re
   assert.throws(()=>readProductionPackage('x'.repeat(300001)));
 });
 
-test('the actual generation hook persists authored plans without any fetch/model call',()=>{
+test('the actual generation hook persists authored plans without any fetch/model call',async()=>{
   const saved=[],states=[];
   const {useGeneration}=compile('src/hooks/useGeneration.ts',{
     react:{useState:v=>[v,next=>states.push(next)]},
@@ -129,12 +129,12 @@ test('the actual generation hook persists authored plans without any fetch/model
   });
   const hook=useGeneration(()=>{},item=>saved.push(item),{});
   const pack=readProductionPackage(raw);
-  hook.handleLoadPrepared(pack.episodes[0],pack.revision);
+  await hook.handleLoadPrepared(pack.episodes[0],pack.revision);
   assert.equal(saved.length,1);assert.equal(saved[0].characterId,'nurse');
   assert.deepEqual(JSON.parse(saved[0].result).clips,pack.episodes[0].plan.clips);
   assert.ok(states.includes(saved[0].result));
   const broken=fresh().episodes[0];delete broken.plan.clips[1].videoPrompt;
-  assert.throws(()=>hook.handleLoadPrepared(broken,pack.revision));assert.equal(saved.length,1);
+  await assert.rejects(hook.handleLoadPrepared(broken,pack.revision));assert.equal(saved.length,1);
 });
 
 test('Drive prefers same-date authored JSON, reads it without AI, and never falls back from a malformed latest package',async()=>{

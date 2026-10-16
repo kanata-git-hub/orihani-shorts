@@ -4,7 +4,8 @@ import { readSceneReference, type SceneReference } from '../sceneReference';
 import { db } from '../utils/db';
 import { useState } from "react";
 import { CHARACTERS, getSystemPrompt } from "../constants";
-import { preparedHistory, type PreparedEpisode } from '../workflow/productionPackage';
+import { type PreparedEpisode } from '../workflow/productionPackage';
+import { prepareDriveWork } from '../workflow/preparedWork';
 
 
 export function useGeneration(
@@ -83,10 +84,13 @@ export function useGeneration(
     }
   };
 
-  const handleLoadPrepared = (entry: PreparedEpisode, revision: string) => {
-    const item = preparedHistory(entry, revision);
-    // Local import only. No /api/generate, model review, repair or paid call.
-    saveHistory(item);
+  const handleLoadPrepared = async (entry: PreparedEpisode, revision: string) => {
+    const {item,images} = await prepareDriveWork(entry, revision, authFetch);
+    // Read existing Drive images only. No generation, model review or paid call.
+    const hasImages = Object.keys(images).length > 0;
+    if (hasImages) await db.setImages(item.id, images);
+    try { saveHistory(item); }
+    catch (e) { if (hasImages) await db.delete(item.id).catch(() => {}); throw e; }
     setError(null);
     setCurrentWorkboardId(item.id);
     setResult(item.result);

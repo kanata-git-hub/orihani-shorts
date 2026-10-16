@@ -23,6 +23,11 @@ For equal dates the app prefers this file to a legacy human-readable screenplay.
 Do not publish a newer JSON until its entire requested scope has passed validation.
 
 Keep the existing twelve-criterion editorial standard and three real revision passes.
+When finished images exist, upload the individual PNG/JPEG/WebP files to the same
+weekly Drive folder and include each episode's `assets` manifest (imageTitle ->
+fileId and SHA-256). The app's normal weekly start button must load those images
+with the supplied prompts. A ZIP or manual work-file import is an optional export,
+not a completed Drive-to-app handoff. Do not regenerate already approved images.
 For an explicitly scoped revision, run the same review gate with the requested episode
 numbers via `--episodes=N,M`; preserve episodes outside that scope.
 The default weekly gate still requires three episodes. This changes scope, not the

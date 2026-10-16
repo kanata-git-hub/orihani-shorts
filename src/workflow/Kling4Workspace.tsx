@@ -23,7 +23,7 @@ export function Kling4Workspace({ result, images, busy, ready = true, onApply, o
   return <article className="ori-workflow ori-kling4">
     <h3>Kling 4.0 · {plan.duration}초 영상 한 편</h3>
     <p>주요장면 이미지 {count}/{plan.keyframes.length}장 준비됨 · 완성 영상 1개</p>
-    <p>ChatGPT에서 만든 이미지를 Drive에서 다운로드한 뒤 각 장면에 넣으세요. 이미지를 가져오면 바로 사용할 수 있습니다.</p>
+    <p>{count===plan.keyframes.length?'이미지가 모두 준비되었습니다. 아래에서 확인하고 전체 영상 프롬프트를 복사하세요.':'그림이 연결된 Drive 제작안은 시작할 때 함께 불러옵니다. 직접 만든 그림으로 교체할 수도 있습니다.'}</p>
     <a className="ori-workflow-link" href={CHARACTER_DRIVE_URL} target="_blank" rel="noopener noreferrer">캐릭터 참고 폴더 열기</a>
     <div role="status" aria-live="polite">{message}</div>
     <div className="ori-keyframe-picker" role="group" aria-label="주요장면 이미지">

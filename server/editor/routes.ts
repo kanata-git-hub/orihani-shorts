@@ -9,6 +9,7 @@ import { render } from './render';
 import { transcribe } from './transcribe';
 import { spokenNumbers } from '../../src/editor/speech';
 import { latestWeekly } from '../workflow/weekly';
+import { latestWeeklyImages } from '../workflow/weeklyImages';
 
 export function wav(pcm: Buffer) {
   if (!pcm.length || pcm.length % 2 || pcm.length > 24000 * 2 * 60) throw Error('음성 응답의 길이가 올바르지 않습니다.');
@@ -46,6 +47,16 @@ editorRouter.get('/weekly', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   try { res.json(await latestWeekly(req.query.refresh === '1')); }
   catch (e) { res.status(502).json({error:e instanceof Error && e.name !== 'TimeoutError' ? e.message : '최신 대본 확인이 지연되고 있습니다. 잠시 후 다시 확인해주세요.'}); }
+});
+let imagesLoading = false;
+editorRouter.get('/weekly/:number/images', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  if (!/^\d+$/.test(req.params.number) || typeof req.query.revision !== 'string') { res.status(400).json({error:'제작안 회차와 버전을 확인해주세요.'}); return; }
+  if (imagesLoading) { res.status(429).json({error:'다른 제작 이미지를 불러오는 중입니다. 잠시 후 다시 눌러주세요.'}); return; }
+  imagesLoading = true;
+  try { res.json(await latestWeeklyImages(Number(req.params.number), req.query.revision)); }
+  catch (e) { res.status(502).json({error:e instanceof Error && e.name !== 'TimeoutError' ? e.message : 'Drive 이미지 확인이 지연되고 있습니다. 다시 시도해주세요.'}); }
+  finally { imagesLoading = false; }
 });
 editorRouter.use((req, res, next) => {
   if (req.method !== 'POST' || !['/voice', '/render', '/transcribe'].includes(req.path)) { res.status(404).json({ error: '지원하지 않는 편집 요청입니다.' }); return; }

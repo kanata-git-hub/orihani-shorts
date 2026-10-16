@@ -9,12 +9,30 @@ import { readShotDirection, readSceneTransition } from '../shotDirection';
 import { clipVideoText, KLING_PROMPT_TARGET } from '../videoPrompt';
 
 export const MAX_PRODUCTION_CHARS = 300000;
-export type PreparedEpisode = { number: number; characterId: string; episode: SourceEpisode; plan: Record<string, any> };
+export type ProductionImage = { fileId: string; sha256: string };
+export type PreparedEpisode = { number: number; characterId: string; episode: SourceEpisode; plan: Record<string, any>; assets?: Record<string, ProductionImage> };
 export type ProductionPackage = { format: 'orihani-production'; version: 1; revision: string; episodes: PreparedEpisode[] };
 export type WeeklyChoice = SourceEpisode & { characters: string[]; prepared?: PreparedEpisode; preparedRevision?: string };
 const fail = (detail: string): never => { throw Error(`완성 제작안: ${detail}`); };
 function text(value: unknown, label: string, max = 30000): asserts value is string {
   if (typeof value !== 'string' || !value.trim() || value.length > max) fail(`${label}을 확인해주세요.`);
+}
+
+function imageAssets(value: unknown, names: string[]): Record<string, ProductionImage> | undefined {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail('Drive 이미지 연결을 확인해주세요.');
+  const entries = Object.entries(value);
+  if (entries.length !== names.length) fail('모든 주요장면의 Drive 이미지가 필요합니다.');
+  const assets: Record<string, ProductionImage> = {};
+  for (const [name, asset] of entries) {
+    const a = asset as ProductionImage;
+    if (!names.includes(name) || ['__proto__','constructor','prototype'].includes(name) || !a ||
+      Object.keys(a).some(k => !['fileId','sha256'].includes(k)) ||
+      typeof a.fileId !== 'string' || !/^[\w-]{20,200}$/.test(a.fileId) ||
+      typeof a.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(a.sha256)) fail('Drive 이미지 파일과 원본 확인값이 올바르지 않습니다.');
+    assets[name] = { fileId: a.fileId, sha256: a.sha256 };
+  }
+  return assets;
 }
 
 // Validate, never ask a model to rewrite or repair an authored package.
@@ -44,7 +62,8 @@ export function readProductionPackage(raw: string): ProductionPackage {
       validateKling4Plan(plan);
       if(plan.duration !== episode.duration) fail('대본과 전체 영상 길이가 다릅니다.');
       if(plan.needsVideoReview) fail('전체 영상 프롬프트 확인을 완료해주세요.');
-      return { number: entry.number, characterId: entry.characterId, episode, plan };
+      const assets = imageAssets(entry.assets, plan.keyframes.map((f: any) => f.imageTitle));
+      return { number: entry.number, characterId: entry.characterId, episode, plan, ...(assets ? {assets} : {}) };
     }
     validateClipTiming(JSON.stringify(plan), `${episode.duration}s`);
     compileProductionPlan(plan);
@@ -65,7 +84,8 @@ export function readProductionPackage(raw: string): ProductionPackage {
         if (!new RegExp(`^${heading}:`, 'm').test(clip.videoPrompt)) fail(`장면 ${i + 1}의 ${heading} 항목이 필요합니다.`);
       }
     });
-    return { number: entry.number, characterId: entry.characterId, episode, plan };
+    const assets = imageAssets(entry.assets, plan.clips.map((c: any) => c.imageTitle));
+    return { number: entry.number, characterId: entry.characterId, episode, plan, ...(assets ? {assets} : {}) };
   });
   return { format: 'orihani-production', version: 1, revision: value.revision, episodes };
 }
