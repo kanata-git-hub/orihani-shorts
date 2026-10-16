@@ -37,13 +37,40 @@
 .ori-file-button input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; opacity: 0; cursor: pointer; }
 .ori-file-button:focus-within { outline: 3px solid #a56f21; outline-offset: 2px; }
 
+/* Keep the ready-to-use materials together; optional tools stay in disclosures. */
+.ori-kling4-heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; }
+.ori-kling4-heading > span { color: #79655d; font-size: 13px; }
+.ori-kling4-status:empty { display: none; }
+.ori-kling4-status:not(:empty) { margin: 8px 0; padding: 8px 10px; background: #fff2cc; border-radius: 8px; font-size: 14px; }
+.ori-kling4 .ori-keyframe-title { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.ori-keyframe-title > span { flex-shrink: 0; font-size: 12px; font-weight: 400; color: #79655d; }
+.ori-kling4-download { margin-top: 8px; }
+.ori-kling4-download > button { width: 100%; font-weight: 700; }
+.ori-kling4 .ori-kling4-video { border: 0; margin-top: 8px; padding: 0; }
+.ori-kling4-launch { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: stretch; gap: 8px; }
+.ori-kling4-launch .ori-workflow-primary, .ori-kling4-launch .ori-workflow-link { margin: 0; display: flex; align-items: center; justify-content: center; }
+.ori-kling4-next { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.ori-kling4-next > button { min-width: 0; }
+.ori-kling4-video textarea { margin-top: 10px; }
+.ori-kling4 > .ori-kling4-options, .ori-kling4 > .ori-kling4-help { margin: 10px 0 0; border-top: 1px solid #e8dfd1; }
+.ori-kling4 > .ori-kling4-help { margin-top: 0; }
+.ori-kling4-start { flex-shrink: 0; }
+.ori-kling4-start > summary { font-size: 16px; font-weight: 700; padding: 0; min-height: 24px; }
+.ori-kling4-start > summary > span { color: #79655d; font-size: 12px; font-weight: 400; margin-left: 8px; }
+
 @media (min-width: 1024px) {
   .ori-workspace-tablist { grid-template-columns: repeat(var(--ori-tab-count, 4), minmax(0, 1fr)); }
 }
 
 @media (max-width: 1023px) {
   .ori-header { height: calc(56px + env(safe-area-inset-top, 0px)); }
+  .ori-header img { width: 32px; height: 32px; }
+  .ori-header h1 { font-size: 22px; }
+  .ori-mobile-nav { padding-top: 3px; padding-bottom: calc(3px + env(safe-area-inset-bottom, 0px)); }
+  .ori-mobile-nav button { min-height: 48px; gap: 2px; }
+  .ori-mobile-nav button svg { width: 20px; height: 20px; }
   .ori-start-screen, .ori-workspace-scroll { padding: 12px; }
+  .ori-workspace-scroll { scroll-padding-top: 72px; }
   .ori-workspace-scroll > div, .ori-workspace-panel, .ori-workspace-tabs { gap: 10px; }
   .ori-page-heading { margin-bottom: 10px; }
   .ori-page-heading h2 { font-size: 22px; }
@@ -59,6 +86,19 @@
   .ori-weekly .ori-workflow-primary { margin: 10px 0 4px; min-height: 48px; }
   .ori-weekly .ori-weekly-outline, .ori-weekly .ori-weekly-source { margin: 0; }
   .ori-weekly-outline > summary, .ori-weekly-source > summary { padding: 10px 0; }
+  .ori-kling4-start { padding: 0 12px; margin-bottom: 10px; }
+  .ori-kling4-start > summary { min-height: 48px; padding: 12px 0; }
+  .ori-kling4-start[open] { padding-bottom: 12px; }
+  .ori-kling4 { padding: 10px; border-radius: 12px; }
+  .ori-kling4 h3 { font-size: 17px; line-height: 1.4; }
+  .ori-kling4 .ori-keyframe-picker { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(56px, 1fr); gap: 4px; margin: 8px 0; padding-bottom: 0; }
+  .ori-kling4 .ori-keyframe-picker button { min-width: 0; min-height: 44px; padding: 8px 2px; font-size: 12px; border-radius: 8px; }
+  .ori-kling4 .ori-keyframe-title { margin: 6px 0; font-size: 14px; line-height: 1.45; }
+  .ori-kling4 .ori-image-preview-open > img { height: clamp(160px, 28dvh, 260px); max-height: none; object-fit: contain; }
+  .ori-kling4 button, .ori-kling4 .ori-workflow-link { padding: 9px 8px; font-size: 13px; }
+  .ori-kling4 .ori-image-preview-open { padding: 0; }
+  .ori-kling4 .ori-kling4-options > summary, .ori-kling4 .ori-kling4-help > summary { padding: 11px 0; font-size: 13px; }
+  .ori-kling4 .ori-image-import { padding: 10px; margin: 4px 0 10px; }
   .ori-manual-plan > summary { min-height: 48px; padding: 12px 14px; }
   .ori-manual-plan > summary small { display: none; }
   .ori-workspace-menu { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; top: -12px; margin: 0 -12px; padding: 8px 12px; }
