@@ -1,3 +1,4 @@
+import { sceneImageName } from '../workflow/share';
 import { ImageImport } from './ImageImport';
 import { PromptLength } from './PromptLength';
 import { ImagePreview } from './ImagePreview';
@@ -210,7 +211,7 @@ export function WorkboardContent({
                         <ImagePreview src={sceneImages[clip.imageTitle]} alt={clip.imageTitle} />
 
                         <div className="flex justify-end gap-2">
-                          <a href={sceneImages[clip.imageTitle]} download={`${clip.imageTitle}.png`} className="flex items-center gap-1 px-3 py-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a] text-xs font-bold uppercase transition-colors">
+                          <a href={sceneImages[clip.imageTitle]} download={`${sceneImageName(overview.title, idx + 1, episode?.title)}.png`} className="flex items-center gap-1 px-3 py-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a] text-xs font-bold uppercase transition-colors">
                             <Download size={14} /> 다운로드
                           </a>
                           <button onClick={() => handleGenerateImage(clip.imageTitle, clip.imagePrompt, idx, currentScenes, result)} className="flex items-center gap-1 px-3 py-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a] text-xs font-bold uppercase transition-colors">

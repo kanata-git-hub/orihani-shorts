@@ -1,3 +1,4 @@
+import { sceneImageName } from '../workflow/share';
 import { getKling4Plan } from '../kling4';
 import { Kling4Workspace } from '../workflow/Kling4Workspace';
 import { ImageImport } from './ImageImport';
@@ -71,7 +72,7 @@ export function HistoryContent({
   const result = viewingItem?.result || '';
 
   const kling4 = getKling4Plan(result);
-  const modernWorkspace = kling4 && <Kling4Workspace key={viewingItem!.id} result={result} images={sceneImages} busy={busy} ready={mediaReady} onApply={onApplyImage} onGenerate={handleGenerateImage} onUpdate={onUpdatePlan} onEdit={onEdit}/>;
+  const modernWorkspace = kling4 && <Kling4Workspace key={viewingItem!.id} result={result} episodeTitle={viewingItem?.episode?.title} images={sceneImages} busy={busy} ready={mediaReady} onApply={onApplyImage} onGenerate={handleGenerateImage} onUpdate={onUpdatePlan} onEdit={onEdit}/>;
   const overview = extractOverview(result);
   const socialCaption = prepareReelsCaption(overview, viewingItem?.episode);
   const clips = extractClips(result).map(clip=>({...clip,videoPrompt:videoPromptForCopy(clip.videoPrompt)}));
@@ -212,7 +213,7 @@ export function HistoryContent({
                     <ImagePreview src={sceneImages[clip.imageTitle]} alt={clip.imageTitle} />
 
                     <div className="flex justify-end gap-2">
-                      <a href={sceneImages[clip.imageTitle]} download={`${clip.imageTitle}.png`} className="flex items-center gap-1 px-3 py-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a] text-xs font-bold uppercase transition-colors">
+                      <a href={sceneImages[clip.imageTitle]} download={`${sceneImageName(overview.title, idx + 1, viewingItem?.episode?.title)}.png`} className="flex items-center gap-1 px-3 py-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a] text-xs font-bold uppercase transition-colors">
                         <Download size={14} /> 다운로드
                       </a>
                       <button onClick={() => handleGenerateImage(clip.imageTitle, clip.imagePrompt, idx, viewingScenes, result)} className="flex items-center gap-1 px-3 py-2 bg-white rounded shadow-sm border border-[#552c24]/20 text-[#552c24] hover:bg-[#ffcd4a] text-xs font-bold uppercase transition-colors">

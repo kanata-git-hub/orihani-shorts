@@ -193,7 +193,7 @@ export default function App() {
     if (index < 0) { showToast('이 그림의 원래 장면을 찾지 못했습니다.', 'error'); return; }
     void handleReviewImage(title, scenes[index].prompt, index, scenes, plan, candidate, repair);
   };
-  const workboardContent = <><ImageChecks targetId={targetId} busy={locked} onCheck={checkImageCandidate} onApply={handleApplyImage}/>{getKling4Plan(result)&&view==='prompts'?<Kling4Workspace key={currentWorkboardId} result={result} images={sceneImages} busy={locked} ready={mediaReady} onApply={handleApplyImage} onGenerate={handleGenerateImage} onUpdate={updateCurrentPlan} onEdit={()=>{const item=history.find(h=>h.id===currentWorkboardId);if(item)openRecordEditor(item);}}/>:<WorkboardContent
+  const workboardContent = <><ImageChecks targetId={targetId} busy={locked} onCheck={checkImageCandidate} onApply={handleApplyImage}/>{getKling4Plan(result)&&view==='prompts'?<Kling4Workspace key={currentWorkboardId} result={result} episodeTitle={currentEpisode?.title} images={sceneImages} busy={locked} ready={mediaReady} onApply={handleApplyImage} onGenerate={handleGenerateImage} onUpdate={updateCurrentPlan} onEdit={()=>{const item=history.find(h=>h.id===currentWorkboardId);if(item)openRecordEditor(item);}}/>:<WorkboardContent
     onApplyImage={handleApplyImage} onKling4Copy={getKling4Plan(result)?undefined:()=>void copyToKling4()} busy={locked||!mediaReady}
     activeTab={view === 'prompts' ? 'prompts' : 'scenario'}
     selectedCharacter={selectedCharacter}

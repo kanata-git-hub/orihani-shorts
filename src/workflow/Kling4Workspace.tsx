@@ -3,10 +3,10 @@ import { getKling4Plan, validateKling4Plan, CHARACTER_DRIVE_URL } from '../kling
 import { extractScenes } from '../utils/extractors';
 import { ImageImport } from '../components/ImageImport';
 import { ImagePreview } from '../components/ImagePreview';
-import { downloadFile, imageFile } from './share';
+import { downloadFile, imageFile, sceneImageName } from './share';
 
-export function Kling4Workspace({ result, images, busy, ready = true, onApply, onGenerate, onUpdate, onEdit }: {
-  result: string; images: Record<string, string>; busy?: boolean; ready?: boolean;
+export function Kling4Workspace({ result, episodeTitle, images, busy, ready = true, onApply, onGenerate, onUpdate, onEdit }: {
+  result: string; episodeTitle?: string; images: Record<string, string>; busy?: boolean; ready?: boolean;
   onApply: (title: string, image: string) => Promise<boolean>;
   onGenerate: (title: string, prompt: string, index: number, scenes: any[], result?: string) => unknown;
   onUpdate: (result: string) => void;
@@ -32,7 +32,7 @@ export function Kling4Workspace({ result, images, busy, ready = true, onApply, o
     <h4 className="ori-keyframe-title">{frame.title} <span>{frame.time}초</span></h4>
     {images[frame.imageTitle] && <ImagePreview src={images[frame.imageTitle]} alt={frame.title}/>}
     <div className="ori-kling4-download">
-      <button disabled={locked || !images[frame.imageTitle]} onClick={() => action(() => downloadFile(imageFile(images[frame.imageTitle], `keyframe-${index + 1}-${frame.time}s`)))}>이미지 다운로드</button>
+      <button disabled={locked || !images[frame.imageTitle]} onClick={() => action(() => downloadFile(imageFile(images[frame.imageTitle], sceneImageName(plan.title, index + 1, episodeTitle))))}>이미지 다운로드</button>
     </div>
     <div className="ori-kling4-video">
       <h4 className="sr-only">전체 영상 프롬프트</h4>
