@@ -153,3 +153,27 @@ test('Drive prefers same-date authored JSON, reads it without AI, and never fall
   const legacy=fs.readFileSync(path.join(root,'docs/editorial-reviews/2026-10-11-16-18-adult-life/screenplay.txt'),'utf8');
   assert.equal(readWeeklyInput(legacy).length,3);assert.equal(readWeeklyInput(legacy)[0].prepared,undefined);
 });
+
+test('weekly picker combines main and same-date bonus files without merging or truncating source packages',async()=>{
+ const {createWeeklyReader,weeklySources}=compile('server/workflow/weekly.ts');
+ const {readWeeklySources}=compile('src/workflow/productionPackage.ts');
+ const main=fresh(),third=structuredClone(main.episodes[0]);third.number=3;third.episode.title=third.episode.title.replace('[에피소드 1]','[에피소드 3]');main.episodes.push(third);
+ const bonus=fresh();bonus.revision='bonus-pair';
+ const mainFile={id:'main_abcdefghijklmnopqrst',name:'[2026-10-18] 3D 오리 삼총사 릴스 개그 시리즈 주간 패키지.json',mimeType:'application/json'};
+ const bonusFile={id:'bonus_abcdefghijklmnopqrst',name:'[2026-10-18] 번외 05-06 제작안.json',mimeType:'application/json',modifiedTime:'2026-10-18T01:00:00Z'};
+ const unrelated=[{...bonusFile,id:'old_abcdefghijklmnopqrst',name:'[2026-10-17] 번외 03-04 제작안.json'}, {...bonusFile,id:'future_abcdefghijklmnopqr',name:'[2026-10-19] 번외 제작안.json'}, {...bonusFile,id:'review_abcdefghijklmnopqr',name:'[2026-10-18] 번외 05-06 검수기록.json'}, {...bonusFile,id:'older_abcdefghijklmnopqrs',modifiedTime:'2026-10-18T00:00:00Z'}];
+ assert.deepEqual(weeklySources([mainFile,bonusFile,...unrelated]).map(f=>f.id),[mainFile.id,bonusFile.id]);
+ const sourceTexts=[JSON.stringify(main),JSON.stringify(bonus)];
+ const reader=createWeeklyReader({key:()=> 'test',fetch:async url=>{
+  const u=new URL(url);
+  if(u.pathname==='/drive/v3/files')return Response.json({files:[mainFile,bonusFile,...unrelated]});
+  if(u.pathname.endsWith(mainFile.id))return new Response(sourceTexts[0]);
+  assert.ok(u.pathname.endsWith(bonusFile.id));return new Response(sourceTexts[1]);
+ }});
+ const result=await reader();assert.equal(result.episodeCount,5);assert.equal(result.sources.length,2);
+ const choices=readWeeklySources(result.sources.map(s=>s.text));assert.equal(choices.length,5);
+ assert.equal(choices[3].preparedRevision,'bonus-pair');assert.deepEqual(choices[3].prepared,bonus.episodes[0]);assert.equal(result.text,sourceTexts[0]);
+ assert.throws(()=>readWeeklySources([sourceTexts[0],sourceTexts[0]]),/중복/);
+ const bad=createWeeklyReader({key:()=> 'test',fetch:async url=>new URL(url).pathname==='/drive/v3/files'?Response.json({files:[mainFile,bonusFile]}):new Response(new URL(url).pathname.endsWith(mainFile.id)?sourceTexts[0]:'{}')});
+ await assert.rejects(bad(),/완성 제작안/);
+});

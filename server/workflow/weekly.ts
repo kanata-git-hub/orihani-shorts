@@ -1,12 +1,14 @@
-import { readWeeklyInput } from '../../src/workflow/productionPackage';
+import { readWeeklyInput, readWeeklySources } from '../../src/workflow/productionPackage';
 
 export const WEEKLY_FOLDER = '1O2wOWOLyAXmq96aXOExX0fecwK7jZbq-';
 type DriveFile = {id:string;name:string;mimeType:string;modifiedTime?:string};
-export type LatestWeekly = {id:string;name:string;date:string;url:string;text:string;checkedAt:string;episodeCount:number};
+export type WeeklySource = {id:string;name:string;date:string;url:string;text:string;episodeCount:number};
+export type LatestWeekly = WeeklySource & {checkedAt:string;sources?:WeeklySource[]};
 const docsType='application/vnd.google-apps.document';
 const stem=/^\[(\d{4}-\d{2}-\d{2})\]\s*3D 오리 삼총사 릴스 개그 시리즈 주간 패키지(?:\.md|\.txt|\.json)?$/;
-function packageDate(name:string){
- const value=stem.exec(name)?.[1];if(!value)return null;
+const bonusStem=/^\[(\d{4}-\d{2}-\d{2})\]\s*번외(?:\s+\d+(?:\s*[-·]\s*\d+)?)?\s+제작안\.json$/;
+function packageDate(name:string,pattern=stem){
+ const value=pattern.exec(name)?.[1];if(!value)return null;
  const date=new Date(value+'T00:00:00Z');return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value?value:null;
 }
 export function newestWeekly(files:DriveFile[]){
@@ -16,6 +18,12 @@ export function newestWeekly(files:DriveFile[]){
  candidates.sort((a,b)=>packageDate(b.name)!.localeCompare(packageDate(a.name)!)||Number(/\.json$/i.test(b.name))-Number(/\.json$/i.test(a.name))||(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
  if(!candidates.length)throw Error('지정된 폴더에서 날짜가 적힌 주간 대본을 찾지 못했습니다.');
  return candidates[0];
+}
+export function weeklySources(files:DriveFile[]){
+ const main=newestWeekly(files),date=packageDate(main.name);
+ const bonuses=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,bonusStem)===date&&['application/json','text/plain','application/octet-stream'].includes(f.mimeType));
+ bonuses.sort((a,b)=>(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
+ return bonuses.length?[main,bonuses[0]]:[main];
 }
 async function readText(response:Response,limit:number){
  if(Number(response.headers.get('content-length'))>limit)throw Error('주간 대본 파일이 너무 큽니다.');
@@ -48,7 +56,7 @@ export function createWeeklyReader(options:{key:()=>string|undefined;fetch?:type
    files.push(...result.files);pageToken=result.nextPageToken;if(!pageToken)break;
    if(typeof pageToken!=='string'||page===9)throw Error('주간 폴더에 문서가 너무 많아 최신 파일을 확인하지 못했습니다.');
   }
-  const file=newestWeekly(files);
+  const readFile=async(file:DriveFile):Promise<WeeklySource>=>{
   const url=new URL(`https://www.googleapis.com/drive/v3/files/${file.id}${file.mimeType===docsType?'/export':''}`);
   url.search=new URLSearchParams(file.mimeType===docsType?{mimeType:'text/plain'}:{alt:'media'}).toString();
   let response=await request(url,{headers,signal,redirect:'error'});
@@ -70,7 +78,11 @@ export function createWeeklyReader(options:{key:()=>string|undefined;fetch?:type
   if(text.length>300000||/^\s*<!doctype html|^\s*<html/i.test(text))throw Error('주간 대본을 텍스트로 읽지 못했습니다. 문서 공유 권한을 확인해주세요.');
   const episodes=readWeeklyInput(text);
   // A malformed latest document is an error; never silently substitute an older week.
-  cached={id:file.id,name:file.name,date:packageDate(file.name)!,url:file.mimeType===docsType?`https://docs.google.com/document/d/${file.id}/edit`:`https://drive.google.com/file/d/${file.id}/view`,text,checkedAt:new Date(now()).toISOString(),episodeCount:episodes.length};
+  return {id:file.id,name:file.name,date:(packageDate(file.name)||packageDate(file.name,bonusStem))!,url:file.mimeType===docsType?`https://docs.google.com/document/d/${file.id}/edit`:`https://drive.google.com/file/d/${file.id}/view`,text,episodeCount:episodes.length};
+  };
+  const sources=await Promise.all(weeklySources(files).map(readFile));
+  const episodes=readWeeklySources(sources.map(s=>s.text));
+  cached={...sources[0],sources,checkedAt:new Date(now()).toISOString(),episodeCount:episodes.length};
   return cached;
  };
  return async(refresh=false)=>{

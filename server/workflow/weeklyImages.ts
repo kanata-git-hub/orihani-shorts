@@ -30,9 +30,12 @@ export function createWeeklyImagesReader(options: {key: () => string | undefined
   return async (number: number, revision: string) => {
     if (!Number.isInteger(number) || number < 1 || !revision || revision.length > 200) throw Error('제작안 회차와 버전을 확인해주세요.');
     const latest = await options.weekly();
-    const pack = readProductionPackage(latest.text);
-    if (pack.revision !== revision) throw Error('제작안이 갱신되었습니다. 최신 제작안을 다시 확인해주세요.');
-    const entry = pack.episodes.find(e => e.number === number);
+    const packs = (latest.sources || [latest]).filter(s => s.text.trim().startsWith('{')).map(s => readProductionPackage(s.text));
+    const matches = packs.filter(p => p.revision === revision);
+    if (!matches.length) throw Error('제작안이 갱신되었습니다. 최신 제작안을 다시 확인해주세요.');
+    const entries = matches.flatMap(p => p.episodes.filter(e => e.number === number));
+    if (entries.length > 1) throw Error('제작안 회차와 버전이 중복됩니다. 최신 제작안을 확인해주세요.');
+    const entry = entries[0];
     if (!entry?.assets) throw Error('이 제작안에는 Drive 이미지가 연결되어 있지 않습니다.');
     const key = options.key(); if (!key) throw Error('서버의 Drive 연결 키 설정이 필요합니다.');
     const init = {headers: {'x-goog-api-key': key}, signal: AbortSignal.timeout(60000), redirect: 'error' as const};

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { SourceEpisode } from '../types';
 import { auth } from '../lib/firebase';
-import { readWeeklyInput, type PreparedEpisode, type WeeklyChoice } from './productionPackage';
+import { readWeeklyInput, readWeeklySources, type PreparedEpisode, type WeeklyChoice } from './productionPackage';
 import { PromptComparison } from './PromptComparison';
 import './workflow.css';
 
@@ -12,7 +12,7 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
   disabled?:boolean;
 }) {
   const [raw,setRaw]=useState(''),[episodes,setEpisodes]=useState<WeeklyChoice[]>([]),[index,setIndex]=useState(0),[message,setMessage]=useState('');
-  const [loading,setLoading]=useState(true),[source,setSource]=useState<{name:string;url:string}|null>(null);
+  const [loading,setLoading]=useState(true),[source,setSource]=useState<{name:string;url:string}[]|null>(null);
   const [opening,setOpening]=useState(false),[openError,setOpenError]=useState(false);
   const revision=useRef(0),selectedTitle=useRef('');
   const interrupt=()=>{revision.current++;setLoading(false);};
@@ -28,15 +28,18 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
       const response=await fetch('/api/editor/weekly'+(refresh?'?refresh=1':''),{headers:{Authorization:`Bearer ${await user.getIdToken()}`},signal:AbortSignal.timeout(35000)});
       const data=await response.json();if(!response.ok)throw Error(data.error||'최신 제작안을 읽지 못했습니다.');
       if(typeof data.text!=='string'||data.text.length>300000||typeof data.name!=='string'||!/^https:\/\/(docs|drive)\.google\.com\//.test(data.url))throw Error('제작안 응답을 확인하지 못했습니다.');
-      const parsed=readWeeklyInput(data.text);
+      const sources=data.sources===undefined?[data]:data.sources;
+      if(!Array.isArray(sources)||!sources.length||sources.length>2||sources.some(s=>typeof s?.text!=='string'||s.text.length>300000||typeof s.name!=='string'||!/^https:\/\/(docs|drive)\.google\.com\//.test(s.url)))throw Error('제작안 목록을 확인하지 못했습니다.');
+      const parsed=readWeeklySources(sources.map(s=>s.text));
       if(request!==revision.current)return;
       setRaw(data.text);setEpisodes(parsed);setIndex(Math.max(0,parsed.findIndex(e=>e.title===selectedTitle.current)));
-      setSource({name:data.name,url:data.url});setMessage(`에피소드 ${parsed.length}개를 가져왔습니다. 만들 에피소드를 골라주세요.`);
+      setSource(sources.map(s=>({name:s.name,url:s.url})));setMessage(`에피소드 ${parsed.length}개를 가져왔습니다. 만들 에피소드를 골라주세요.`);
     }catch(e){if(request===revision.current){setEpisodes([]);setSource(null);setMessage((e instanceof Error&&e.name!=='TimeoutError'?e.message:'최신 제작안 확인이 지연되고 있습니다.')+' 아래에서 파일이나 내용으로 직접 가져올 수도 있습니다.');}}
     finally{if(request===revision.current)setLoading(false);}
   };
   useEffect(()=>{void latest();return()=>{revision.current++;};},[]);
   const chosen=episodes[index];
+  const bonusCount=episodes.filter(e=>/^(?:\[에피소드\s*\d+\]\s*)?번외\s*\d+/.test(e.title)).length;
   const choose=async()=>{
     if(!chosen||disabled||opening)return;
     interrupt();
@@ -51,6 +54,7 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
     <div className="ori-weekly-heading"><h2>제작안에서 시작</h2><button type="button" disabled={disabled||loading||opening} aria-label="최신 제작안 다시 확인" title="최신 제작안 다시 확인" onClick={()=>void latest(true)}><RefreshCw size={18} className={loading?'animate-spin':''} aria-hidden="true"/></button></div>
     <p role="status" aria-live="polite" className={chosen&&!loading&&!opening&&!openError?'sr-only':''}>{message}</p>
     {chosen&&<>
+      <p className="ori-episode-meta">선택 가능한 제작안 {episodes.length}편{bonusCount>0&&` · 본편 ${episodes.length-bonusCount}편 · 번외 ${bonusCount}편`}</p>
       <label className="ori-episode-select"><span className="sr-only">만들 에피소드</span><select disabled={disabled} value={index} onChange={e=>{interrupt();const n=Number(e.target.value);setIndex(n);selectedTitle.current=episodes[n].title;}}>{episodes.map((e,i)=><option key={i} value={i}>{e.title}</option>)}</select></label>
       <p className="ori-episode-meta">{chosen.duration}초{chosen.prepared&&` · 이미지 ${(chosen.prepared.plan.keyframes||chosen.prepared.plan.clips).length}장${chosen.prepared.assets?' 준비됨':''} · 영상 ${chosen.prepared.plan.workflow==='kling4'||chosen.duration===5?1:4}개`}</p>
       <button disabled={disabled||loading||opening} className="ori-workflow-primary" onClick={choose}>{opening?'그림까지 불러오는 중…':chosen.prepared?'이 제작안으로 시작':'이 에피소드로 기획 준비'}</button>
@@ -58,7 +62,7 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
     </>}
     {!!episodes.length&&!chosen?.prepared&&<PromptComparison episodes={episodes}/>}
     <details className="ori-weekly-source"><summary>제작안 정보·파일 가져오기</summary>
-      {source&&<a className="ori-workflow-link" href={source.url} target="_blank" rel="noopener noreferrer">{source.name}</a>}
+      {source?.map(s=><a key={s.url} className="ori-workflow-link" href={s.url} target="_blank" rel="noopener noreferrer">{s.name}</a>)}
       <a className="ori-workflow-link" href="https://drive.google.com/drive/folders/1O2wOWOLyAXmq96aXOExX0fecwK7jZbq-" target="_blank" rel="noopener noreferrer">제작안 폴더 열기</a>
       <label>제작안 또는 대본 파일<input disabled={disabled} type="file" accept=".json,.md,.txt,application/json,text/plain,text/markdown" onChange={async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;interrupt();const request=revision.current;if(file.size>1000000){setMessage('파일은 1MB 이하로 넣어주세요.');return;}try{const text=await file.text();if(request===revision.current)load(text);}catch{if(request===revision.current)setMessage('파일을 읽지 못했습니다.');}}}/></label>
       <textarea disabled={disabled} aria-label="주간 대본 내용" rows={5} value={raw} maxLength={300000} onChange={e=>{interrupt();setRaw(e.target.value);setEpisodes([]);setSource(null);}}/><button disabled={disabled} onClick={()=>load(raw)}>내용 읽기</button>

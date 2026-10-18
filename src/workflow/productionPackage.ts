@@ -99,6 +99,20 @@ export function readWeeklyInput(raw: string): WeeklyChoice[] {
   }));
 }
 
+// Keep each source's own revision and asset manifest when listing a weekly pair.
+// A production file still contains at most three episodes; the picker can show both.
+export function readWeeklySources(sources: string[]): WeeklyChoice[] {
+  if (!Array.isArray(sources) || !sources.length || sources.length > 2 || sources.some(s => typeof s !== 'string')) fail('주간 제작안 목록을 확인해주세요.');
+  const choices = sources.flatMap(readWeeklyInput);
+  const seen = new Set<string>();
+  for (const choice of choices) {
+    const key = choice.prepared ? `${choice.preparedRevision}:${choice.prepared.number}` : choice.title;
+    if (seen.has(key)) fail('주간 제작안의 회차와 버전이 중복됩니다.');
+    seen.add(key);
+  }
+  return choices;
+}
+
 export function preparedHistory(entry: PreparedEpisode, revision: string): HistoryItem {
   // Revalidate at the persistence boundary as well as at file selection.
   const checked = readProductionPackage(JSON.stringify({ format: 'orihani-production', version: 1, revision, episodes: [entry] })).episodes[0];

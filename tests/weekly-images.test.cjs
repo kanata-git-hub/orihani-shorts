@@ -101,3 +101,30 @@ test('weekly start awaits download and exposes failure visibly for retry',async(
  assert.equal(flatten(tree).find(n=>n.type==='button'&&label(n)==='이 제작안으로 시작').props.disabled,false);
 });
 
+
+test('bonus image download resolves its source revision even when main uses the same episode number',async()=>{
+ const main=fixture(),bonus=fixture();bonus.revision='separate-bonus-source';
+ bonus.episodes.forEach(e=>Object.values(e.assets).forEach(a=>a.fileId='bonus_'+a.fileId));
+ const catalog={...(await latest(main)()),sources:[await latest(main)(),await latest(bonus)()]};
+ const requested=[];
+ const load=createWeeklyImagesReader({key:()=> 'test',weekly:async()=>catalog,fetch:async url=>{
+  const u=new URL(url);requested.push(u.pathname);
+  if(u.pathname==='/drive/v3/files')return Response.json({files:[main,bonus].flatMap(p=>p.episodes.flatMap(e=>Object.values(e.assets).map(a=>({id:a.fileId,mimeType:'image/png',size:String(png.length)}))))});
+  assert.ok(u.pathname.includes('/bonus_image_0_'));return new Response(png);
+ }});
+ const result=await load(1,bonus.revision);assert.equal(result.revision,bonus.revision);assert.equal(Object.keys(result.images).length,4);
+ await assert.rejects(load(1,'stale-bonus-source'),/갱신/);assert.equal(requested.length,5);
+});
+
+test('weekly UI exposes all choices and a visible main/bonus count',()=>{
+ const p=fixture();const main=readWeeklyInput(JSON.stringify(p)),bonus=readWeeklyInput(JSON.stringify({...p,revision:'bonus'}));
+ bonus.forEach((e,i)=>e.title=`[에피소드 ${i+1}] 번외 0${i+1} 테스트`);
+ const third={...main[0],title:'[에피소드 3] 본편 테스트'};
+ const state=['',[...main,third,...bonus],0,'',false,null,false,false];let cursor=0;
+ const {WeeklyScript}=compile('src/workflow/WeeklyScript.tsx',{react:{useState:v=>{const i=cursor++;return[state[i]===undefined?v:state[i],()=>{}];},useRef:v=>({current:v}),useEffect:()=>{}},'../lib/firebase':{auth:{currentUser:null}}});
+ const flatten=n=>Array.isArray(n)?n.flatMap(flatten):n&&typeof n==='object'?[n,...flatten(n.props?.children)]:[];
+ const label=n=>Array.isArray(n)?n.map(label).join(''):n&&typeof n==='object'?label(n.props?.children):typeof n==='string'||typeof n==='number'?String(n):'';
+ const nodes=flatten(WeeklyScript({onChoose:()=>{},onPrepared:()=>{}}));
+ assert.equal(nodes.filter(n=>n.type==='option').length,5);
+ assert.ok(nodes.some(n=>n.type==='p'&&label(n)==='선택 가능한 제작안 5편 · 본편 3편 · 번외 2편'));
+});

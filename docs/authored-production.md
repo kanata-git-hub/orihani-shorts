@@ -170,3 +170,14 @@ For immediate compatibility with the older deployed app, wrap each prepared
 history record using `makePackage(item,{})`. The old **기록 → 작업 파일 가져오기**
 already accepts these work files without text generation. Label these as new
 records, preserve all old footage, and do not press legacy prompt regeneration.
+# Weekly picker discovery
+
+The automatic picker loads the latest dated main package plus the bonus production
+file with the same date from the existing weekly folder. Name that companion
+`[YYYY-MM-DD] 번외 05-06 제작안.json` (or `[YYYY-MM-DD] 번외 제작안.json`).
+If several companion revisions exist for that date, the most recently modified
+file wins. Previous/future dates and work exports, reviews and archives are excluded.
+Each production file remains limited to 1–3 episodes; the UI lists both sources
+together without changing their episodes, prompts, image manifests or revisions.
+Image downloads resolve the selected source revision and episode number together.
+A malformed current companion fails visibly instead of silently hiding its episodes.
