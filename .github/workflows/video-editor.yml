@@ -37,6 +37,8 @@ jobs:
       - run: node --test tests/production-continuity.test.cjs
       - run: node --test tests/production-package.test.cjs
       - run: node --test tests/weekly-images.test.cjs
+      - run: node --test tests/weekly-additions.test.cjs
       - run: node --test tests/kling4.test.cjs
       - run: node --test tests/image-quality.test.cjs
       - run: npm run build
+

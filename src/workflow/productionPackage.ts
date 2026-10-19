@@ -9,6 +9,7 @@ import { readShotDirection, readSceneTransition } from '../shotDirection';
 import { clipVideoText, KLING_PROMPT_TARGET } from '../videoPrompt';
 
 export const MAX_PRODUCTION_CHARS = 300000;
+export const MAX_WEEKLY_SOURCES = 8;
 export type ProductionImage = { fileId: string; sha256: string };
 export type PreparedEpisode = { number: number; characterId: string; episode: SourceEpisode; plan: Record<string, any>; assets?: Record<string, ProductionImage> };
 export type ProductionPackage = { format: 'orihani-production'; version: 1; revision: string; episodes: PreparedEpisode[] };
@@ -99,10 +100,10 @@ export function readWeeklyInput(raw: string): WeeklyChoice[] {
   }));
 }
 
-// Keep each source's own revision and asset manifest when listing a weekly pair.
-// A production file still contains at most three episodes; the picker can show both.
+// Keep each source's own revision and asset manifest, including separately added bonuses.
+// A production file still contains at most three episodes.
 export function readWeeklySources(sources: string[]): WeeklyChoice[] {
-  if (!Array.isArray(sources) || !sources.length || sources.length > 2 || sources.some(s => typeof s !== 'string')) fail('주간 제작안 목록을 확인해주세요.');
+  if (!Array.isArray(sources) || !sources.length || sources.length > MAX_WEEKLY_SOURCES || sources.some(s => typeof s !== 'string')) fail('주간 제작안 목록을 확인해주세요.');
   const choices = sources.flatMap(readWeeklyInput);
   const seen = new Set<string>();
   for (const choice of choices) {
@@ -126,3 +127,4 @@ export function preparedHistory(entry: PreparedEpisode, revision: string): Histo
 export function isAuthoredPlan(raw: string): boolean {
   try { return JSON.parse(raw).productionSource === 'authored'; } catch { return false; }
 }
+

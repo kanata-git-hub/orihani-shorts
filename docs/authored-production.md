@@ -181,3 +181,13 @@ Each production file remains limited to 1–3 episodes; the UI lists both source
 together without changing their episodes, prompts, image manifests or revisions.
 Image downloads resolve the selected source revision and episode number together.
 A malformed current companion fails visibly instead of silently hiding its episodes.
+
+To add a separate episode without replacing that companion, use an explicit addition:
+`[YYYY-MM-DD] 번외 추가 03-2 제작안.json`. Match the latest main package's date,
+not the day the addition was authored. The most recently modified file wins per
+addition label; zero padding, spacing and the hyphen/middle-dot separator normalize
+to the same label. Older ordinary bonus bundles remain excluded. Up to eight source
+files (main, current companion and additions) are accepted; overflow fails visibly.
+Keep each addition's revision unique so repeated numeric episode IDs still resolve
+their own images. The normal start button imports the selected addition unchanged.
+

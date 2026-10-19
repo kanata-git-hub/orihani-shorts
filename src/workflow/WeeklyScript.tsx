@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { SourceEpisode } from '../types';
 import { auth } from '../lib/firebase';
-import { readWeeklyInput, readWeeklySources, type PreparedEpisode, type WeeklyChoice } from './productionPackage';
+import { MAX_WEEKLY_SOURCES, readWeeklyInput, readWeeklySources, type PreparedEpisode, type WeeklyChoice } from './productionPackage';
 import { PromptComparison } from './PromptComparison';
 import './workflow.css';
 
@@ -29,7 +29,7 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
       const data=await response.json();if(!response.ok)throw Error(data.error||'최신 제작안을 읽지 못했습니다.');
       if(typeof data.text!=='string'||data.text.length>300000||typeof data.name!=='string'||!/^https:\/\/(docs|drive)\.google\.com\//.test(data.url))throw Error('제작안 응답을 확인하지 못했습니다.');
       const sources=data.sources===undefined?[data]:data.sources;
-      if(!Array.isArray(sources)||!sources.length||sources.length>2||sources.some(s=>typeof s?.text!=='string'||s.text.length>300000||typeof s.name!=='string'||!/^https:\/\/(docs|drive)\.google\.com\//.test(s.url)))throw Error('제작안 목록을 확인하지 못했습니다.');
+      if(!Array.isArray(sources)||!sources.length||sources.length>MAX_WEEKLY_SOURCES||sources.some(s=>typeof s?.text!=='string'||s.text.length>300000||typeof s.name!=='string'||!/^https:\/\/(docs|drive)\.google\.com\//.test(s.url)))throw Error('제작안 목록을 확인하지 못했습니다.');
       const parsed=readWeeklySources(sources.map(s=>s.text));
       if(request!==revision.current)return;
       setRaw(data.text);setEpisodes(parsed);setIndex(Math.max(0,parsed.findIndex(e=>e.title===selectedTitle.current)));
@@ -69,3 +69,4 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
     </details>
   </section>;
 }
+

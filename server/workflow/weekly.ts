@@ -1,4 +1,4 @@
-import { readWeeklyInput, readWeeklySources } from '../../src/workflow/productionPackage';
+import { MAX_WEEKLY_SOURCES, readWeeklyInput, readWeeklySources } from '../../src/workflow/productionPackage';
 
 export const WEEKLY_FOLDER = '1O2wOWOLyAXmq96aXOExX0fecwK7jZbq-';
 type DriveFile = {id:string;name:string;mimeType:string;modifiedTime?:string};
@@ -7,6 +7,8 @@ export type LatestWeekly = WeeklySource & {checkedAt:string;sources?:WeeklySourc
 const docsType='application/vnd.google-apps.document';
 const stem=/^\[(\d{4}-\d{2}-\d{2})\]\s*3D 오리 삼총사 릴스 개그 시리즈 주간 패키지(?:\.md|\.txt|\.json)?$/;
 const bonusStem=/^\[(\d{4}-\d{2}-\d{2})\]\s*번외(?:\s+\d+(?:\s*[-·]\s*\d+)?)?\s+제작안\.json$/;
+// Explicit additions do not replace the existing, newest bonus bundle or revive its archives.
+const extraBonusStem=/^\[(\d{4}-\d{2}-\d{2})\]\s*번외\s+추가\s+(\d+(?:\s*[-·]\s*\d+)?)\s+제작안\.json$/;
 function packageDate(name:string,pattern=stem){
  const value=pattern.exec(name)?.[1];if(!value)return null;
  const date=new Date(value+'T00:00:00Z');return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value?value:null;
@@ -23,7 +25,16 @@ export function weeklySources(files:DriveFile[]){
  const main=newestWeekly(files),date=packageDate(main.name);
  const bonuses=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,bonusStem)===date&&['application/json','text/plain','application/octet-stream'].includes(f.mimeType));
  bonuses.sort((a,b)=>(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
- return bonuses.length?[main,bonuses[0]]:[main];
+ const extras=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,extraBonusStem)===date&&['application/json','text/plain','application/octet-stream'].includes(f.mimeType));
+ extras.sort((a,b)=>(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
+ const additions=new Map<string,DriveFile>();
+ for(const file of extras){
+  const label=extraBonusStem.exec(file.name)![2].split(/\s*[-·]\s*/).map(Number).join('-');
+  if(!additions.has(label))additions.set(label,file);
+ }
+ const selected=[main,...(bonuses.length?[bonuses[0]]:[]),...Array.from(additions.entries()).sort(([a],[b])=>a.localeCompare(b,'en',{numeric:true})).map(([,file])=>file)];
+ if(selected.length>MAX_WEEKLY_SOURCES)throw Error('주간 제작안 파일이 너무 많습니다. 같은 주의 추가 제작안을 정리해주세요.');
+ return selected;
 }
 async function readText(response:Response,limit:number){
  if(Number(response.headers.get('content-length'))>limit)throw Error('주간 대본 파일이 너무 큽니다.');
@@ -78,7 +89,7 @@ export function createWeeklyReader(options:{key:()=>string|undefined;fetch?:type
   if(text.length>300000||/^\s*<!doctype html|^\s*<html/i.test(text))throw Error('주간 대본을 텍스트로 읽지 못했습니다. 문서 공유 권한을 확인해주세요.');
   const episodes=readWeeklyInput(text);
   // A malformed latest document is an error; never silently substitute an older week.
-  return {id:file.id,name:file.name,date:(packageDate(file.name)||packageDate(file.name,bonusStem))!,url:file.mimeType===docsType?`https://docs.google.com/document/d/${file.id}/edit`:`https://drive.google.com/file/d/${file.id}/view`,text,episodeCount:episodes.length};
+  return {id:file.id,name:file.name,date:(packageDate(file.name)||packageDate(file.name,bonusStem)||packageDate(file.name,extraBonusStem))!,url:file.mimeType===docsType?`https://docs.google.com/document/d/${file.id}/edit`:`https://drive.google.com/file/d/${file.id}/view`,text,episodeCount:episodes.length};
   };
   const sources=await Promise.all(weeklySources(files).map(readFile));
   const episodes=readWeeklySources(sources.map(s=>s.text));
@@ -92,3 +103,4 @@ export function createWeeklyReader(options:{key:()=>string|undefined;fetch?:type
  };
 }
 export const latestWeekly=createWeeklyReader({key:()=>process.env.WEEKLY_DRIVE_API_KEY||process.env.GEMINI_API_KEY});
+
