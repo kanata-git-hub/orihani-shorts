@@ -18,7 +18,7 @@
 
 - Dockerfile로 빌드하세요. FFmpeg와 한국어 Noto 글꼴 설치가 포함됩니다. Dockerfile을 사용하지 않는 기존 배포 방식이라면 해당 도구 설치를 별도로 해야 합니다.
 - 기존 `GEMINI_API_KEY` 시크릿을 그대로 사용합니다. 새 음성 API는 브라우저로 키를 보내지 않습니다.
-- 선택 환경변수 `EDITOR_TTS_MODEL`: 기본 `gemini-3.1-flash-tts-preview`.
+- 선택 환경변수 `EDITOR_TTS_MODEL`: 기본 `gemini-3.8-flash-tts`.
 - 선택 환경변수 `EDITOR_TRANSCRIBE_MODEL`: 기본 `gemini-3.5-transcribe`. 원본 영상과 생성 음성의 단어 시각을 분석합니다. 파일 내용이 같은 분석은 브라우저에서 재사용합니다.
 - 선택 환경변수 `EDITOR_FIREBASE_PROJECT_ID`: 기본 `gen-lang-client-0165298283` (기존 프런트엔드 인증 프로젝트).
 - 선택 환경변수 `EDITOR_ALLOWED_EMAILS`: 편집을 허용할 이메일을 쉼표로 나열합니다. 미설정 시 이 Firebase 프로젝트의 로그인 사용자를 허용합니다.
