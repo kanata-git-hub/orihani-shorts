@@ -60,7 +60,7 @@ export function videoPromptForCopy(raw:string):string {
   // Never mute a written line, including one in a legacy ACTION/AUDIO field.
   if(spoken.some(s=>!noLine(s.value)))return prompt;
   const legacyAction=sections.filter(s=>/^(?:ACTION|AUDIO)$/.test(s.name)).map(s=>s.value).join('\n')||prompt;
-  if(/(?:O[- ]wonjang|Somi|Deok[- ]i|오원장|소미|덕이)\s*(?:\([^)]*\))?\s*[:：]\s*["“「']/i.test(legacyAction))return prompt;
+  if(/(?:O[- ]wonjang|Somi|Deok[- ]i|오원장|소미|덕이|눈이|Nooni)\s*(?:\([^)]*\))?\s*[:：]\s*["“「']/i.test(legacyAction))return prompt;
   const speechCue=/\b(?:says?|speaks?|speaking|asks?|replies|reply|whispers?|mutters?|shouts?|sings?|singing|narrat(?:es?|ion)|voice[ -]?over|delivers? (?:the |a )?line)\b|말한다|말하며|속삭|대답한다|나레이션|내레이션/i;
   if(speechCue.test(legacyAction)&&(!spoken.length||/["“「][^"”」]*[\p{L}\p{N}][^"”」]*["”」]/u.test(legacyAction)))return prompt;
   return prompt+(spoken.some(s=>/^DIALOG/.test(s.name))?'':'\nDIALOGUE: None.')+'\n\n'+SILENT_CLIP_AUDIO;

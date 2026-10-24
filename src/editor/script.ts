@@ -20,7 +20,7 @@ function normalizeSceneParagraphs(text:string):string {
   if(heading){window=[Number(heading[1]),Number(heading[2])];if(window[1]<=window[0])throw Error('장면의 자막 시작·끝 시간을 확인해주세요.');continue;}
   if(!window){output.push(line);continue;}
   if(!line.trim()||isCaptionPlaceholder(line))continue;
-  const label=line.trim().match(/^(오원장|덕이|소미)\s*(?:대사)?\s*[:：]\s*(.+)$/);
+  const label=line.trim().match(/^(오원장|덕이|소미|눈이|Nooni)\s*(?:대사)?\s*[:：]\s*(.+)$/i);
   const caption=line.trim().match(/^(?:화면\s*(?:자막|문구)|자막)\s*[:：]\s*(.+)$/);
   if(!label&&!caption){output.push(line);continue;}
   const content=key(label?label[2]:caption![1]);if(isCaptionPlaceholder(content))continue;
@@ -50,7 +50,7 @@ export function normalizeScriptTable(text:string):string {
   const time=cells[i].match(/^\[?장면\s*\d+\s*\(\s*(\d+(?:\.\d+)?)\s*초?\s*[~～–—-]\s*(\d+(?:\.\d+)?)\s*초\s*\)\]?$/);
   const speaker=cells[i+1],content=cells[i+2];
   if(!time||!speaker||!content||Number(time[2])<=Number(time[1]))throw Error('대사 표의 시점·캐릭터·내용을 확인해주세요. 각 행에 장면 시간과 문구가 필요합니다.');
-  const kind=/^(?:나레이션|내레이션|해설)$/.test(speaker)?'narration':/^(?:화면\s*(?:자막|문구)|자막)$/.test(speaker)||isCaptionPlaceholder(speaker)?'screen':/^(?:(?:오원장|소미|덕이)\s*(?:대사)?|대사)$/.test(speaker)?'dialogue':undefined;
+  const kind=/^(?:나레이션|내레이션|해설)$/.test(speaker)?'narration':/^(?:화면\s*(?:자막|문구)|자막)$/.test(speaker)||isCaptionPlaceholder(speaker)?'screen':/^(?:(?:오원장|소미|덕이|눈이|Nooni)\s*(?:대사)?|대사)$/i.test(speaker)?'dialogue':undefined;
   if(!kind)throw Error(`대사 표의 화자 '${speaker}'를 확인해주세요. 등장인물·해설·화면 자막·무대사로 구분해주세요.`);
   const row:ScriptRow={start:Number(time[1]),end:Number(time[2]),label:kind==='narration'?'해설':kind==='screen'?'화면 문구':speaker.replace(/\s*대사$/,'')||'대사',text:content,kind};
   // A spoken line and its identical display caption are one caption. Retain the

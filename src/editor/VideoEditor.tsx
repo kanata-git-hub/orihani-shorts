@@ -142,7 +142,7 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
     setMessage('영상 길이와 파일을 확인 중입니다. 아직 유료 분석은 시작하지 않았습니다.');
     for(let i=0;i<lengths.length;i++)validateMediaDuration(await mediaDuration(d.videos[i]!,'video'),lengths[i],i);
     if(d.plan.importWarning)throw Error(d.plan.importWarning);
-    if(/(?:Dialog(?:ue)?|오원장|소미|덕이)\s*[:：]/i.test(d.plan.narration))throw Error('읽을 대본에 등장인물 대사가 있습니다. 해설만 남겨주세요.');
+    if(/(?:Dialog(?:ue)?|오원장|소미|덕이|눈이|Nooni)\s*[:：]/i.test(d.plan.narration))throw Error('읽을 대본에 등장인물 대사가 있습니다. 해설만 남겨주세요.');
     let working={...d};const analyses:SpeechAnalysis[]=[];
     for(let i=0;i<lengths.length;i++){setMessage(`Kling 대사 시간 확인 중 · ${i+1}/${lengths.length}`);try{analyses.push(await analyze(d.videos[i]!,lengths[i]));}catch(error){throw Error(`${i+1}번 영상 분석: ${error instanceof Error?error.message:'분석에 실패했습니다.'}`);}}
     const timeline=sourceSpeechTimeline(analyses,lengths);

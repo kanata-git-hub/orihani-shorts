@@ -50,7 +50,7 @@ export function readProductionPackage(raw: string): ProductionPackage {
   const episodes = value.episodes.map((entry: any): PreparedEpisode => {
     if (!Number.isInteger(entry?.number) || entry.number < 1 || numbers.has(entry.number)) fail('회차 번호가 잘못되었거나 중복됩니다.');
     numbers.add(entry.number);
-    if (!['owonjang', 'nurse', 'deoki'].includes(entry.characterId)) fail('주인공을 확인해주세요.');
+    if (!['owonjang', 'nurse', 'deoki', 'nooni'].includes(entry.characterId)) fail('주인공을 확인해주세요.');
     const episode = sourceEpisode(entry.episode);
     const plan = entry.plan;
     if (!plan || typeof plan !== 'object' || Array.isArray(plan)) fail('기획이 없습니다.');

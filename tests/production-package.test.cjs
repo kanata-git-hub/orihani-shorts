@@ -177,3 +177,10 @@ test('weekly picker combines main and same-date bonus files without merging or t
  const bad=createWeeklyReader({key:()=> 'test',fetch:async url=>new URL(url).pathname==='/drive/v3/files'?Response.json({files:[mainFile,bonusFile]}):new Response(new URL(url).pathname.endsWith(mainFile.id)?sourceTexts[0]:'{}')});
  await assert.rejects(bad(),/완성 제작안/);
 });
+
+test('Nooni authored packages preserve supplied prompts and accept the new character id',()=>{
+ const pack=fresh();pack.episodes[0].characterId='nooni';
+ const parsed=readProductionPackage(JSON.stringify(pack));
+ assert.equal(parsed.episodes[0].characterId,'nooni');
+ assert.deepEqual(parsed.episodes[0].plan,pack.episodes[0].plan);
+});

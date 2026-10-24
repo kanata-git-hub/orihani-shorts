@@ -27,7 +27,7 @@ export function ImageChecks({ targetId, busy, onCheck, onApply }: { targetId: st
     const a = document.createElement('a'); a.href = url; a.download = 'duck-image-model-comparison.json'; a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  const entries = Object.entries(reports);
+  const entries = Object.entries<Report>(reports);
   const activeScene = reports[selectedScene] ? selectedScene : entries.at(-1)![0];
   const needsReview = entries.flatMap(([,report])=>report.rows).filter(row=>row.error || row.review?.status !== 'pass').length;
   return <details key={targetId} className="ori-prompt-comparison ori-image-checks">

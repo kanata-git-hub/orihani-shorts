@@ -33,7 +33,7 @@ export function readPackage(raw: string): {format:'orihani-work';version:1;item:
   if(raw.length>MAX_PACKAGE_BYTES)throw Error('작업 파일이 너무 큽니다. 48MB 이하 파일을 사용해주세요.');
   let v:any;try{v=JSON.parse(raw);}catch{throw Error('오리쇼츠에서 내보낸 작업 파일을 선택해주세요.');}
   const i=v?.item;
-  if(v?.format!=='orihani-work'||v.version!==1||!i||!text(i.id,200)||!i.id||!Number.isFinite(i.timestamp)||!text(i.result,200000)||!['deoki','owonjang','nurse'].includes(i.characterId))throw Error('오리쇼츠 작업 파일의 내용이 올바르지 않습니다.');
+  if(v?.format!=='orihani-work'||v.version!==1||!i||!text(i.id,200)||!i.id||!Number.isFinite(i.timestamp)||!text(i.result,200000)||!['deoki','owonjang','nurse','nooni'].includes(i.characterId))throw Error('오리쇼츠 작업 파일의 내용이 올바르지 않습니다.');
   const duration=recordDuration(i);
   if(!getKling4Plan(i.result)&&extractClips(i.result).length!==(duration===5?2:4))throw Error('영상 길이와 클립 수가 맞지 않습니다.');
   if(extractClips(i.result).some(c=>!text(c.imageTitle,500)||!c.imageTitle||!text(c.imagePrompt,30000)||!text(c.videoPrompt,30000)))throw Error('클립의 사진과 프롬프트 정보를 확인해주세요.');

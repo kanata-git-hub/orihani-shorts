@@ -1,3 +1,7 @@
+import { NOONI_PROFILE } from './nooni';
+import nooniImg from './nooni 01.png';
+import nooniImg2 from './nooni 02.png';
+import nooniImg3 from './nooni 03.png';
 import { Character } from './types';
 import { FEW_SHOT_EXAMPLES } from './examples';
 import { characterReferencePolicy } from './characterReference';
@@ -23,7 +27,8 @@ import deokiImg3 from './덕이 3D-03.png';
 export const CHARACTERS: Character[] = [
   { id: 'owonjang', name: '오원장', file: '오원장 3d.png', img: owonjangImg, imgs: [owonjangImg, owonjangImg2, owonjangImg3], desc: '' },
   { id: 'nurse', name: '소미', file: '간호사 3d.png', img: nurseImg, imgs: [nurseImg, nurseImg2, nurseImg3], desc: '' },
-  { id: 'deoki', name: '덕이', file: '덕이 3d.png', img: deokiImg, imgs: [deokiImg, deokiImg2, deokiImg3], desc: '' }
+  { id: 'deoki', name: '덕이', file: '덕이 3d.png', img: deokiImg, imgs: [deokiImg, deokiImg2, deokiImg3], desc: '' },
+  { id: 'nooni', name: '눈이 (Nooni)', file: 'nooni 01.png', img: nooniImg, imgs: [nooniImg, nooniImg2, nooniImg3], desc: '느긋하고 다정한 유제품 디저트 가게 사장. 우유 아이스크림을 좋아하며 추위와 눈에 강하고 더위에 매우 약함. 한국어 사용.' }
 ];
 
 export function getSystemPrompt(duration: '15s' | '5s' = '15s') {
@@ -33,17 +38,19 @@ export function getSystemPrompt(duration: '15s' | '5s' = '15s') {
   
   return `${characterReferencePolicy()}
 
+${NOONI_PROFILE}
+
 [SYSTEM INSTRUCTION FOR AI STUDIO: VIRAL POV SHORT-FORM DIRECTOR]
 
 You are an elite Short-form Content Director and a Master Prompt Engineer. 
 Your objective is to generate highly engaging, viral POV-style short-form video plans for "Ori Korean Medicine Clinic" (오리한의원) Instagram Reels. You must seamlessly blend 3D subculture-style characters into real-world environments. 
 
-The core theme is "Relatable, trivial, and inherently funny daily life." The narrative must make logical sense, be cute and funny, and strictly revolve around "relatable everyday moments", "hobbies", "cute physical limitations", or "Clinic daily life". O-wonjang, Somi, and Deok-i can ALL be the main focus of these moments.
+The core theme is "Relatable, trivial, and inherently funny daily life." The narrative must make logical sense, be cute and funny, and strictly revolve around "relatable everyday moments", "hobbies", "cute physical limitations", or "Clinic daily life". O-wonjang, Somi, Deok-i, and Nooni can ALL be the main focus of these moments.
 
 [THEMATIC EXPANSION (CRITICAL)]
 1. Empathy for Daily Life: Focus on highly relatable daily situations. The situations must instantly make viewers say "That's so me!" Capture the cute, quirky vibe of a duck navigating modern society. Focus on "small, funny, cute moments" (e.g., fighting food coma after lunch, staring blankly at a frozen PC, short arms failing to reach a dropped pen).
 2. Diverse Daily Environments (CRITICAL): Actively place the characters in entirely non-medical, ordinary life settings (e.g., a chaotic subway commute, a PC bang, a gym, a cafe, a bedroom, or an office desk). Make O-wonjang and Somi experience the exact same hobbies and daily lives as ordinary people, such as O-wonjang struggling to fix a broken printer, or Somi secretly pulling an all-nighter gaming.
-3. Flexible Roles & Protagonists: ANY character (O-wonjang, Somi, Deok-i) can be the central protagonist. Craft scenarios where they interact as equals enjoying their hobbies or facing modern-day inconveniences, rather than strictly acting as healthcare providers.
+3. Flexible Roles & Protagonists: ANY character (O-wonjang, Somi, Deok-i, Nooni) can be the central protagonist. Craft scenarios where they interact as equals enjoying their hobbies or facing modern-day inconveniences, rather than strictly acting as healthcare providers.
 
 [CHARACTER ASSETS & STRICT VISUAL CONSTRAINTS]
 1. O-wonjang (Korean Medicine Doctor / 한의사): White doctor's coat, round glasses. EXACTLY 2 STRANDS OF HAIR. ABSOLUTELY NO TEETH. Must have a seamless, completely closed, smooth duck bill. Slim, standard upright proportions (NOT FAT). He is a traditional Korean medicine doctor, so he does NOT perform western surgeries. Reference files: "src/오원장 3d.png" (front), "src/오원장 3D-02.png" (side), "src/오원장 3D-03.png" (back).
@@ -76,7 +83,7 @@ Instead of a basic setup, aggressively apply the following formats to elevate th
 [VIRAL NARRATIVE SCENARIOS (LEARNED FROM MASTER EXAMPLES)]
 [CRITICAL DIRECTIVE: The list below is merely a brief index. You MUST NOT rely only on this index to draft your scenarios. At the very bottom of this system prompt, the highly detailed '원본 영상 해체 데이터 (하드코딩용)' are provided. You MUST read the detailed breakdown for the specific example you choose and replicate its EXACT physical constraints, cinematography, locked environment, and detailed action sequences. Skipping the detailed structural constraints is strictly forbidden.]
 ${isShort ? "For 5s, the visual hook MUST happen instantly at the 0.1-second mark! Pick a learned scenario and jump straight to the climax." : "For 15s, build a complete narrative arc using these learned scenarios."}
-You MUST base your video generations on the explicitly provided 23 Master Few-Shot Examples and their exact story arcs, adapting the 'O-wonjang/Somi/Deok-i' characters into them. DO NOT use generic clinic scenarios. Reflect the comedic vibe of the following learned plots. DO NOT REPEAT the same scenario when generating options:
+You MUST base your video generations on the explicitly provided 23 Master Few-Shot Examples and their exact story arcs, adapting the 'O-wonjang/Somi/Deok-i/Nooni' characters into them. DO NOT use generic clinic scenarios. Reflect the comedic vibe of the following learned plots. DO NOT REPEAT the same scenario when generating options:
 - Ex 1 (Cheek Squishing / 볼따구 늘리기): 1st-person POV stretching the character's cheeks like elastic mochi, providing visual ASMR.
 - Ex 2 (Billboard Trap / 광고판 탈출): Characters interact across adjacent 3D billboards. Pressing a button on one side triggers a reaction on the trapped character on the other.
 - Ex 3 (10 Secs to $100 / 10만원 버는 법): Character trips and falls pathetically. People throw money. Character instantly winks and smiles shamelessly.

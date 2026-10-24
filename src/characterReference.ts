@@ -1,3 +1,4 @@
+import { mentionsNooni, NOONI_VISUAL } from './nooni';
 export interface CharacterReference {
   url: string;
   label?: string;
@@ -16,7 +17,9 @@ const CHARACTER_ALIASES = {
 
 export function characterIdsInText(text: string): string[] {
   const normalized = text.normalize('NFC').replace(/[‐‑‒–—]/g, '-');
-  return Object.entries(CHARACTER_ALIASES).filter(([, pattern]) => pattern.test(normalized)).map(([id]) => id);
+  const ids = Object.entries(CHARACTER_ALIASES).filter(([, pattern]) => pattern.test(normalized)).map(([id]) => id);
+  if (mentionsNooni(normalized)) ids.push('nooni');
+  return ids;
 }
 
 interface CharacterSheets { id: string; name: string; file: string; imgs: string[] }
@@ -44,16 +47,17 @@ export async function loadCharacterReferences(
   return references;
 }
 
-export function characterReferencePolicy(labels: string[] = ['owonjang', 'somi', 'deoki']) {
+export function characterReferencePolicy(labels: string[] = ['owonjang', 'somi', 'deoki', 'nooni']) {
   const ids = characterIdsInText(labels.join(' '));
   const colors = [
+    ids.includes('nooni') && NOONI_VISUAL,
     ids.includes('owonjang') && 'O-wonjang: pale warm cream head, body and arm/wing tips from the ORIGINAL sheets, round glasses, white doctor coat over a light-blue shirt; never saturated yellow or orange hands.',
     ids.includes('nurse') && 'Somi: pale cream head, body and arms/wing tips from her ORIGINAL sheets, smooth head with no invented hair, off-white nurse top and navy pants; never borrow Deok-i\'s yellow hands.',
     ids.includes('deoki') && 'Deok-i: keep his own ORIGINAL yellow head, body and arms/wing tips, orange bill and feet; do not recolor him white or cream.',
   ].filter(Boolean).join('\n');
   return `[ORIGINAL CHARACTER DESIGN — HIGHEST VISUAL PRIORITY]
 Draw only the characters required by this scene. The ORIGINAL front/side/back character sheets control the base design: face, glasses, silhouette, costume, exact colors and limb surface. Explicitly scripted temporary costume accessories may sit over that base design; do not replace the character's anatomy or identity.
-Keep the duck mascots' arms as simple smooth rounded/tapered single-piece wing tips, exactly as in their own sheets. No added fingers, thumbs, knuckles, nails, feather grooves, layered feathers or fuzzy plumage. Preserve the original subtle surface texture.
+Keep the duck mascots' arms as simple smooth rounded/tapered single-piece wing tips, exactly as in their own sheets. No added fingers, thumbs, knuckles, nails, feather grooves, layered feathers or fuzzy plumage. Preserve the original subtle surface texture. These single-piece duck-wing restrictions apply to O-wonjang, Somi and Deok-i only. For Nooni, preserve the sculpted wing layers, markings and long tail in the original sheets.
 Preserve each character's original simple oval eyes and the smooth surrounding face. Do not add eyelids, eyelid creases, eyebrows, eyelashes, eye sockets or eye whites absent from that character's original sheets. Expressions must not introduce new facial anatomy. Keep each character's own eye color and glasses; do not borrow another character's features.
 ${colors}
 For holding or pressing a prop, bend the existing rounded wing tip or brace the object between the tips; adapt the pose rather than inventing fingers. This rule overrides conflicting action descriptions and examples.

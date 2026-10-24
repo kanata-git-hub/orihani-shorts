@@ -287,7 +287,7 @@ read without freezing the story. Avoid precision choreography the generator cann
 Start from what the character wants right now, not a list of cute gestures. Physical
 charm should look incidental to getting comfortable, playing, investigating, eating or
 staying close. The character is occupied by a real object or friend, not performing for
-the audience. Keep adult agency, original duck anatomy and recognizable personality;
+the audience. Keep adult agency, each character's original anatomy and recognizable personality;
 borrowing the observational appeal of an animal video does not turn the cast into pets.
 
 Before directing a movement, identify its visible trigger, object of attention, small
@@ -376,7 +376,7 @@ Somi uses economical movement, but a desired breeze, comfort or treat can gradua
 her whole body out of composure. She does not need a big smile to be appealing.
 Vary these habits with the situation rather than locking each character to one gesture.
 
-Give each appearing character a desire and a concrete choice. Do not require all three
+Give each appearing character a desire and a concrete choice. Do not require all four
 in each episode. Rotate who initiates, helps, overdoes something and receives care.
 Care can be visible in leaving room, staying beside a frightened friend or accepting a
 friend's preferred distance. A hug or gift is not automatically chemistry, and every
@@ -514,6 +514,19 @@ or occlusion changes visibility, not the object's physical structure. The conver
 builds a shared prop bible and separate per-shot states, compiles start images without
 future actions, and reviews the compiled prompts against the original screenplay.
 
+## Nooni joins the cast — 2026-10-24
+
+[NOONI / 눈이 — characterId: nooni]
+An independent adult owner of a dairy dessert shop using Hokkaido-sourced dairy products. Especially loves milk ice cream. Relaxed, warm and friendly, competent at running the shop; quietly enthusiastic about dairy desserts. Has adult agency and an equal, reciprocal friendship with O-wonjang, Somi and Deok-i; never a baby, pet, clinic employee or medical professional. Strong in cold and snow, extremely vulnerable to heat. These traits can motivate behavior but do not force every story to be about heat or dairy, stubbornness or perfectionism.
+Speaks natural Korean only, never Japanese or a Japanese accent. Shima-enaga is the visual motif; Hokkaido describes the ingredients, not a confirmed birthplace, nationality or residence. Gender and fixed voice ID are not established. Use Nooni as the English name. Retain the usual wordless sitcom default unless dialogue is explicitly requested; Nooni's dialogue is character speech, never narration TTS.
+Nooni: a shima-enaga-inspired long-tailed bird, NOT a duck. Keep the ORIGINAL large round white head and plump white body, small dark oval eyes, tiny dark pointed beak, pale peach cheeks, short light-blue scarf with its ends in front, gray-brown back/shoulders, sculpted dark-gray and white layered wing markings, dark bird feet, and long narrow dark tail with white edges. Preserve the original wing layers and tail; never flatten them into duck wings. No duck bill, webbed feet, fingers, teeth, human lips, hair, eyebrows or eyelashes. Match the same matte 3D toy style as the other characters.
+Use all three originals: src/nooni 01.png (front), src/nooni 02.png (side), src/nooni 03.png (back). Nooni is an available cast member, not compulsory in every scene. Do not change approved existing episodes.
+
+The original three ducks keep their own anatomy rules. Nooni's original sculpted
+wing layers and long tail are required design, not forbidden added feathers.
+All four are available; choose the cast needed for each story. Ordinary Korean
+weather phrases such as "눈이 내린다" or "눈이 쌓인다" do not name Nooni.
+
 ## Characters and identity
 
 ### Original-face check — 2026-10-17
@@ -595,7 +608,7 @@ For every clip specify:
 Produce one English start-frame prompt and one English video prompt per clip.
 The video headings are REFERENCE INSTRUCTION, OUTPUT SPECS, CINEMATOGRAPHY,
 ENVIRONMENT, ACTION, DIALOGUE, AUDIO and STRICT RULES, separated by actual newlines.
-Use O-wonjang, Deok-i and Somi as English names. Maintain the provided dialogue in Korean.
+Use O-wonjang, Deok-i, Somi and Nooni as English names. Maintain the provided dialogue in Korean.
 Avoid contradictory locks and long generic prohibition lists. Keep directions specific
 to the shot and do not erase the screenplay's spectacle to make generation easier.
 

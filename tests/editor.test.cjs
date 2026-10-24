@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const compiled = path.join(root, '.editor-test');
 fs.mkdirSync(compiled, { recursive: true });
 fs.writeFileSync(path.join(compiled, 'package.json'), '{"type":"commonjs"}');
-for (const f of ['src/kling4.ts','src/videoPrompt.ts','src/productionContinuity.ts','src/utils/clipTiming.ts','src/workflow/productionPackage.ts','src/referencePlan.ts','src/shotDirection.ts','src/sceneReference.ts','src/characterReference.ts','src/backgroundAssets.ts','server/workflow/weekly.ts','server/workflow/weeklyImages.ts','src/workflow/importImage.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/typography.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
+for (const f of ['src/kling4.ts','src/videoPrompt.ts','src/productionContinuity.ts','src/utils/clipTiming.ts','src/workflow/productionPackage.ts','src/referencePlan.ts','src/shotDirection.ts','src/sceneReference.ts','src/characterReference.ts','src/nooni.ts','src/backgroundAssets.ts','server/workflow/weekly.ts','server/workflow/weeklyImages.ts','src/workflow/importImage.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/typography.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
   const dest = path.join(compiled, f.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
@@ -515,4 +515,12 @@ test('cleaned text uses glyphs from the actual bundled caption font', {skip:!pro
 test('explicit absence of narration never produces spoken placeholder text',()=>{
  const p=importEpisode({duration:5,korean:'나레이션: 없음 (캐릭터 대사만)\nDialog: O-wong: "안녕!"'});
  assert.equal(p.narration,'');assert.equal(p.importWarning,undefined);assert.equal(p.captions[0].text,'안녕!');assert.equal(p.captions[0].source,'dialogue');
+});
+
+test('Nooni spoken lines stay dialogue in plain and tabular authored scripts',()=>{
+ for(const name of ['눈이','Nooni','nooni']){
+  const plan=importEpisode({duration:5,korean:'해설: 오늘은 덥다.\n'+name+': "아이스크림 드세요."',scenario:''});
+  assert.equal(plan.narration,'오늘은 덥다.');
+  assert.ok(plan.captions.some(c=>c.source==='dialogue'&&c.text==='아이스크림 드세요.'));
+ }
 });

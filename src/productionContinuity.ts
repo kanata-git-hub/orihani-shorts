@@ -14,7 +14,7 @@ export const propBibleSchema = array(object({
 }));
 export const frameSchema = object({
   environment: string,
-  visibleCharacters: array({ type: 'STRING', enum: ['O-wonjang', 'Deok-i', 'Somi'] }),
+  visibleCharacters: array({ type: 'STRING', enum: ['O-wonjang', 'Deok-i', 'Somi', 'Nooni'] }),
   props: array(object({
     id: string, placement: string,
     parts: array(object({ id: string, state: string, visibility: { type: 'STRING', enum: ['visible', 'occluded', 'offscreen'] } })),
@@ -69,8 +69,8 @@ export function compileProductionPlan(plan: any) {
     const frame = clip.frame as Frame;
     if (!frame) fail(`장면 ${index + 1} 시작 상태 누락`);
     for (const key of ['environment', 'action', 'endState', 'continuityFromPrevious'] as const) text(frame[key], `장면 ${index + 1} ${key}`);
-    list(frame.visibleCharacters, '등장인물', 3);
-    if (new Set(frame.visibleCharacters).size !== frame.visibleCharacters.length || frame.visibleCharacters.some(n => !['O-wonjang','Deok-i','Somi'].includes(n))) fail('등장인물 오류');
+    list(frame.visibleCharacters, '등장인물', 4);
+    if (new Set(frame.visibleCharacters).size !== frame.visibleCharacters.length || frame.visibleCharacters.some(n => !['O-wonjang','Deok-i','Somi','Nooni'].includes(n))) fail('등장인물 오류');
     list(frame.props, '장면 소품'); ids(frame.props, '장면 소품');
     const designs: string[] = [];
     for (const state of frame.props) {
@@ -89,7 +89,7 @@ export function compileProductionPlan(plan: any) {
     // Deliberate allowlist: never pass frame.action/endState, later scenes or the
     // model's old imagePrompt to the image generator, even when they are present.
     const imagePrompt = `[SINGLE START FRAME — SCENE ${index + 1}]
-One clean vertical 9:16 start-frame image in the established matte 3D duck style. No title, dialogue captions, montage or panels.
+One clean vertical 9:16 start-frame image in the established matte 3D mascot style. No title, dialogue captions, montage or panels.
 Visible cast: ${frame.visibleCharacters.join(', ') || 'No characters in this crop'}.
 SET AND LIGHT: ${frame.environment}
 ${shotDirectionInstruction(shot)}

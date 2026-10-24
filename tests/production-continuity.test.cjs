@@ -79,3 +79,9 @@ test('compiled scene reaches the actual image request without later-action text'
  const prompt=calls[0].parts.filter(p=>p.text).map(p=>p.text).join('\n');
  assert.match(prompt,/START state: Upright and closed/);assert.doesNotMatch(prompt,/END_ONLY|ACTION_ONLY|BAD_OLD_PROMPT/);
 });
+
+test('continuity accepts Nooni alongside all three ducks without removing the fourth character',()=>{
+ const plan=housePlan();plan.clips[0].frame.visibleCharacters.push('Nooni');
+ const compiled=compileProductionPlan(plan);
+ assert.match(compiled.clips[0].imagePrompt,/Deok-i, O-wonjang, Somi, Nooni/);
+});

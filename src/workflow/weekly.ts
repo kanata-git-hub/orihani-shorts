@@ -1,3 +1,4 @@
+import { characterIdsInText } from '../characterReference';
 import { parseReferencePlans } from '../referencePlan';
 import { SourceEpisode } from '../types';
 
@@ -59,6 +60,6 @@ export function parseWeekly(text:string): (SourceEpisode&{characters:string[]})[
  marks.forEach((s,j)=>sections[section(s[2])]=body.slice(s.index!+s[0].length,marks[j+1]?.index??body.length).trim());
  if([1,2,4,5].some(n=>!sections[n]))throw Error(`에피소드 ${m[1]}에 시나리오·한글 대본·제목·썸네일 중 빠진 항목이 있습니다.`);
  parseReferencePlans(sections[1]);
- const characters=[['오원장','owonjang'],['소미','nurse'],['덕이','deoki']].filter(([name])=>sections[1].includes(name)).map(([,id])=>id);
+ const characters=characterIdsInText(sections[1]);
  return {duration:episodeDuration(m[0],sections[1]),title:m[0].replace(/^#+\s*/,''),scenario:sections[1],korean:sections[2],caption:sections[4],thumbnail:sections[5],characters};});
 }
