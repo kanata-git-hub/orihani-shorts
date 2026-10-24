@@ -1,0 +1,8 @@
+export const NOONI_DESCRIPTION = "Nooni (눈이) is an adult dairy-dessert shop owner who uses Hokkaido dairy ingredients and especially enjoys milk ice cream. Calm, warm, kind and competent, Nooni makes independent choices as an equal friend, never a pet, baby, clinic employee or clinician. Resistant to cold and snow but very sensitive to heat. Speaks Korean only, without a Japanese accent; no birthplace, nationality, residence or gender is established. Use Nooni in English prompts. Keep the smooth matte 3D toy style and ALL original front/side/back details: round white head and body, small black oval eyes, tiny dark beak, pale peach cheeks, short light-blue scarf with its ends in front, gray-brown back and shoulders, sculpted dark-gray and white wing patterns, dark bird feet, and a long slender dark tail edged in white. Preserve the original sculpted wing layers and long tail; do not apply the duck-only smooth-wing rule to Nooni. No duck bill, webbed feet, teeth, human lips, fingers, invented hair, brows or lashes. Do not force dairy or heat jokes into every story. For explicitly requested dialogue, suggest a soft, warm, relaxed adult Korean voice; gender and fixed voice ID remain unassigned.";
+
+// Exclude common weather phrases before matching the Korean character name.
+export function mentionsNooni(text: string): boolean {
+  if (/\bnooni\b/i.test(text)) return true;
+  const withoutWeather = text.replace(/눈이\s*(?:(?:많이|조금|계속|펑펑|소복[히이]|하얗게|살짝|아주|너무)\s*)*(?:내리|내린|내릴|내려|내렸|쌓|오고|오는|온다|오면|올|왔|날리|녹|그치)[가-힣]*/g, '');
+  return /(?<![가-힣A-Za-z])눈이(?=$|[^가-힣A-Za-z]|(?:은|는|이|가|을|를|의|와|랑|에게|한테|도|만)(?=$|[^가-힣A-Za-z]))/u.test(withoutWeather);
+}
