@@ -18,7 +18,9 @@ def draw_caption(canvas, text, top, maxwidth, maxsize):
     # dyspepsia/fatigue placement, fitting, outline and shadow unchanged.
     size = maxsize
     while True:
-        font = ImageFont.truetype(str(FONT), size)
+        # The approved Windows overlays use BASIC; Linux often defaults to RAQM,
+        # whose kerning changes fitting and placement even with the same font.
+        font = ImageFont.truetype(str(FONT), size, layout_engine=ImageFont.Layout.BASIC)
         box = font.getbbox(text)
         if box[2] - box[0] <= maxwidth or size < 60:
             break
