@@ -30,3 +30,12 @@
  .ori-editor .ori-primary, .ori-editor .ori-step-next { width: 100%; min-height: 50px; font-weight: 700; }
  .ori-editor .ori-caption-card { padding: 12px; }
 }
+
+.ori-editor-steps-clinic{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ori-clinic-preview{padding:16px;background:#faf8f4;border:1px solid #e5dbd3;border-radius:12px;margin:16px 0}
+.ori-clinic-preview-frame{position:relative;width:100%;max-width:360px;margin:16px auto;background:#111;overflow:hidden}
+.ori-clinic-preview-frame video{position:absolute;inset:0;width:100%;height:100%;display:block}
+.ori-clinic-preview-frame img{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;user-select:none}
+.ori-editor .ori-preview-time{text-align:center;font-variant-numeric:tabular-nums}
+.ori-clinic-preview .ori-row{justify-content:space-between}
+@media(max-width:700px){.ori-clinic-preview{padding:12px}.ori-clinic-preview .ori-row button{width:100%}}

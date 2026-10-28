@@ -2,10 +2,12 @@ import express from 'express';
 import multer from 'multer';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { render } from './render';
+import { generateClinicOverlays } from './clinicCaptions';
+import { validatePlan, cleanPlanText } from '../../src/editor/model';
 import { transcribe } from './transcribe';
 import { spokenNumbers } from '../../src/editor/speech';
 import { latestWeekly } from '../workflow/weekly';
@@ -59,10 +61,37 @@ editorRouter.get('/weekly/:number/images', async (req, res) => {
   finally { imagesLoading = false; }
 });
 editorRouter.use((req, res, next) => {
-  if (req.method !== 'POST' || !['/voice', '/render', '/transcribe'].includes(req.path)) { res.status(404).json({ error: '지원하지 않는 편집 요청입니다.' }); return; }
+  if (req.method !== 'POST' || !['/voice', '/render', '/transcribe', '/caption-preview'].includes(req.path)) { res.status(404).json({ error: '지원하지 않는 편집 요청입니다.' }); return; }
   const uid = res.locals.uid;
   if (active.has(uid) || active.size >= 1) { res.status(429).json({ error: '다른 음성·영상 작업을 처리 중입니다. 완료 후 다시 시도해주세요.' }); return; }
   active.add(uid); res.locals.release = () => active.delete(uid); next();
+});
+
+// The preview uses the same local renderer as export, without any model calls.
+editorRouter.post('/caption-preview', express.json({ limit: '32kb' }), async (req, res) => {
+  let dir: string | undefined;
+  const abort = new AbortController();
+  const timeout = setTimeout(() => abort.abort(), 45000);
+  const cancel = () => { if (!res.writableFinished) abort.abort(); };
+  res.on('close', cancel);
+  try {
+    validatePlan(req.body?.plan);
+    const plan = cleanPlanText(req.body.plan);
+    if (plan.captionStyle !== 'clinic') throw Error('한의원 쇼츠 자막을 선택해주세요.');
+    dir = await mkdtemp(path.join(os.tmpdir(), 'ori-caption-preview-'));
+    const generated = await generateClinicOverlays(plan, dir, abort.signal);
+    const overlays = [];
+    for (const caption of generated.captions) {
+      overlays.push({ start: caption.start, end: caption.end, kind: 'caption', dataUrl: 'data:image/png;base64,' + (await readFile(caption.path)).toString('base64') });
+    }
+    if (generated.brand) overlays.push({ start: generated.brand.start, kind: 'brand', dataUrl: 'data:image/png;base64,' + (await readFile(generated.brand.path)).toString('base64') });
+    res.set('Cache-Control', 'no-store').json({ overlays });
+  } catch (e) {
+    if (!res.headersSent && !res.destroyed) res.status(400).json({ error: e instanceof Error ? e.message : '자막 미리보기를 만들지 못했습니다.' });
+  } finally {
+    clearTimeout(timeout); res.off('close', cancel); res.locals.release();
+    if (dir) await rm(dir, { recursive: true, force: true });
+  }
 });
 
 editorRouter.post('/voice', express.json({ limit: '16kb' }), async (req, res) => {

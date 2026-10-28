@@ -1,4 +1,4 @@
-import { EditPlan, cleanPlanText } from './model';
+import { EditPlan, cleanPlanText, isClinicPlan } from './model';
 import { spokenNumbers } from './speech';
 import { clipLengths } from './media';
 import { TEXT_POLICY_VERSION } from './text';
@@ -14,12 +14,12 @@ export const voiceKey = (d: Draft) => JSON.stringify([spokenNumbers(d.plan.narra
 export const syncKey = (d: Draft) => JSON.stringify([2, voiceKey(d), d.plan.voiceSpeed, d.plan.captions.map(c => [c.text, c.source]), filesKey(d)]);
 export const resultKey = (d: Draft) => JSON.stringify([RENDER_VERSION, TEXT_POLICY_VERSION, d.plan, d.voiceKey, filesKey(d)]);
 export const voiceIsCurrent = (d: Draft) => !d.plan.narration.trim() || (!!d.voiceBlob && d.voiceKey === voiceKey(d));
-export const resultIsCurrent = (d: Draft) => !!d.result && d.resultKey === resultKey(d) && voiceIsCurrent(d) && d.syncKey === syncKey(d) && !d.plan.captions.some(c => c.review);
+export const resultIsCurrent = (d: Draft) => !!d.result && d.resultKey === resultKey(d) && voiceIsCurrent(d) && (isClinicPlan(d.plan) || d.syncKey === syncKey(d)) && !d.plan.captions.some(c => c.review);
 export const hasDraftContent = (d: Draft) => !!(d.original.trim() || d.plan.title.trim() || d.plan.narration.trim() || d.plan.thumbnail.trim() || d.plan.captions.length || d.videos.some(Boolean) || d.voiceBlob || d.result);
 export function draftStage(d: Draft): EditorStage {
   if (clipLengths(d.plan.duration,d.plan.videoLayout).some((_, i) => !d.videos[i])) return 'videos';
   if (resultIsCurrent(d)) return 'result';
-  return voiceIsCurrent(d) && d.syncKey === syncKey(d) ? 'captions' : 'voice';
+  return isClinicPlan(d.plan) || (voiceIsCurrent(d) && d.syncKey === syncKey(d)) ? 'captions' : 'voice';
 }
 export function summarizeDraft(d: Draft, updatedAt = Date.now()): DraftSummary {
   return { id: d.id, title: d.plan.title || '제목 없는 편집', updatedAt, version: 1, state: draftStage(d), videoCount: d.videos.filter(Boolean).length, requiredVideos: clipLengths(d.plan.duration,d.plan.videoLayout).length, hasResult: !!d.result, textPolicy: TEXT_POLICY_VERSION, renderVersion: RENDER_VERSION };

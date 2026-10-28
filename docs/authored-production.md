@@ -191,3 +191,13 @@ files (main, current companion and additions) are accepted; overflow fails visib
 Keep each addition's revision unique so repeated numeric episode IDs still resolve
 their own images. The normal start button imports the selected addition unchanged.
 
+
+## Clinic empathy Shorts caption settings
+
+For the approved clinic-style screen captions set episode.captionStyle to `clinic`.
+Use episode.videoLayout `single`, explicit caption start/end times in episode.korean,
+and no narration. An optional numeric episode.clinicBrandStart controls when the
+fixed clinic name appears at the bottom through the source video's end. Work export,
+Drive import and editor handoff preserve both fields without model calls.
+Absent captionStyle keeps existing episodes in the legacy editor.
+These settings change editing only; they do not change the sitcom writing standard.

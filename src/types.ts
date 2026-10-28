@@ -22,6 +22,8 @@ export interface HistoryItem {
 }
 
 export interface SourceEpisode {
+  captionStyle?: 'clinic' | 'legacy';
+  clinicBrandStart?: number;
   videoLayout?: 'single' | 'legacy-clips';
   duration: 5 | 15 | 30;
   title: string;

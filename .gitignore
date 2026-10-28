@@ -10,3 +10,5 @@ coverage/
 .editor-test/
 
 server-dist/
+
+__pycache__/
