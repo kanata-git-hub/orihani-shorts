@@ -46,7 +46,7 @@
     "@firebase/firestore": {
       "@grpc/grpc-js": "1.14.5"
     },
-    "qs": "^6.16.0",
+    "qs": "6.16.1",
     "tsx": {
       "esbuild": "^0.28.1"
     }

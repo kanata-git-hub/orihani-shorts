@@ -5,6 +5,7 @@ import path from 'node:path';
 import type { EditPlan } from '../../src/editor/model';
 import { validatePlan, cleanPlanText } from '../../src/editor/model';
 import { fitVideoText } from './typography';
+import { renderClinic } from './clinicCaptions';
 
 export function command(binary: string, args: string[], cwd: string, signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -35,6 +36,7 @@ export function subtitles(p: EditPlan) {
 }
 export async function render(p: EditPlan, videos: string[], voice: string | undefined, dir: string, signal?: AbortSignal) {
   p = cleanPlanText(p);
+  if (p.captionStyle === 'clinic') return renderClinic(p, videos, voice, dir, signal);
   validatePlan(p); const lengths = clipLengths(p.duration,p.videoLayout);
   if (videos.length !== lengths.length) throw Error(`영상 ${lengths.length}개를 순서대로 넣어주세요.`);
   const narration = voice ? await inspect(voice, dir, signal) : undefined;

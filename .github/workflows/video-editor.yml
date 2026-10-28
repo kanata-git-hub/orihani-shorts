@@ -15,7 +15,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-noto-cjk fontconfig
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-noto-cjk fontconfig python3-pil
       - name: Install the actual caption font
         run: |
           mkdir -p ~/.local/share/fonts
@@ -29,6 +29,7 @@ jobs:
       - run: node --test tests/editor.test.cjs
         env:
           FFMPEG_PATH: ffmpeg
+          EDITOR_PYTHON_PATH: python3
       - run: node --test tests/character-reference.test.cjs
       - run: node --test tests/background-assets.test.cjs
       - run: node --test tests/scene-reference.test.cjs

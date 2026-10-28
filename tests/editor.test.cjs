@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const compiled = path.join(root, '.editor-test');
 fs.mkdirSync(compiled, { recursive: true });
 fs.writeFileSync(path.join(compiled, 'package.json'), '{"type":"commonjs"}');
-for (const f of ['src/kling4.ts','src/videoPrompt.ts','src/productionContinuity.ts','src/utils/clipTiming.ts','src/workflow/productionPackage.ts','src/referencePlan.ts','src/shotDirection.ts','src/sceneReference.ts','src/characterReference.ts','src/nooni.ts','src/backgroundAssets.ts','server/workflow/weekly.ts','server/workflow/weeklyImages.ts','src/workflow/importImage.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/typography.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
+for (const f of ['src/kling4.ts','src/videoPrompt.ts','src/productionContinuity.ts','src/utils/clipTiming.ts','src/workflow/productionPackage.ts','src/referencePlan.ts','src/shotDirection.ts','src/sceneReference.ts','src/characterReference.ts','src/nooni.ts','src/backgroundAssets.ts','server/workflow/weekly.ts','server/workflow/weeklyImages.ts','src/workflow/importImage.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/clinicCaptions.ts', 'server/editor/typography.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
   const dest = path.join(compiled, f.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
@@ -523,4 +523,82 @@ test('Nooni spoken lines stay dialogue in plain and tabular authored scripts',()
   assert.equal(plan.narration,'오늘은 덥다.');
   assert.ok(plan.captions.some(c=>c.source==='dialogue'&&c.text==='아이스크림 드세요.'));
  }
+});
+
+const clinicPlan = (patch = {}) => ({...defaultPlan(), duration:15, videoLayout:'single', captionStyle:'clinic', originalVolume:1,
+  captions:[{start:0,end:3,text:'드디어 내 시간',source:'screen'},{start:3,end:5,text:'잠깐만 쉬고…',source:'screen'},
+  {start:5,end:9.166667,text:'어… 벌써 끝났어?',source:'screen'},{start:12.5,end:15,text:'오늘도 회사만 다녀왔네',source:'screen'}],
+  clinicBrandStart:9.166667, ...patch});
+
+test('clinic editing keeps the no-API path separate from legacy speech and saved results', () => {
+  const plan=clinicPlan(); validatePlan(plan);
+  const video=new File(['video'],'source.mp4',{lastModified:1});
+  const draft=makeDraft({plan,videos:[video]});
+  assert.equal(draftModel.draftStage(draft),'captions');
+  const done={...draft,result:new Blob(['finished'])}; done.resultKey=draftModel.resultKey(done);
+  assert.equal(draftModel.resultIsCurrent(done),true);
+  assert.equal(draftModel.resultIsCurrent({...done,plan:{...plan,clinicBrandStart:10}}),false);
+  assert.equal(draftModel.resultIsCurrent({...done,plan:{...plan,captionStyle:'legacy',clinicBrandStart:undefined}}),false);
+  assert.equal(defaultPlan().captionStyle,undefined);
+  assert.throws(()=>validatePlan(clinicPlan({narration:'추가 해설'})),/해설/);
+  assert.throws(()=>validatePlan(clinicPlan({videoLayout:'legacy-clips'})),/한의원/);
+  assert.throws(()=>validatePlan(clinicPlan({clinicBrandStart:16})),/시간/);
+  validatePlan(clinicPlan({captions:[{start:12.5,end:15.041667,text:'오늘도 회사만 다녀왔네'}]}));
+});
+
+test('clinic caption metadata survives authored package and portable work handoff without changing old defaults', () => {
+  const {sourceEpisode}=require(path.join(compiled,'src/workflow/package.js'));
+  const episode={duration:15,title:'퇴근 후',korean:'해설: 없음\n화면 자막: 0~3초 드디어 내 시간\n화면 자막: 12.5~15초 오늘도 회사만 다녀왔네',scenario:'생활 이야기',thumbnail:'내 시간은 어디에',caption:'공감',videoLayout:'single',captionStyle:'clinic',clinicBrandStart:9.166667};
+  const kept=sourceEpisode(JSON.parse(JSON.stringify(episode)));
+  assert.equal(kept.captionStyle,'clinic');assert.equal(kept.clinicBrandStart,9.166667);
+  const imported=importEpisode(kept);validatePlan(imported);
+  assert.equal(imported.originalVolume,1);assert.equal(imported.narration,'');
+  assert.ok(imported.captions.every(c=>c.source==='screen'));
+  const old={...episode};delete old.captionStyle;delete old.clinicBrandStart;
+  assert.equal(importEpisode(sourceEpisode(old)).captionStyle,undefined);
+  assert.throws(()=>sourceEpisode({...episode,captionStyle:'unknown'}),/스타일/);
+});
+
+test('clinic export preserves 361 source frames, 24fps, AAC packets and provenance without model requests',
+ {skip:!process.env.FFMPEG_PATH,timeout:180000},async t=>{
+  const {execFileSync}=require('node:child_process');
+  const dir=path.join(compiled,'clinic-media');fs.mkdirSync(dir,{recursive:true});
+  const ff=process.env.FFMPEG_PATH;
+  const input=path.join(dir,'source.mp4');
+  await command(ff,['-y','-f','lavfi','-i','color=c=0x67514a:s=360x640:r=24','-f','lavfi','-i','sine=frequency=220:sample_rate=48000',
+    '-t','15.041666667','-metadata','AIGC=clinic-test-provenance','-movflags','use_metadata_tags','-c:v','libx264','-pix_fmt','yuv420p','-c:a','aac',input],dir);
+  t.mock.method(globalThis,'fetch',()=>{throw Error('Clinic export must not call a network service');});
+  const p=clinicPlan();
+  await render(p,[input],undefined,dir);
+  const finished=path.join(dir,'finished.mp4');
+  const audioHash=file=>execFileSync(ff,['-v','error','-i',file,'-map','0:a:0','-c:a','copy','-f','hash','-hash','sha256','-'],{encoding:'utf8'}).trim();
+  assert.equal(audioHash(input),audioHash(finished));
+  const frames=file=>execFileSync(ff,['-v','error','-i',file,'-map','0:v:0','-an','-f','framemd5','-'],{encoding:'utf8',maxBuffer:2000000});
+  const before=frames(input),after=frames(finished);
+  const lines=value=>value.split(/\r?\n/).filter(s=>s&&!s.startsWith('#'));
+  assert.equal(lines(before).length,361);assert.equal(lines(after).length,361);
+  assert.match(after,/#tb 0: 1\/24/);
+  const metadata=execFileSync(ff,['-v','error','-i',finished,'-f','ffmetadata','-'],{encoding:'utf8'});
+  assert.match(metadata,/AIGC=clinic-test-provenance/);
+  const original=await inspect(input,dir),output=await inspect(finished,dir);
+  assert.ok(Math.abs(original.duration-output.duration)<.02);
+  await assert.rejects(()=>render(clinicPlan({originalVolume:.2}),[input],undefined,dir),/100%/);
+  await assert.rejects(()=>render(p,[input],'unexpected-voice.wav',dir),/추가 음성/);
+  await assert.rejects(()=>render(clinicPlan({captions:[{start:15.2,end:15.3,text:'늦은 자막'}]}),[input],undefined,dir),/원본 영상 길이/);
+  const silent=path.join(dir,'silent.mp4');
+  await command(ff,['-y','-i',input,'-an','-c:v','copy',silent],dir);
+  await render(clinicPlan({captions:[],clinicBrandStart:undefined}),[silent],undefined,dir);
+  assert.equal((await inspect(finished,dir)).audio,false);
+});
+
+test('clinic font is the approved original and overlays reject clipping', {skip:!process.env.EDITOR_PYTHON_PATH}, async()=>{
+  const crypto=require('node:crypto');
+  const font=fs.readFileSync(path.join(root,'public/fonts/Cafe24Ssurround.ttf'));
+  assert.equal(crypto.createHash('sha256').update(font).digest('hex'),'cd1dbc5bc696aa0375888696f572fc69853a276084182574f93e582474d9cc63');
+  const {generateClinicOverlays}=require(path.join(compiled,'server/editor/clinicCaptions.js'));
+  const dir=path.join(compiled,'clinic-overlays');fs.mkdirSync(dir,{recursive:true});
+  const layers=await generateClinicOverlays(clinicPlan(),dir);
+  assert.deepEqual(layers.captions.map(c=>c.fontSize),[149,150,121,94]);
+  assert.ok(fs.statSync(layers.brand.path).size>0);
+  await assert.rejects(()=>generateClinicOverlays(clinicPlan({captions:[{start:0,end:1,text:'가'.repeat(160)}]}),dir),/한 줄/);
 });

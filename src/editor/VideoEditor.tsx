@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { auth } from '../lib/firebase';
-import { defaultPlan, EditPlan, importEpisode, validatePlan } from './model';
+import { defaultPlan, EditPlan, importEpisode, validatePlan, isClinicPlan } from './model';
 import { editorStore, draftWriter, persistDraft } from './storage';
 import { Draft, DraftSummary, EditorStage, voiceKey, syncKey, resultKey, voiceIsCurrent, resultIsCurrent, hasDraftContent, restoreDraft, draftStage, draftProgress, summarizeDraft } from './draft';
 import { spokenNumbers, alignCaptions, alignSourceCaptions, sourceSpeechTimeline, scheduleNarration, placedWords, SpeechAnalysis, Word } from './speech';
 import { clipLengths, validateMediaSizes, validateMediaDuration, mediaDuration } from './media';
 import './editor.css';
+import { ClinicCaptionPreview } from './ClinicCaptionPreview';
 import { shareFile } from '../workflow/share';
 
-const fresh = (): Draft => ({ id: crypto.randomUUID(), plan: {...defaultPlan(),videoLayout:'single'}, original: '', voice: 'Zubenelgenubi', style: '털털하고 편안한 남성 말투. 과장하지 않고 짧은 농담을 담백하게 말한다.', videos: [] });
+const fresh = (): Draft => ({ id: crypto.randomUUID(), plan: {...defaultPlan(),captionStyle:'clinic',duration:15,videoLayout:'single',originalVolume:1}, original: '', voice: 'Zubenelgenubi', style: '털털하고 편안한 남성 말투. 과장하지 않고 짧은 농담을 담백하게 말한다.', videos: [] });
 function useURL(blob?: Blob) {
   const [url, setURL] = useState('');
   useEffect(() => { if (!blob) { setURL(''); return; } const value = URL.createObjectURL(blob); setURL(value); return () => URL.revokeObjectURL(value); }, [blob]); return url;
@@ -42,12 +43,15 @@ async function analyze(blob:Blob,expectedDuration?:number):Promise<SpeechAnalysi
 
 export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResumeHandled, onActive }: { visible: boolean; open: () => void; onIndex?: (list: DraftSummary[]) => void; onBusy?: (busy: boolean) => void; resumeId?: string; onResumeHandled?: () => void; onActive?: (id: string) => void }) {
   const [d, setD] = useState<Draft>(fresh); const [ready, setReady] = useState(false);
+  const clinic = isClinicPlan(d.plan);
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const previewBusyRef = useRef(false); previewBusyRef.current = previewBusy;
   const [saved, setSaved] = useState<DraftSummary[]>([]);
   const [stage, setStage] = useState<EditorStage>('videos');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [busy, setBusy] = useState(false); const busyRef = useRef(false);
-  const [message, setMessage] = useState('Kling에서 받은 영상을 넣고, 나레이션을 확인해주세요.');
+  const [message, setMessage] = useState('Kling에서 받은 완성 영상을 넣고 자막을 확인해주세요.');
   const [consent, setConsent] = useState(false); const [raw, setRaw] = useState('');
   const [audioLength, setAudioLength] = useState(0);const audioRef=useRef<HTMLAudioElement>(null);
   useEffect(()=>{setAudioLength(0);},[d.voiceBlob]);
@@ -91,20 +95,20 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
     void saver.current!.write(d.id,d).catch(() => {});
   }, [d, ready]);
   useEffect(() => { onIndex?.(saved); }, [saved, onIndex]);
-  useEffect(() => { onBusy?.(busy); }, [busy, onBusy]);
+  useEffect(() => { onBusy?.(busy || previewBusy); }, [busy, previewBusy, onBusy]);
   useEffect(() => { if (visible && ready && hasDraftContent(d)) activeRef.current?.(d.id); }, [visible, ready, d.id, hasDraftContent(d)]);
   useEffect(() => {
-    if (!visible || !ready || !resumeId || busyRef.current) return;
+    if (!visible || !ready || !resumeId || busyRef.current || previewBusyRef.current) return;
     void run(async () => { try { await saver.current!.flush(); const loaded = await editorStore<Draft>(resumeId); if (loaded) loadDraft(loaded); else setMessage('저장된 편집을 찾지 못했습니다. 편집 목록에서 확인해주세요.'); } finally { onResumeHandled?.(); } });
   }, [resumeId, ready, visible]);
   useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => { if (busyRef.current || (hasDraftContent(currentRef.current) && currentRef.current !== lastSaved.current)) { event.preventDefault(); event.returnValue = ''; } };
+    const warn = (event: BeforeUnloadEvent) => { if (busyRef.current || previewBusyRef.current || (hasDraftContent(currentRef.current) && currentRef.current !== lastSaved.current)) { event.preventDefault(); event.returnValue = ''; } };
     window.addEventListener('beforeunload', warn); return () => window.removeEventListener('beforeunload', warn);
   }, []);
   useEffect(() => { setConsent(false); }, [d.plan.narration, d.voice, d.style, d.plan.duration]);
   useEffect(() => {
     const handler = (event: Event) => {
-      if (!ready || busyRef.current) return;
+      if (!ready || busyRef.current || previewBusyRef.current) return;
       try {
         const payload = (event as CustomEvent).detail;
         if (payload?.version !== 1 || typeof payload.key !== 'string' || payload.key.length > 200) return;
@@ -132,10 +136,11 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
     try { await fn(); } catch (e) { setMessage(e instanceof Error ? e.message : '작업 실패'); } finally { busyRef.current = false; setBusy(false); }
   };
   const voiceCurrent = voiceIsCurrent(d);
-  const syncCurrent = d.syncKey === syncKey(d);
+  const syncCurrent = clinic || d.syncKey === syncKey(d);
   const finishedCurrent = resultIsCurrent(d);
   const lengths = clipLengths(d.plan.duration,d.plan.videoLayout);
   const createVoice = () => run(async () => {
+    if (clinic) throw Error('한의원 쇼츠는 자막 단계에서 바로 완성할 수 있습니다.');
     const cleaned = restoreDraft(d); if (cleaned !== d) { setD(cleaned); throw Error('깨질 수 있는 문자를 정리했습니다. 대본을 확인한 뒤 다시 준비해주세요.'); }
     if (!consent) throw Error('음성 생성·분석 비용 확인란을 체크해주세요.');
     validateMediaSizes(d.videos,d.plan.duration,d.plan.narration.trim()?(d.voiceBlob?.size||0):0,d.plan.videoLayout);
@@ -164,6 +169,7 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
     else setMessage(captions.some(c=>c.review)?'음성 준비 완료. 확인 표시가 있는 자막만 검토해주세요.':'음성과 자동 싱크가 준비되었습니다. 미리듣기 후 영상을 완성하세요.');
   });
   const makeVideo = () => run(async () => {
+    if (previewBusy) throw Error('자막 미리보기가 준비된 뒤 완성해주세요.');
     const cleaned = restoreDraft(d); if (cleaned !== d) { setD(cleaned); throw Error('자막 문자를 정리했습니다. 문구를 확인한 뒤 다시 완성해주세요.'); }
     validatePlan(d.plan);
     if(!syncCurrent)throw Error('음성·자동 싱크 준비를 먼저 실행해주세요.');
@@ -184,19 +190,27 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
       <header><div><h2>{d.plan.title || '영상 편집'}</h2><p>{hasDraftContent(d) ? draftProgress(summarizeDraft(d)).label : 'Kling 영상과 대본을 넣어 시작하세요.'}</p></div></header>
       <p role="status" aria-live="polite" className="ori-status">{message}</p>
       <p className="ori-save-status">{!ready ? '저장소 확인 중' : saving ? '이 기기에 저장 중… 저장이 끝난 뒤 닫아주세요.' : hasDraftContent(d) && d === lastSaved.current ? '이 기기에 저장됨 · 자동 동기화 안 됨' : hasDraftContent(d) ? '변경 내용을 저장 중입니다.' : '영상 파일을 넣으면 자동 저장됩니다.'}</p>
-      <fieldset disabled={busy || !ready}>
+      <fieldset disabled={busy || previewBusy || !ready}>
         {saveError&&<button onClick={()=>run(async()=>{await saver.current!.write(d.id,d);setMessage('이 브라우저에 저장했습니다.');})}>자동 저장 다시 시도</button>}
 
-        <div className="ori-editor-steps" role="group" aria-label="편집 단계">{([['videos','1. 영상'],['voice','2. 음성'],['captions','3. 자막'],['result','4. 완성본']] as const).map(([value,label])=><button key={value} aria-pressed={stage===value} onClick={()=>setStage(value)}>{label}</button>)}</div>
+        <label>자막 스타일<select value={clinic?'clinic':'legacy'} onChange={e=>{
+          const style=e.target.value as 'clinic'|'legacy';
+          if(style==='clinic'&&d.videos.length>1&&d.videos.some(Boolean)){setMessage('한의원 쇼츠는 완성 영상 한 개를 사용합니다. 새 편집에서 시작하면 기존 영상을 보존할 수 있습니다.');return;}
+          if(style==='clinic'&&d.plan.narration.trim()){setMessage('현재 해설 대본이 있습니다. 기존 편집을 유지하거나, 해설을 비운 뒤 한의원 쇼츠를 선택해주세요.');return;}
+          change(style==='clinic'?{captionStyle:style,videoLayout:'single',originalVolume:1,voiceSegments:undefined,dialogueRanges:undefined,captions:d.plan.captions.map(c=>({...c,source:'screen',...(c.review?{review:'영상을 보며 이 자막의 시간을 확인해주세요.'}:{})}))}:{captionStyle:style,clinicBrandStart:undefined});
+          if(style==='clinic'&&stage==='voice')setStage('captions');
+        }}><option value="clinic">한의원 쇼츠 · 소화불량 영상 스타일</option><option value="legacy">기존 편집 · 해설 및 대사 자막</option></select></label>
+        {clinic&&<p>원본 소리와 영상 길이를 유지하고, 정해진 스타일의 화면 자막을 넣습니다.</p>}
+        <div className={'ori-editor-steps'+(clinic?' ori-editor-steps-clinic':'')} role="group" aria-label="편집 단계">{(clinic?[['videos','1. 영상'],['captions','2. 자막'],['result','3. 완성본']]:[['videos','1. 영상'],['voice','2. 음성'],['captions','3. 자막'],['result','4. 완성본']]).map(([value,label])=><button key={value} aria-pressed={stage===value} onClick={()=>setStage(value as EditorStage)}>{label}</button>)}</div>
         <article hidden={stage!=='videos'}><h3>1. Kling 영상 넣기</h3>
           <details className="ori-video-settings"><summary>{d.plan.duration}초 · 영상 {lengths.length}개 / 이름·길이 설정</summary>
           <label>콘텐츠 이름<input value={d.plan.title} maxLength={300} onChange={e => change({ title: e.target.value })} onBlur={cleanText} placeholder="이번 밈 제목" /></label>
-          <div className="ori-row">{([5,15,30] as const).map(duration=><button key={duration} aria-pressed={d.plan.duration===duration&&d.plan.videoLayout==='single'} disabled={d.plan.duration===duration&&d.plan.videoLayout==='single'} onClick={()=>{change({duration,videoLayout:'single',captions:[],voiceSegments:undefined,dialogueRanges:undefined});setD(v=>({...v,videos:[]}));}}>{duration}초 · 영상 한 개</button>)}</div>
-          <button aria-pressed={d.plan.duration===15&&d.plan.videoLayout!=='single'} disabled={d.plan.duration===15&&d.plan.videoLayout!=='single'} onClick={()=>{change({duration:15,videoLayout:'legacy-clips',captions:[],voiceSegments:undefined,dialogueRanges:undefined});setD(v=>({...v,videos:[]}));}}>이전 방식 · 4초·4초·3초·4초 영상 네 개</button>
+          <div className="ori-row">{([5,15,30] as const).map(duration=><button key={duration} aria-pressed={d.plan.duration===duration&&d.plan.videoLayout==='single'} disabled={d.plan.duration===duration&&d.plan.videoLayout==='single'} onClick={()=>{change({duration,videoLayout:'single',captions:[],clinicBrandStart:undefined,voiceSegments:undefined,dialogueRanges:undefined});setD(v=>({...v,videos:[]}));}}>{duration}초 · 영상 한 개</button>)}</div>
+          {!clinic&&<button aria-pressed={d.plan.duration===15&&d.plan.videoLayout!=='single'} disabled={d.plan.duration===15&&d.plan.videoLayout!=='single'} onClick={()=>{change({duration:15,videoLayout:'legacy-clips',captions:[],voiceSegments:undefined,dialogueRanges:undefined});setD(v=>({...v,videos:[]}));}}>이전 방식 · 4초·4초·3초·4초 영상 네 개</button>}
           </details>
           <div className="ori-files">{lengths.map((length, i) => <label key={`${d.id}-${d.plan.duration}-${i}`} className="ori-file"><span className="ori-file-heading">{i + 1}번 영상 · {length}초<small>{d.videos[i]?.name || '미선택'}</small></span><span className="ori-file-button">{d.videos[i]?'바꾸기':'영상 선택'}<input aria-label={`${i + 1}번 영상 선택`} type="file" accept="video/mp4,video/quicktime,video/webm" onChange={e => { const f = e.target.files?.[0]; if (f) setD(v => ({ ...v, syncKey: undefined, resultKey: undefined, videos: Array.from({ length: lengths.length }, (_, n) => n === i ? f : v.videos[n] || null) })); }} /></span></label>)}</div>
         </article>
-        <article hidden={stage!=='voice'}><h3>2. 해설 음성과 자동 싱크</h3><p>등장인물 대사는 Kling 원본 소리를 사용합니다. 아래에는 해설만 적으세요. 해설이 없는 영상은 비워두면 됩니다.</p>
+        <article hidden={clinic||stage!=='voice'}><h3>2. 해설 음성과 자동 싱크</h3><p>등장인물 대사는 Kling 원본 소리를 사용합니다. 아래에는 해설만 적으세요. 해설이 없는 영상은 비워두면 됩니다.</p>
           {d.plan.importWarning&&<p className="ori-note">{d.plan.importWarning}<button onClick={()=>change({importWarning:undefined})}>해설 구분 확인했음</button></p>}
           <label>읽을 대본<textarea rows={3} maxLength={1200} value={d.plan.narration} onChange={e => change({ narration: e.target.value })} onBlur={cleanText} /></label>
           {/\d/.test(d.plan.narration) && <p className="ori-note">자동으로 읽을 발음: {spokenNumbers(d.plan.narration)} · 자막 숫자는 유지됩니다.</p>}
@@ -207,29 +221,35 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
           <details><summary>음성 속도·고급 음량</summary><div className="ori-row"><label>음성 속도<input type="range" min="0.8" max="1.25" step="0.05" value={d.plan.voiceSpeed} onChange={e => change({ voiceSpeed: +e.target.value })} />{d.plan.voiceSpeed}배 · 적용 길이 {audioLength ? (audioLength / d.plan.voiceSpeed).toFixed(1) : '—'}초</label><label>Kling 원래 소리<select value={d.plan.originalVolume} onChange={e => change({ originalVolume: +e.target.value })}><option value={0.2}>작게 유지 · 20%</option><option value={1}>그대로 유지 · 100%</option><option value={0}>끄기</option></select></label><label>해설 음량<input type="range" min="0" max="1" step="0.05" value={d.plan.voiceVolume} onChange={e=>change({voiceVolume:+e.target.value})}/>{Math.round(d.plan.voiceVolume*100)}%</label></div><p>등장인물 대사 구간은 원본 소리를 그대로 유지합니다.</p></details>
           <details><summary>원본 대본 확인 / 직접 가져오기</summary>{d.original && <pre>{d.original}</pre>}{d.textBackup&&<details><summary>문자 정리 전 편집 원문</summary><pre>{JSON.stringify(d.textBackup,null,2)}</pre></details>}<textarea aria-label="가져올 원본 대본" rows={6} value={raw} onChange={e=>setRaw(e.target.value)} placeholder="한글 나레이션 및 자막 부분을 붙여넣으세요"/><button onClick={()=>{try{const p=importEpisode({duration:d.plan.duration,korean:raw,title:d.plan.title,thumbnail:d.plan.thumbnail});setD(v=>({...v,plan:{...v.plan,narration:p.narration,captions:p.captions,importWarning:p.importWarning},original:raw}));setMessage('대본을 가져오고 깨질 수 있는 문자를 정리했습니다. 해설과 자막을 확인해주세요.');}catch(e){setMessage(e.message);}}}>대본에서 나레이션·자막 가져오기</button></details>
         </article>
-        <article hidden={stage!=='captions'}><h3>3. 대사 자막</h3><p>제목자막과 별도 도입 없이 본편부터 시작합니다. 대사자막은 실제 발화 시간에 맞추며, 등장인물의 원본 목소리는 유지합니다. 확인 표시가 있는 문장만 검토하세요.</p><p className="ori-note">이모티콘과 지원되지 않는 장식 문자는 자동 정리합니다. 한글·영문·숫자·일반 문장부호는 유지합니다.</p>
-          <details><summary>원본 영상·대사 들으며 시간 확인</summary><p>원본 재생 시간은 각 영상의 0초부터 시작합니다. 자막 시간은 완성 영상 전체 기준입니다{d.plan.duration===15&&d.plan.videoLayout!=='single'?' (1번: 0초, 2번: 4초, 3번: 8초, 4번: 11초부터).':'.'}</p>{stage==='captions'&&d.videos.map((file,index)=>file&&<SourcePreview key={`${d.id}-${index}`} file={file} index={index}/>)}</details>
+        <article hidden={stage!=='captions'}><h3>{clinic?'2. 화면 자막':'3. 대사 자막'}</h3><p>{clinic?'문구와 시작·끝 시간을 확인하세요. 자막은 소화불량 영상과 같은 글꼴·색·테두리로 화면 위에 표시됩니다.':'제목자막과 별도 도입 없이 본편부터 시작합니다. 대사자막은 실제 발화 시간에 맞추며, 등장인물의 원본 목소리는 유지합니다. 확인 표시가 있는 문장만 검토하세요.'}</p><p className="ori-note">이모티콘과 지원되지 않는 장식 문자는 자동 정리합니다. 한글·영문·숫자·일반 문장부호는 유지합니다.</p>
+          {clinic&&<>
+            {stage==='captions'&&<ClinicCaptionPreview key={d.id} plan={d.plan} file={d.videos[0]} onBusy={setPreviewBusy} loadPreview={async plan=>JSON.parse(await (await request('caption-preview',{plan})).text())}/>}
+            <label className="ori-check"><input type="checkbox" checked={d.plan.clinicBrandStart!==undefined} onChange={e=>change({clinicBrandStart:e.target.checked?Math.max(0,d.plan.duration-5):undefined})}/>마지막 장면 아래에 ‘오리한의원’ 표시</label>
+            {d.plan.clinicBrandStart!==undefined&&<label>한의원명 시작(초)<input type="number" min="0" max={d.plan.duration+0.49} step="0.01" value={d.plan.clinicBrandStart} onChange={e=>change({clinicBrandStart:+e.target.value})}/><span>이 시점부터 원본 영상 끝까지 표시합니다.</span></label>}
+            <details><summary>자막 대본 가져오기</summary>{d.original&&<pre>{d.original}</pre>}<textarea aria-label="가져올 자막 대본" rows={6} value={raw} onChange={e=>setRaw(e.target.value)} placeholder={'화면 자막: 0~3초 드디어 내 시간\n화면 자막: 3~5초 잠깐만 쉬고…'}/><button onClick={()=>{try{const p=importEpisode({duration:d.plan.duration,videoLayout:'single',captionStyle:'clinic',korean:raw,title:d.plan.title,thumbnail:d.plan.thumbnail});if(p.narration.trim())throw Error('해설이 포함되어 있습니다. 화면 자막 문구와 시간만 가져와주세요.');setD(v=>({...v,plan:{...v.plan,captions:p.captions,importWarning:undefined},original:raw}));setMessage('자막을 가져왔습니다. 실제 영상에 맞춰 시간을 확인해주세요.');}catch(e){setMessage(e instanceof Error?e.message:'자막을 가져오지 못했습니다.');}}}>문구·시간 가져오기</button></details>
+          </>}
+          <details hidden={clinic}><summary>원본 영상·대사 들으며 시간 확인</summary><p>원본 재생 시간은 각 영상의 0초부터 시작합니다. 자막 시간은 완성 영상 전체 기준입니다{d.plan.duration===15&&d.plan.videoLayout!=='single'?' (1번: 0초, 2번: 4초, 3번: 8초, 4번: 11초부터).':'.'}</p>{!clinic&&stage==='captions'&&d.videos.map((file,index)=>file&&<SourcePreview key={`${d.id}-${index}`} file={file} index={index}/>)}</details>
           {d.plan.captions.map((c, i) => <div className="ori-caption-card" key={i}>
-            <div className="ori-caption-heading"><strong>{i+1}. {c.source==='dialogue'?'등장인물 대사':c.source==='screen'?'화면 문구':'해설'}</strong><span>{c.start.toFixed(2)}–{c.end.toFixed(2)}초</span></div>
+            <div className="ori-caption-heading"><strong>{i+1}. {clinic?'화면 자막':c.source==='dialogue'?'등장인물 대사':c.source==='screen'?'화면 문구':'해설'}</strong><span>{c.start.toFixed(2)}–{c.end.toFixed(2)}초</span></div>
             <label>자막 {i+1}<textarea rows={2} maxLength={160} value={c.text} onChange={e=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,text:e.target.value}:r)})} onBlur={cleanText}/></label>
             {c.review&&<p className="ori-note">{c.review}<button onClick={()=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,review:undefined}:r)})}>이 자막 확인했음</button></p>}
-            <details><summary>종류·시간 조절 / 삭제</summary><div className="ori-row">
-              <label>자막 종류<select value={c.source||'narration'} onChange={e=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,source:e.target.value as any}:r)})}><option value="narration">해설</option><option value="dialogue">등장인물 대사</option><option value="screen">화면 문구 · 시간 유지</option></select></label>
-              <label>시작(초)<input type="number" min="0" max={d.plan.duration} step="0.1" value={Number(c.start.toFixed(2))} onChange={e=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,start:+e.target.value}:r)})}/></label>
-              <label>끝(초)<input type="number" min="0" max={d.plan.duration} step="0.1" value={Number(c.end.toFixed(2))} onChange={e=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,end:+e.target.value}:r)})}/></label>
+            <details open={clinic||undefined}><summary>{clinic?'시간 조절 / 삭제':'종류·시간 조절 / 삭제'}</summary><div className="ori-row">
+              <label hidden={clinic}>자막 종류<select value={c.source||'narration'} onChange={e=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,source:e.target.value as any}:r)})}><option value="narration">해설</option><option value="dialogue">등장인물 대사</option><option value="screen">화면 문구 · 시간 유지</option></select></label>
+              <label>시작(초)<input type="number" min="0" max={d.plan.duration+(clinic?0.5:0)} step="0.01" value={Number(c.start.toFixed(2))} onChange={e=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,start:+e.target.value}:r)})}/></label>
+              <label>끝(초)<input type="number" min="0" max={d.plan.duration+(clinic?0.5:0)} step="0.01" value={Number(c.end.toFixed(2))} onChange={e=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,end:+e.target.value}:r)})}/></label>
               <button onClick={()=>change({captions:d.plan.captions.filter((_,n)=>n!==i)})}>자막 {i+1} 삭제</button>
             </div></details>
           </div>)}
-          <button disabled={d.plan.captions.length >= 30} onClick={() => { const start = d.plan.captions.at(-1)?.end || 0; if (start < d.plan.duration) change({ captions: [...d.plan.captions, { start, end: d.plan.duration, text: '' }] }); }}>자막 추가</button>
+          <button disabled={d.plan.captions.length >= 30} onClick={() => { const start = d.plan.captions.at(-1)?.end || 0; if (start < d.plan.duration) change({ captions: [...d.plan.captions, { start, end: d.plan.duration, text: '', ...(clinic?{source:'screen' as const}:{}) }] }); }}>자막 추가</button>
         </article>
         <div className="ori-step-next">
-          {stage==='videos'&&<><p className="ori-next">{lengths.some((_,i)=>!d.videos[i])?'각 칸에 Kling 영상 파일을 넣어주세요.':'영상 입력 완료. 해설과 자막을 준비할 차례입니다.'}</p><button className="ori-primary ori-finish" disabled={lengths.some((_,i)=>!d.videos[i])} onClick={()=>setStage('voice')}>다음: 음성·자막 준비</button></>}
+          {stage==='videos'&&<><p className="ori-next">{lengths.some((_,i)=>!d.videos[i])?'각 칸에 Kling 영상 파일을 넣어주세요.':clinic?'영상 입력 완료. 자막 문구와 시간을 확인해주세요.':'영상 입력 완료. 해설과 자막을 준비할 차례입니다.'}</p><button className="ori-primary ori-finish" disabled={lengths.some((_,i)=>!d.videos[i])} onClick={()=>setStage(clinic?'captions':'voice')}>{clinic?'다음: 자막 확인':'다음: 음성·자막 준비'}</button></>}
           {stage==='voice'&&voiceCurrent&&syncCurrent&&<button className="ori-primary ori-finish" onClick={()=>setStage('captions')}>미리듣기 확인 후 자막 확인하기</button>}
           {stage==='voice'&&lengths.some((_,i)=>!d.videos[i])&&<button onClick={()=>setStage('videos')}>먼저 Kling 영상 넣기</button>}
           {stage==='captions'&&<><p className="ori-next">{!syncCurrent?'음성·자동 싱크를 먼저 준비해주세요.':d.plan.captions.some(c=>c.review)?'확인 표시가 있는 자막을 검토해주세요.':'문구와 시간을 확인한 뒤 MP4를 만드세요.'}</p>{!syncCurrent&&<button onClick={()=>setStage('voice')}>음성·자동 싱크로 이동</button>}</>}
           {stage==='result'&&!resultURL&&<><p>아직 완성 영상이 없습니다.</p><button className="ori-primary" onClick={()=>setStage(draftStage(d))}>편집 이어하기</button></>}
         </div>
-        {stage==='captions'&&<button className="ori-primary ori-finish" disabled={!voiceCurrent || !syncCurrent || d.plan.captions.some(c=>c.review) || lengths.some((_,i)=>!d.videos[i]) || finishedCurrent} onClick={makeVideo}>{busy?'처리 중…':finishedCurrent?'현재 설정으로 완성됨':'음성·자막 넣고 영상 완성'}</button>}
+        {stage==='captions'&&<button className="ori-primary ori-finish" disabled={!voiceCurrent || !syncCurrent || d.plan.captions.some(c=>c.review) || lengths.some((_,i)=>!d.videos[i]) || finishedCurrent} onClick={makeVideo}>{busy?'처리 중…':finishedCurrent?'현재 설정으로 완성됨':clinic?'자막 넣고 영상 완성':'음성·자막 넣고 영상 완성'}</button>}
         {stage==='captions'&&finishedCurrent&&<button className="ori-primary ori-finish" onClick={()=>setStage('result')}>완성 영상 확인·저장</button>}
         <details className="ori-editor-manage"><summary>다른 편집 고르기 / 새 편집</summary><div className="ori-row"><label>편집할 콘텐츠<select value={d.id} onChange={e => { const id = e.target.value; run(async () => { await saver.current!.flush(); const loaded = await editorStore<Draft>(id); if (loaded) loadDraft(loaded); }); }}><option value={d.id}>{d.plan.title || '새 편집'}</option>{saved.filter(x => x.id !== d.id).map(x => <option key={x.id} value={x.id}>{x.title} · {draftProgress(x).label}</option>)}</select></label><button onClick={() => run(async () => { await saver.current!.flush(); setD(fresh()); setStage('videos'); setRaw(''); setConsent(false); setMessage('새 영상과 대본을 넣어주세요.'); })}>새 편집</button></div></details>
       </fieldset>

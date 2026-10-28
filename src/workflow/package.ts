@@ -8,7 +8,13 @@ export const MAX_PACKAGE_BYTES = 48 * 1024 * 1024;
 const text = (v: unknown, max: number) => typeof v === 'string' && v.length <= max;
 export function sourceEpisode(v: any): SourceEpisode {
   if (!v || ![5,15,30].includes(v.duration) || !text(v.korean,20000) || !text(v.scenario,40000) || !text(v.title,1000) || !text(v.thumbnail,3000) || !text(v.caption || '',5000)) throw Error('주간 대본의 형식을 확인해주세요.');
-  return {duration:v.duration,title:v.title,korean:v.korean,scenario:v.scenario,thumbnail:v.thumbnail,caption:v.caption||''};
+  if (v.videoLayout !== undefined && !['single','legacy-clips'].includes(v.videoLayout)) throw Error('영상 입력 방식을 확인해주세요.');
+  if (v.captionStyle !== undefined && !['clinic','legacy'].includes(v.captionStyle)) throw Error('자막 스타일을 확인해주세요.');
+  if (v.clinicBrandStart !== undefined && (v.captionStyle !== 'clinic' || !Number.isFinite(v.clinicBrandStart) || v.clinicBrandStart < 0 || v.clinicBrandStart >= v.duration + 0.5)) throw Error('한의원명 표시 시간을 확인해주세요.');
+  return {duration:v.duration,title:v.title,korean:v.korean,scenario:v.scenario,thumbnail:v.thumbnail,caption:v.caption||'',
+    ...(v.videoLayout !== undefined ? {videoLayout:v.videoLayout} : {}),
+    ...(v.captionStyle !== undefined ? {captionStyle:v.captionStyle} : {}),
+    ...(v.clinicBrandStart !== undefined ? {clinicBrandStart:v.clinicBrandStart} : {})};
 }
 export function recordDuration(item: HistoryItem): 5|15|30 {
   const plan=getKling4Plan(item.result);
