@@ -94,7 +94,12 @@ export function HistoryContent({
   };
 
   return (
-    <WorkspaceTabs reelsCaption={socialCaption.text} label="기록 작업" defaultTab="content" tabs={[
+    <WorkspaceTabs reelsCaption={socialCaption.text} label="기록 작업" defaultTab="content" primaryAction={viewingItem && <button
+      type="button"
+      onClick={onEdit}
+      disabled={busy || !mediaReady || Object.values(generatingImages).some(Boolean)}
+      className="w-full min-h-12 shrink-0 rounded-xl bg-[#552c24] px-4 py-3 text-base font-bold text-[#ffcd4a] hover:bg-[#552c24]/90 disabled:opacity-45 disabled:cursor-not-allowed focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#b88649]"
+    >완성영상 편집하기</button>} tabs={[
       { id: 'content', label: '기획', content: <div className="flex-1 flex flex-col gap-6 pb-8">
       {!kling4&&<div className="ori-workflow"><p>이 제작안은 이전 클립 방식입니다.</p><button disabled={busy||!mediaReady} onClick={onKling4Copy}>Kling 4.0 작업으로 복사</button><p>이미지와 대본을 보관하고 새 작업을 만듭니다.</p></div>}
       {isAuthoredPlan(result) && <p className="ori-authored-note">완성 제작안 · 프롬프트 그대로 사용</p>}
