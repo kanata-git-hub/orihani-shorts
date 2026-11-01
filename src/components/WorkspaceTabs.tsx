@@ -8,11 +8,12 @@ interface WorkspaceTab {
   content: ReactNode;
 }
 
-export function WorkspaceTabs({ label, tabs, defaultTab, reelsCaption }: {
+export function WorkspaceTabs({ label, tabs, defaultTab, reelsCaption, primaryAction }: {
   label: string;
   tabs: WorkspaceTab[];
   defaultTab: string;
   reelsCaption?: string;
+  primaryAction?: ReactNode;
 }) {
   const prefix = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -60,6 +61,7 @@ export function WorkspaceTabs({ label, tabs, defaultTab, reelsCaption }: {
   };
 
   return <div ref={root} className="ori-workspace-tabs">
+    {primaryAction}
     <div className="ori-workspace-menu">
     <select className="ori-workspace-select" aria-label={`${label} 메뉴`} value={active} onChange={event=>select(event.target.value)}>
       {tabs.map(tab=><option key={tab.id} value={tab.id}>{tab.label}</option>)}

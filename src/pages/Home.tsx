@@ -2,7 +2,7 @@ import { Kling4Start } from '../workflow/Kling4Start';
 import { Kling4Workspace } from '../workflow/Kling4Workspace';
 import { getKling4Plan, legacyKling4Copy } from '../kling4';
 import { ImageChecks } from '../components/ImageChecks';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { SourceEpisode } from '../types';
 import { HistoryItem } from '../types';
 import { WeeklyScript } from '../workflow/WeeklyScript';
@@ -68,6 +68,10 @@ export default function App() {
   const [customPrompt, setCustomPrompt] = useState("");
   const [manualPlanOpen, setManualPlanOpen] = useState(false);
   const [view, setView] = useState<'15s-plan' | '5s-plan' | 'scenario' | 'prompts' | 'history' | 'editor'>('15s-plan');
+  const historyContentRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (view === 'history' && viewingHistoryId) historyContentRef.current?.scrollTo({ top: 0 });
+  }, [view, viewingHistoryId]);
 
   const {
     isGenerating,
@@ -294,7 +298,7 @@ export default function App() {
         )}
 
         {view === 'history' && (
-          <section data-workspace-scroll className={`ori-workspace-scroll ori-history-content ${!viewingHistoryId?'ori-history-content-empty':''} flex-1 min-w-0 p-4 md:p-6 lg:p-10 flex flex-col gap-6 overflow-y-auto bg-[#ffffff]`}>
+          <section ref={historyContentRef} data-workspace-scroll className={`ori-workspace-scroll ori-history-content ${!viewingHistoryId?'ori-history-content-empty':''} flex-1 min-w-0 p-4 md:p-6 lg:p-10 flex flex-col gap-6 overflow-y-auto bg-[#ffffff]`}>
             <button disabled={locked} className="ori-history-back" onClick={()=>setViewingHistoryId(null)}>← 다른 기록 고르기</button>
             <div className="max-w-4xl w-full mx-auto flex flex-col gap-6">
               <ImageChecks targetId={targetId} busy={locked} onCheck={checkImageCandidate} onApply={handleApplyImage}/>
