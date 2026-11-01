@@ -9,7 +9,7 @@
     "start": "NODE_ENV=production node --max-old-space-size=256 server-dist/server.cjs",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "test:security": "node --experimental-strip-types --test tests/security.test.ts tests/auth-fetch.test.cjs",
+    "test:security": "node --experimental-strip-types --test tests/security.test.ts tests/auth-fetch.test.cjs tests/dependency-compat.test.cjs",
     "test:rules": "node --test tests/firestore-security.cjs"
   },
   "dependencies": {
@@ -49,6 +49,9 @@
     "qs": "6.16.1",
     "tsx": {
       "esbuild": "^0.28.1"
+    },
+    "rimraf": {
+      "glob": "14.0.3"
     }
   }
 }

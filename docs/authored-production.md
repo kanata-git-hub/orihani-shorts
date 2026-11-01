@@ -172,6 +172,18 @@ already accepts these work files without text generation. Label these as new
 records, preserve all old footage, and do not press legacy prompt regeneration.
 # Weekly picker discovery
 
+The current weekly lineup is three 15-second sitcom episodes and two 15-second
+clinic empathy Shorts. Save the clinic companion separately as
+`[YYYY-MM-DD] 한의원 쇼츠 01-02 제작안.json` (advance its independent numbering
+on later weeks). Use the same date as the main weekly package. The picker loads
+the latest modified clinic companion for that date alongside the main package;
+it excludes other dates, work exports and review files. Keep each production file
+within its 1–3 episode limit. Do not rename clinic Shorts as bonuses or require a
+manual work-file import to finish this handoff. Each selected clinic episode must
+load its existing images and retain its explicit clinic caption settings through
+the editor. Display its formal `한의원 쇼츠 NN 부제` title without parser markers.
+The legacy bonus rules below preserve older work; they do not request new bonuses.
+
 The automatic picker loads the latest dated main package plus the bonus production
 file with the same date from the existing weekly folder. Name that companion
 `[YYYY-MM-DD] 번외 05-06 제작안.json` (or `[YYYY-MM-DD] 번외 제작안.json`).
