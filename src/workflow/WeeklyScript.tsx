@@ -39,7 +39,8 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
   };
   useEffect(()=>{void latest();return()=>{revision.current++;};},[]);
   const chosen=episodes[index];
-  const bonusCount=episodes.filter(e=>/^(?:\[에피소드\s*\d+\]\s*)?번외\s*\d+/.test(e.title)).length;
+  const clinicCount=episodes.filter(e=>e.captionStyle==='clinic').length;
+  const bonusCount=episodes.filter(e=>e.captionStyle!=='clinic'&&/^(?:\[에피소드\s*\d+\]\s*)?번외\s*\d+/.test(e.title)).length;
   const choose=async()=>{
     if(!chosen||disabled||opening)return;
     interrupt();
@@ -54,7 +55,7 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
     <div className="ori-weekly-heading"><h2>제작안에서 시작</h2><button type="button" disabled={disabled||loading||opening} aria-label="최신 제작안 다시 확인" title="최신 제작안 다시 확인" onClick={()=>void latest(true)}><RefreshCw size={18} className={loading?'animate-spin':''} aria-hidden="true"/></button></div>
     <p role="status" aria-live="polite" className={chosen&&!loading&&!opening&&!openError?'sr-only':''}>{message}</p>
     {chosen&&<>
-      <p className="ori-episode-meta">선택 가능한 제작안 {episodes.length}편{bonusCount>0&&` · 본편 ${episodes.length-bonusCount}편 · 번외 ${bonusCount}편`}</p>
+      <p className="ori-episode-meta">선택 가능한 제작안 {episodes.length}편{(bonusCount>0||clinicCount>0)&&` · 본편 ${episodes.length-bonusCount-clinicCount}편`}{clinicCount>0&&` · 한의원 쇼츠 ${clinicCount}편`}{bonusCount>0&&` · 번외 ${bonusCount}편`}</p>
       <label className="ori-episode-select"><span className="sr-only">만들 에피소드</span><select disabled={disabled} value={index} onChange={e=>{interrupt();const n=Number(e.target.value);setIndex(n);selectedTitle.current=episodes[n].title;}}>{episodes.map((e,i)=><option key={i} value={i}>{e.title}</option>)}</select></label>
       <p className="ori-episode-meta">{chosen.duration}초{chosen.prepared&&` · 이미지 ${(chosen.prepared.plan.keyframes||chosen.prepared.plan.clips).length}장${chosen.prepared.assets?' 준비됨':''} · 영상 ${chosen.prepared.plan.workflow==='kling4'||chosen.duration===5?1:4}개`}</p>
       <button disabled={disabled||loading||opening} className="ori-workflow-primary" onClick={choose}>{opening?'그림까지 불러오는 중…':chosen.prepared?'이 제작안으로 시작':'이 에피소드로 기획 준비'}</button>

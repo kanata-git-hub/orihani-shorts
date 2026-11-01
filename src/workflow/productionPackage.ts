@@ -91,12 +91,20 @@ export function readProductionPackage(raw: string): ProductionPackage {
   return { format: 'orihani-production', version: 1, revision: value.revision, episodes };
 }
 
+// The numeric prefix belongs to the production-file validator. Clinic work uses
+// its independent, official series title in the picker, history and video editor.
+function authoredEpisode(entry: PreparedEpisode): SourceEpisode {
+  return entry.episode.captionStyle === 'clinic'
+    ? {...entry.episode, title: entry.plan.title}
+    : entry.episode;
+}
+
 export function readWeeklyInput(raw: string): WeeklyChoice[] {
   const clean = raw.replace(/^\uFEFF/, '').trim();
   if (!clean.startsWith('{')) return parseWeekly(raw);
   const pack = readProductionPackage(clean);
   return pack.episodes.map(prepared => ({
-    ...prepared.episode, characters: [prepared.characterId], prepared, preparedRevision: pack.revision,
+    ...authoredEpisode(prepared), characters: [prepared.characterId], prepared, preparedRevision: pack.revision,
   }));
 }
 
@@ -119,7 +127,7 @@ export function preparedHistory(entry: PreparedEpisode, revision: string): Histo
   const checked = readProductionPackage(JSON.stringify({ format: 'orihani-production', version: 1, revision, episodes: [entry] })).episodes[0];
   return {
     id: crypto.randomUUID(), timestamp: Date.now(), characterId: checked.characterId,
-    duration: checked.episode.duration, episode: checked.episode,
+    duration: checked.episode.duration, episode: authoredEpisode(checked),
     result: JSON.stringify({ ...checked.plan, productionSource: 'authored', productionRevision: revision }),
   };
 }
