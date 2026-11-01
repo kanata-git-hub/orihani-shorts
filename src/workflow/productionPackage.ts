@@ -113,11 +113,15 @@ export function readWeeklyInput(raw: string): WeeklyChoice[] {
 export function readWeeklySources(sources: string[]): WeeklyChoice[] {
   if (!Array.isArray(sources) || !sources.length || sources.length > MAX_WEEKLY_SOURCES || sources.some(s => typeof s !== 'string')) fail('주간 제작안 목록을 확인해주세요.');
   const choices = sources.flatMap(readWeeklyInput);
-  const seen = new Set<string>();
+  const seen = new Set<string>(), clinicNumbers = new Set<number>();
   for (const choice of choices) {
     const key = choice.prepared ? `${choice.preparedRevision}:${choice.prepared.number}` : choice.title;
     if (seen.has(key)) fail('주간 제작안의 회차와 버전이 중복됩니다.');
     seen.add(key);
+    if (choice.captionStyle === 'clinic' && choice.prepared) {
+      if (clinicNumbers.has(choice.prepared.number)) fail('한의원 쇼츠 회차가 중복됩니다. 교체된 추가 제작안을 확인해주세요.');
+      clinicNumbers.add(choice.prepared.number);
+    }
   }
   return choices;
 }

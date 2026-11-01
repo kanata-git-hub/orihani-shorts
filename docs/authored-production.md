@@ -184,6 +184,34 @@ load its existing images and retain its explicit clinic caption settings through
 the editor. Display its formal `한의원 쇼츠 NN 부제` title without parser markers.
 The legacy bonus rules below preserve older work; they do not request new bonuses.
 
+For clinic reserve episodes that must remain selectable after the next weekly
+package arrives, use explicit additions in the same folder:
+`[YYYY-MM-DD] 한의원 쇼츠 추가 03-04 제작안.json` and
+`[YYYY-MM-DD] 한의원 쇼츠 추가 05-06 제작안.json`. Use the actual authoring date;
+an addition becomes eligible when that date is no later than the current main
+package date. Only these explicit clinic additions persist across weeks. Ordinary
+clinic companions keep the current-date-only rule above. Thus a future 07–08
+companion does not hide retained 03–06 reserve episodes or revive older companions.
+
+Each clinic filename range must match its 1–3 consecutive clinic episode numbers.
+Use a unique revision for each source, preserve its image manifest and caption
+metadata, and validate/read back the complete file before using the final name.
+The newest dated addition wins per range, then modified time breaks same-date
+ties; zero padding, spacing and hyphen/middle-dot separators normalize together.
+A same/later dated ordinary clinic companion for exactly the same range supersedes
+that addition, including on subsequent weeks; its historical episodes are not
+re-added to the picker. A later dated explicit addition can activate that range
+again. Partially overlapping ranges or repeated clinic numbers fail visibly
+instead of hiding unrelated episodes or offering two versions. To retire an
+addition, move it to the established archive folder or rename it outside the exact
+addition pattern; keep the original files and their existing sharing permissions.
+
+The existing limit of eight source files also includes retained clinic additions.
+Three main episodes, a current clinic pair and two reserve pairs use four source
+files and appear as nine choices through the normal start button. Every file still
+has at most three episodes. Source revision plus episode number continues to select
+the matching images; no manual import, prompt rewriting or generation is required.
+
 The automatic picker loads the latest dated main package plus the bonus production
 file with the same date from the existing weekly folder. Name that companion
 `[YYYY-MM-DD] 번외 05-06 제작안.json` (or `[YYYY-MM-DD] 번외 제작안.json`).
@@ -199,7 +227,7 @@ To add a separate episode without replacing that companion, use an explicit addi
 not the day the addition was authored. The most recently modified file wins per
 addition label; zero padding, spacing and the hyphen/middle-dot separator normalize
 to the same label. Older ordinary bonus bundles remain excluded. Up to eight source
-files (main, current companion and additions) are accepted; overflow fails visibly.
+files (main, current clinic/bonus companions and additions) are accepted; overflow fails visibly.
 Keep each addition's revision unique so repeated numeric episode IDs still resolve
 their own images. The normal start button imports the selected addition unchanged.
 
