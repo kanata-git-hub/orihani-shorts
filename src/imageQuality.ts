@@ -1,4 +1,4 @@
-export const IMAGE_MODELS = ['gemini-3.1-flash-image', 'gemini-3-pro-image'] as const;
+export const IMAGE_MODELS = ['gemini-nano-banana-2.1', 'gemini-3-pro-image'] as const;
 export type ImageModel = typeof IMAGE_MODELS[number];
 export const MAX_IMAGE_EDITS = 3;
 export const MAX_IMAGE_ATTEMPTS = 1 + MAX_IMAGE_EDITS;

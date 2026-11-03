@@ -16,9 +16,11 @@ const reviewSchema = { type: 'OBJECT', properties: { issues: { type: 'ARRAY', ma
 export function readImageRequest(body: any) {
   const operation: ImageOperation = body?.operation ?? 'generate';
   if (!['generate','compare','review','repair'].includes(operation)) throw Error('지원하지 않는 이미지 작업입니다.');
-  const model = body?.imageModel ?? IMAGE_MODELS[0];
+  // Keep already-open browser tabs working without calling the retired model.
+  const requestedModel = body?.imageModel ?? IMAGE_MODELS[0];
+  const model = requestedModel === 'gemini-3.1-flash-image' ? IMAGE_MODELS[0] : requestedModel;
   if (!IMAGE_MODELS.includes(model)) throw Error('지원하지 않는 이미지 모델입니다.');
-  if (operation !== 'compare' && model !== IMAGE_MODELS[0]) throw Error('반복 작업에는 Flash Image만 사용할 수 있습니다.');
+  if (operation !== 'compare' && model !== IMAGE_MODELS[0]) throw Error('반복 작업에는 Nano Banana 2.1만 사용할 수 있습니다.');
   const candidate = body?.candidate;
   if (operation === 'review' || operation === 'repair') {
     if (!isImageData(candidate) || candidate.length > 16000000) throw Error('검수할 기존 그림을 확인해주세요.');
