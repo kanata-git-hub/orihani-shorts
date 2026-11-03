@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const compiled = path.join(root, '.editor-test');
 fs.mkdirSync(compiled, { recursive: true });
 fs.writeFileSync(path.join(compiled, 'package.json'), '{"type":"commonjs"}');
-for (const f of ['src/kling4.ts','src/videoPrompt.ts','src/productionContinuity.ts','src/utils/clipTiming.ts','src/workflow/productionPackage.ts','src/referencePlan.ts','src/shotDirection.ts','src/sceneReference.ts','src/characterReference.ts','src/nooni.ts','src/backgroundAssets.ts','server/workflow/weekly.ts','server/workflow/weeklyImages.ts','src/workflow/importImage.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/clinicCaptions.ts', 'server/editor/typography.ts', 'serverSecurity.ts', 'server/editor/mediaInput.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
+for (const f of ['src/kling4.ts','src/videoPrompt.ts','src/productionContinuity.ts','src/utils/clipTiming.ts','src/workflow/productionPackage.ts','src/referencePlan.ts','src/shotDirection.ts','src/sceneReference.ts','src/characterReference.ts','src/nooni.ts','src/backgroundAssets.ts','server/workflow/weekly.ts','server/workflow/weeklyImages.ts','src/workflow/importImage.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/clinicCaptions.ts', 'server/editor/typography.ts', 'serverSecurity.ts', 'server/editor/mediaInput.ts', 'server/editor/mediaProcess.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
   const dest = path.join(compiled, f.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
@@ -566,6 +566,37 @@ const clinicPlan = (patch = {}) => ({...defaultPlan(), duration:15, videoLayout:
   captions:[{start:0,end:3,text:'드디어 내 시간',source:'screen'},{start:3,end:5,text:'잠깐만 쉬고…',source:'screen'},
   {start:5,end:9.166667,text:'어… 벌써 끝났어?',source:'screen'},{start:12.5,end:15,text:'오늘도 회사만 다녀왔네',source:'screen'}],
   clinicBrandStart:9.166667, ...patch});
+
+test('render and caption subprocesses do not inherit server configuration', async t => {
+  const childProcess = require('node:child_process');
+  const { generateClinicOverlays } = require(path.join(compiled, 'server/editor/clinicCaptions.js'));
+  const excluded = ['GEMINI_API_KEY', 'WEEKLY_DRIVE_API_KEY', 'GOOGLE_APPLICATION_CREDENTIALS', 'FUTURE_SERVICE_TOKEN', 'PYTHONPATH', 'HTTPS_PROXY'];
+  const saved = excluded.map(key => process.env[key]);
+  const probe = `
+    if (${JSON.stringify(excluded)}.some(key => key in process.env) ||
+        process.env.PYTHONUTF8 !== '1' || !process.env.PATH) process.exit(1);
+    process.stdout.write(JSON.stringify({captions: []}));
+  `;
+  const realSpawn = childProcess.spawn;
+  const calls = [];
+  t.mock.method(childProcess, 'spawn', (binary, _args, options) => {
+    calls.push(binary);
+    return realSpawn(process.execPath, ['-e', probe], options);
+  });
+  const dir = fs.mkdtempSync(path.join(compiled, 'media-env-'));
+  try {
+    for (const key of excluded) process.env[key] = 'synthetic-media-test';
+    await command('ffmpeg-probe', [], dir);
+    await generateClinicOverlays(clinicPlan({captions: [], clinicBrandStart: undefined}), dir);
+    assert.deepEqual(calls, ['ffmpeg-probe', process.env.EDITOR_PYTHON_PATH || 'python3']);
+  } finally {
+    excluded.forEach((key, i) => {
+      if (saved[i] === undefined) delete process.env[key];
+      else process.env[key] = saved[i];
+    });
+    fs.rmSync(dir, {recursive: true, force: true});
+  }
+});
 
 test('clinic editing keeps the no-API path separate from legacy speech and saved results', () => {
   const plan=clinicPlan(); validatePlan(plan);
