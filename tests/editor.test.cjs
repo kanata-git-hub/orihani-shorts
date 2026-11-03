@@ -598,6 +598,44 @@ test('render and caption subprocesses do not inherit server configuration', asyn
   }
 });
 
+test('cancelled media jobs shut down before their callers can release the editor slot', {timeout: 20000}, async t => {
+  const childProcess = require('node:child_process');
+  const { generateClinicOverlays } = require(path.join(compiled, 'server/editor/clinicCaptions.js'));
+  const dir = fs.mkdtempSync(path.join(compiled, 'media-abort-'));
+  t.after(() => fs.rmSync(dir, {recursive: true, force: true}));
+  const jobs = [
+    signal => command('ffmpeg-probe', [], dir, signal),
+    signal => generateClinicOverlays(clinicPlan({captions: [], clinicBrandStart: undefined}), dir, signal),
+  ];
+  for (const start of jobs) {
+    const controller = new AbortController();
+    let child, closed = false, ready, finish;
+    const started = new Promise(resolve => { ready = resolve; });
+    const stopped = new Promise(resolve => { finish = resolve; });
+    const realSpawn = childProcess.spawn;
+    const mock = t.mock.method(childProcess, 'spawn', (_binary, _args, options) => {
+      const program = "process.on('SIGTERM', () => {}); process.stdout.write('ready'); setInterval(() => {}, 1000)";
+      child = realSpawn(process.execPath, ['-e', program], options);
+      child.stdout.once('data', ready);
+      child.once('close', () => { closed = true; finish(); });
+      return child;
+    });
+    try {
+      const rejected = assert.rejects(start(controller.signal), {name: 'AbortError'});
+      await started;
+      controller.abort();
+      await rejected;
+      assert.ok(closed, 'job rejected before its child closed');
+      assert.equal(child.signalCode, 'SIGKILL');
+    } finally {
+      if (child && !closed) child.kill('SIGKILL');
+      if (child) await stopped;
+      mock.mock.restore();
+    }
+  }
+  await assert.rejects(command(path.join(dir, 'missing-binary'), [], dir), {code: 'ENOENT'});
+});
+
 test('clinic editing keeps the no-API path separate from legacy speech and saved results', () => {
   const plan=clinicPlan(); validatePlan(plan);
   const video=new File(['video'],'source.mp4',{lastModified:1});

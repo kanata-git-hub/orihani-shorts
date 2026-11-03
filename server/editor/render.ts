@@ -1,6 +1,6 @@
 import { uploadedMediaInput } from './mediaInput';
 import { clipLengths } from '../../src/editor/media';
-import { spawnMediaProcess } from './mediaProcess';
+import { runMediaProcess } from './mediaProcess';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { EditPlan } from '../../src/editor/model';
@@ -9,14 +9,7 @@ import { fitVideoText } from './typography';
 import { renderClinic } from './clinicCaptions';
 
 export function command(binary: string, args: string[], cwd: string, signal?: AbortSignal): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = spawnMediaProcess(binary, args, cwd, signal);
-    let log = ''; const collect = (b: Buffer) => { log = (log + b.toString()).slice(-24000); };
-    child.stderr.on('data', collect); child.stdout.on('data', collect);
-    const timer = setTimeout(() => child.kill('SIGKILL'), 240000);
-    child.on('error', e => { clearTimeout(timer); reject(e); });
-    child.on('close', code => { clearTimeout(timer); code === 0 ? resolve(log) : reject(Error('영상 처리에 실패했습니다. 파일 형식과 서버 로그를 확인해주세요.', { cause: log })); });
-  });
+  return runMediaProcess(binary, args, cwd, signal, () => '영상 처리에 실패했습니다. 파일 형식과 서버 로그를 확인해주세요.');
 }
 const ff = () => process.env.FFMPEG_PATH || 'ffmpeg';
 export async function inspect(file: string, cwd: string, signal?: AbortSignal) {
