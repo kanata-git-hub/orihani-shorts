@@ -13,7 +13,7 @@ const png='data:image/png;base64,AQID';
 const parts=[{text:'ORIGINAL ONE DUCK'}, {inlineData:{mimeType:'image/png',data:'AQID'}},{text:'START: One duck inside a bottomless box. Connected feet underneath.'}];
 function fakeAI(review='{"issues":[]}'){
  const calls=[];
- return {calls,models:{generateContent:async r=>{calls.push(r);if(r.model.includes('image'))return {modelVersion:r.model,candidates:[{content:{parts:[{inlineData:{mimeType:'image/png',data:'BAUG'}}]}}]};if(review instanceof Error)throw review;return {text:review};}}};
+ return {calls,models:{generateContent:async r=>{calls.push(r);if(IMAGE_MODELS.includes(r.model))return {modelVersion:r.model,candidates:[{content:{parts:[{inlineData:{mimeType:'image/png',data:'BAUG'}}]}}]};if(review instanceof Error)throw review;return {text:review};}}};
 }
 test('image comparison sends identical references/config, reviews real output and performs no retries',async()=>{
  const a=fakeAI(),b=fakeAI();
@@ -68,7 +68,7 @@ function sequenceAI(reviews,editError) {
  const calls=[];let imageCalls=0;
  return {calls,models:{generateContent:async r=>{
   calls.push(r);
-  if(r.model.includes('image')){
+  if(IMAGE_MODELS.includes(r.model)){
    imageCalls++;if(editError&&imageCalls===2)throw editError;
    return {modelVersion:r.model,candidates:[{content:{parts:[{inlineData:{mimeType:'image/png',data:['BAUG','BwgJ','CgsM','DQ4P'][imageCalls-1]}}]}}]};
   }
@@ -77,7 +77,7 @@ function sequenceAI(reviews,editError) {
 }
 test('normal image flow makes one targeted Flash edit and rechecks it before approval',async()=>{
  const ai=sequenceAI([badReview,'{"issues":[]}']);const r=await generateReviewedImage(ai,readImageRequest({parts}));
- assert.deepEqual(ai.calls.map(c=>c.model),['gemini-3.1-flash-image','gemini-3.8-flash','gemini-3.1-flash-image','gemini-3.8-flash']);
+ assert.deepEqual(ai.calls.map(c=>c.model),['gemini-nano-banana-2.1','gemini-3.8-flash','gemini-nano-banana-2.1','gemini-3.8-flash']);
  assert.equal(r.repairCount,1);assert.equal(r.attempts.length,2);assert.equal(approvedImage(r),'data:image/png;base64,BwgJ');
  assert.deepEqual(ai.calls[2].contents.parts.at(-2),{inlineData:{mimeType:'image/png',data:'BAUG'}});
  assert.match(ai.calls[2].contents.parts.at(-1).text,/Remove only the extra third foot/);
@@ -88,7 +88,7 @@ test('four failed candidates stop at the hard image-call cap and keep every cand
  const ai=sequenceAI(Array(4).fill(badReview)),r=await generateReviewedImage(ai,readImageRequest({parts}));
  assert.equal(ai.calls.length,8);assert.equal(r.repairCount,3);assert.equal(r.maxRepairs,3);
  assert.equal(r.attempts.length,4);assert.equal(approvedImage(r),undefined);assert.equal(r.candidate,'data:image/png;base64,DQ4P');
- assert.ok(ai.calls.every(c=>['gemini-3.1-flash-image','gemini-3.8-flash'].includes(c.model)));
+ assert.ok(ai.calls.every(c=>['gemini-nano-banana-2.1','gemini-3.8-flash'].includes(c.model)));
 });
 test('success after any repair stops immediately and each edit targets only the latest image and findings',async()=>{
  const fixes=['Remove the extra foot.','Restore the original glasses.','Close the starting-state door.'];
@@ -159,7 +159,7 @@ test('empty or truncated review recovers with one review-only retry and records 
  for(const broken of ['', '   ', '{"issues":[']){
   const ai=sequenceAI([broken,'{"issues":[]}']);
   const result=await generateReviewedImage(ai,readImageRequest({parts}));
-  assert.equal(ai.calls.filter(c=>c.model.includes('image')).length,1);
+  assert.equal(ai.calls.filter(c=>IMAGE_MODELS.includes(c.model)).length,1);
   assert.equal(ai.calls.length,3);assert.equal(result.review.status,'pass');
   assert.equal(result.attempts[0].reviewCalls.length,2);
   assert.deepEqual(ai.calls[1].contents,ai.calls[2].contents);
@@ -240,4 +240,15 @@ test('a failed new generation keeps the previous candidate available without app
  await hook.handleGenerateImage('first',scenes[0].prompt,0,scenes);
  assert.equal(reports[0][2].rows[0].candidate,png);assert.equal(reports[0][2].rows[0].result,undefined);
  assert.match(reports[0][2].rows[0].error,/이전 그림을 보관/);assert.equal(saves.length,0);
+});
+
+test('legacy browser image requests migrate before generation and retain reference inputs', async () => {
+ const ai=fakeAI();
+ const input=readImageRequest({parts,imageModel:'gemini-3.1-flash-image',operation:'compare'});
+ await generateReviewedImage(ai,input);
+ assert.equal(input.model,'gemini-nano-banana-2.1');
+ assert.equal(ai.calls[0].model,'gemini-nano-banana-2.1');
+ assert.deepEqual(ai.calls[0].contents.parts,parts);
+ assert.equal(ai.calls[0].config.imageConfig.imageSize,'1K');
+ assert.ok(ai.calls.every(c=>c.model!=='gemini-3.1-flash-image'));
 });
