@@ -6,6 +6,14 @@ on:
       - Dockerfile
       - docker/pillow-*.txt
       - tests/runtime-pillow.py
+      - tests/runtime-node.cjs
+      - tests/editor.test.cjs
+      - server/editor/**
+      - src/editor/**
+      - scripts/render-clinic-captions.py
+      - scripts/check-ubuntu-oval.py
+      - public/fonts/**
+      - src/*.ttf
       - .dockerignore
       - package.json
       - package-lock.json
@@ -16,6 +24,14 @@ on:
       - Dockerfile
       - docker/pillow-*.txt
       - tests/runtime-pillow.py
+      - tests/runtime-node.cjs
+      - tests/editor.test.cjs
+      - server/editor/**
+      - src/editor/**
+      - scripts/render-clinic-captions.py
+      - scripts/check-ubuntu-oval.py
+      - public/fonts/**
+      - src/*.ttf
       - .dockerignore
       - package.json
       - package-lock.json
@@ -27,74 +43,71 @@ permissions:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
       - name: Build the production image locally
         run: docker build --pull --platform linux/amd64 --tag shorts-os-check .
+      - name: Smoke-test Node, TLS and the production entry point
+        run: |
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
+            -v "$PWD/tests/runtime-node.cjs:/tmp/runtime-node.cjs:ro" shorts-os-check node /tmp/runtime-node.cjs
+          id=$(docker run -d --network none --cap-drop ALL --security-opt no-new-privileges \
+            -e GEMINI_API_KEY=synthetic-ci-value -e PORT=3000 shorts-os-check)
+          trap 'docker rm -f "$id" >/dev/null' EXIT
+          for i in $(seq 1 20); do
+            if docker exec "$id" node -e "Promise.all([fetch('http://127.0.0.1:3000/'), fetch('http://127.0.0.1:3000/api/generate',{method:'POST'})]).then(([a,b])=>{if(a.status!==200||b.status!==401)process.exit(1)}).catch(()=>process.exit(1))"; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Exercise actual FFmpeg, audio, font and editor paths without a network
+        run: |
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
+            --tmpfs /app/.editor-test:rw,exec,mode=1777,size=3g \
+            -v "$PWD/tests:/app/tests:ro" -e FFMPEG_PATH=ffmpeg -e EDITOR_PYTHON_PATH=python3 \
+            shorts-os-check node --test tests/editor.test.cjs
       - name: Smoke-test the deployed caption interpreter
         run: |
           docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
             -v "$PWD/tests/runtime-pillow.py:/tmp/runtime-pillow.py:ro" shorts-os-check python3 -I /tmp/runtime-pillow.py
-      - name: Scan installed OS and Python packages
+      - name: Evaluate Canonical's maintained Ubuntu 26.10 vulnerability feed
         working-directory: ${{ runner.temp }}
         run: |
-          curl -fsSL --retry 3 -o trivy.tar.gz https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-64bit.tar.gz
+          docker run --rm --network none shorts-os-check sh -ec '. /etc/os-release; test "$ID:$VERSION_ID:$VERSION_CODENAME" = "ubuntu:26.10:stonking"'
+          docker run --rm --network none shorts-os-check dpkg-query -W > manifest
+          test "$(wc -l < manifest)" -gt 100
+          sudo apt-get -qq update
+          sudo apt-get -y -qq install openscap-scanner >/dev/null
+          for kind in cve usn; do
+            curl --proto '=https' -fsSL --retry 3 \
+              "https://security-metadata.canonical.com/oval/oci.com.ubuntu.stonking.$kind.oval.xml.bz2" -o "$kind.xml.bz2"
+            bzip2 -dc "$kind.xml.bz2" > "$kind.xml"
+            sha256sum "$kind.xml"
+            oscap oval eval --results "$kind-result.xml" "$kind.xml" > "$kind-eval.log"
+          done
+          mv manifest manifest-actual
+          awk -F '\t' 'BEGIN {OFS="\t"} {print $1,"0.0.0"}' manifest-actual > manifest
+          oscap oval eval --results control-result.xml usn.xml > control-eval.log
+          mv manifest-actual manifest
+          python3 "$GITHUB_WORKSPACE/scripts/check-ubuntu-oval.py"
+      - name: Check the installed Python renderer against the advisory database
+        working-directory: ${{ runner.temp }}
+        run: |
+          curl --proto '=https' -fsSL --retry 3 -o trivy.tar.gz https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-64bit.tar.gz
           echo 'c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0  trivy.tar.gz' | sha256sum --check
           tar -xzf trivy.tar.gz trivy
-          ./trivy image --image-src docker --scanners vuln --pkg-types os,library --list-all-pkgs --no-progress --format json --output os-scan.json shorts-os-check
-      - name: Report findings and check available fixes
-        working-directory: ${{ runner.temp }}
-        run: |
+          ./trivy image --image-src docker --scanners vuln --pkg-types library --list-all-pkgs --no-progress --format json --output python.json shorts-os-check
           python3 - <<'PY'
           import json
-          import os
-          from collections import defaultdict
-
-          with open("os-scan.json") as source:
-              report = json.load(source)
-          systems = [r for r in report.get("Results", []) if r.get("Class") == "os-pkgs"]
-          packages = {(p["Name"], p["Version"]) for r in systems for p in r.get("Packages", [])}
-          if not packages:
-              raise SystemExit("No installed OS package inventory was detected.")
-
-          python = [r for r in report.get("Results", []) if r.get("Type") in {"python-pkg", "pip"}]
-          pillow = [p for r in python for p in r.get("Packages", []) if p["Name"].lower() == "pillow"]
-          if not pillow:
-              raise SystemExit("Pillow was missing from the Python vulnerability inventory.")
-          pillow_findings = [v for r in python for v in r.get("Vulnerabilities") or []
-                             if v["PkgName"].lower() == "pillow"]
-          print(f"Pillow {pillow[0]['Version']}: {len(pillow_findings)} Python advisories detected.")
-          if pillow_findings:
-              raise SystemExit("The production Pillow package has a published advisory.")
-
-          rows = [v for r in systems for v in (r.get("Vulnerabilities") or [])
-                  if v["Severity"] in {"HIGH", "CRITICAL"}]
-          ids = {v["VulnerabilityID"] for v in rows}
-          critical = {v["VulnerabilityID"] for v in rows if v["Severity"] == "CRITICAL"}
-          fixable = {v["VulnerabilityID"] for v in rows if v.get("FixedVersion")}
-          by_package = defaultdict(list)
-          for v in rows:
-              by_package[(v["PkgName"], v["InstalledVersion"])].append(v)
-
-          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as out:
-              print("## Runtime OS package scan", file=out)
-              print(f"Scanned {len(packages)} installed package/version pairs in {', '.join(r['Target'] for r in systems)}.", file=out)
-              print(f"\nDistinct HIGH/CRITICAL advisories: **{len(ids)}** ({len(critical)} critical, {len(ids - critical)} high).", file=out)
-              print(f"Fix available for at least one affected package: **{len(fixable)}**. No fix reported: **{len(ids - fixable)}**.", file=out)
-              if by_package:
-                  print("\n<details><summary>Affected installed packages</summary>\n", file=out)
-                  print("| Package | Installed | Distinct HIGH/CRITICAL | Available fixed versions |", file=out)
-                  print("|---|---|---:|---|", file=out)
-                  for (name, version), hits in sorted(by_package.items()):
-                      fixes = sorted({v["FixedVersion"] for v in hits if v.get("FixedVersion")})
-                      count = len({v["VulnerabilityID"] for v in hits})
-                      print(f"| {name} | {version} | {count} | {', '.join(fixes) or '—'} |", file=out)
-                  print("\n</details>", file=out)
-          if fixable:
-              raise SystemExit(f"{len(fixable)} distinct HIGH/CRITICAL OS advisories have a published fix.")
+          from pathlib import Path
+          reports = [r for r in json.loads(Path("python.json").read_text())["Results"] if r.get("Type") in {"python-pkg", "pip"}]
+          pillow = [p for r in reports for p in r.get("Packages", []) if p["Name"].lower() == "pillow"]
+          hits = [v for r in reports for v in r.get("Vulnerabilities") or [] if v["PkgName"].lower() == "pillow"]
+          if not pillow or hits:
+              raise SystemExit("Pillow is missing from the inventory or has published advisories")
+          print("Pillow", pillow[0]["Version"], "verified in the image library advisory inventory")
           PY
 
   caption-arm64:
@@ -107,5 +120,7 @@ jobs:
       - name: Exercise the caption runtime on native ARM64
         run: |
           docker build --pull --platform linux/arm64 --target caption-runtime -t shorts-caption-arm64 .
+          docker run --rm --user node --network none --cap-drop ALL --security-opt no-new-privileges \
+            -v "$PWD/tests/runtime-node.cjs:/tmp/runtime-node.cjs:ro" shorts-caption-arm64 node /tmp/runtime-node.cjs
           docker run --rm --user node --network none --cap-drop ALL --security-opt no-new-privileges \
             -v "$PWD:/app:ro" shorts-caption-arm64 python3 -I /app/tests/runtime-pillow.py
