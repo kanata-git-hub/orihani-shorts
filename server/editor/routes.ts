@@ -73,6 +73,9 @@ editorRouter.get('/weekly/:number/images', async (req, res) => {
   catch (e) { res.status(502).json({error:e instanceof Error && e.name !== 'TimeoutError' ? e.message : 'Drive 이미지 확인이 지연되고 있습니다. 다시 시도해주세요.'}); }
   finally { imagesLoading = false; }
 });
+// Reading these small, authenticated JSON bodies does not consume the single media-work slot.
+editorRouter.post('/caption-preview', express.json({ limit: '32kb' }));
+editorRouter.post('/voice', express.json({ limit: '16kb' }));
 editorRouter.use((req, res, next) => {
   if (req.method !== 'POST' || !['/voice', '/render', '/transcribe', '/caption-preview'].includes(req.path)) { res.status(404).json({ error: '지원하지 않는 편집 요청입니다.' }); return; }
   const uid = res.locals.uid;
@@ -81,7 +84,7 @@ editorRouter.use((req, res, next) => {
 });
 
 // The preview uses the same local renderer as export, without any model calls.
-editorRouter.post('/caption-preview', express.json({ limit: '32kb' }), async (req, res) => {
+editorRouter.post('/caption-preview', async (req, res) => {
   let dir: string | undefined;
   const abort = new AbortController();
   const timeout = setTimeout(() => abort.abort(), 45000);
@@ -107,7 +110,7 @@ editorRouter.post('/caption-preview', express.json({ limit: '32kb' }), async (re
   }
 });
 
-editorRouter.post('/voice', express.json({ limit: '16kb' }), async (req, res) => {
+editorRouter.post('/voice', async (req, res) => {
   const abort = new AbortController();
   const cancel = () => { if (!res.writableFinished) abort.abort(); }; res.on('close', cancel);
   try {
