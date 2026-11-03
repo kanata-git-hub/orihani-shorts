@@ -16,6 +16,18 @@ export async function verifyAppUser(token: unknown, request: typeof fetch = fetc
   if (!lookup.ok) throw Error(lookup.status >= 500 || lookup.status === 429 ? 'AUTH_UNAVAILABLE' : 'AUTH_REQUIRED');
   const account = (await lookup.json()).users?.[0];
   if (typeof account?.localId !== 'string' || typeof account.email !== 'string' || account.disabled || account.emailVerified !== true) throw Error('AUTH_REQUIRED');
+  // The lookup verified the signed token. Reject sessions authenticated before account revocation.
+  if (account.validSince !== undefined) {
+    const cutoff = typeof account.validSince === 'string' && /^\d+$/.test(account.validSince) ? Number(account.validSince) : account.validSince;
+    let authTime: unknown;
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) throw Error();
+      authTime = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')).auth_time;
+    } catch { throw Error('AUTH_REQUIRED'); }
+    if (!Number.isSafeInteger(cutoff) || cutoff < 0 || typeof authTime !== 'number' ||
+      !Number.isSafeInteger(authTime) || authTime < cutoff) throw Error('AUTH_REQUIRED');
+  }
   const user = { uid: account.localId, email: account.email };
   if (account.email === OWNER || ACCESS_POLICY === 'signed-in') return user;
   const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };

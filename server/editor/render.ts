@@ -1,3 +1,4 @@
+import { uploadedMediaInput } from './mediaInput';
 import { clipLengths } from '../../src/editor/media';
 import { spawn } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
@@ -18,8 +19,6 @@ export function command(binary: string, args: string[], cwd: string, signal?: Ab
   });
 }
 const ff = () => process.env.FFMPEG_PATH || 'ffmpeg';
-// Apply the same local-container policy whenever an uploaded file is opened, including its second decode.
-export const uploadedMediaInput = (file: string) => ['-protocol_whitelist', 'file', '-format_whitelist', 'mov,matroska,webm,wav', '-i', file];
 export async function inspect(file: string, cwd: string, signal?: AbortSignal) {
   // ffmpeg can inspect and decode without a separate ffprobe installation.
   const log = await command(ff(), ['-hide_banner', ...uploadedMediaInput(file), '-t', '0.05', '-f', 'null', '-'], cwd, signal);

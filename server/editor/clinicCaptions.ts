@@ -1,3 +1,4 @@
+import { uploadedMediaInput } from './mediaInput';
 import { spawn } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -63,8 +64,7 @@ export async function generateClinicOverlays(plan: EditPlan, dir: string, signal
 type Media = { duration: number; width: number; height: number; audio: boolean; audioCodec?: string };
 async function inspectClinic(file: string, cwd: string, signal?: AbortSignal): Promise<Media> {
   const log = await run(ffmpeg(), [
-    '-hide_banner', '-protocol_whitelist', 'file', '-format_whitelist', 'mov,matroska,webm',
-    '-i', file, '-map', '0:v:0', '-t', '0.05', '-f', 'null', '-',
+    '-hide_banner', ...uploadedMediaInput(file, false), '-map', '0:v:0', '-t', '0.05', '-f', 'null', '-',
   ], cwd, signal);
   // Read input streams only; FFmpeg's null output may have different descriptors.
   const input = log.split(/Stream mapping:|Output #/)[0];
@@ -100,7 +100,7 @@ export async function renderClinic(plan: EditPlan, videos: string[], voice: stri
     ...(overlays.brand ? [{ ...overlays.brand, end: undefined }] : []),
   ];
   const output = path.join(dir, 'finished.mp4');
-  const args = ['-hide_banner', '-y', '-nostdin', '-protocol_whitelist', 'file', '-format_whitelist', 'mov,matroska,webm', '-i', videos[0]];
+  const args = ['-hide_banner', '-y', '-nostdin', ...uploadedMediaInput(videos[0], false)];
   if (!layers.length) {
     await run(ffmpeg(), [...args, '-t', String(media.duration), '-map', '0:v:0', '-map', '0:a?', '-map_metadata', '0', '-c', 'copy', '-movflags', '+faststart+use_metadata_tags', output], dir, signal);
   } else {

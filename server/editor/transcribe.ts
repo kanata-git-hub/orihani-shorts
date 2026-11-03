@@ -1,6 +1,7 @@
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
-import {command,inspect,uploadedMediaInput} from './render';
+import { uploadedMediaInput } from './mediaInput';
+import {command,inspect} from './render';
 import {readSpeechAnalysis} from '../../src/editor/speech';
 import {validateMediaDuration} from '../../src/editor/media';
 
