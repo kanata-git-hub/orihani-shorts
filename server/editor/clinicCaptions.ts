@@ -1,5 +1,5 @@
 import { uploadedMediaInput } from './mediaInput';
-import { spawnMediaProcess } from './mediaProcess';
+import { runMediaProcess } from './mediaProcess';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { EditPlan } from '../../src/editor/model';
@@ -16,22 +16,9 @@ const appPath = (relative: string) => path.resolve(process.cwd(), relative);
 
 // The CLI receives only fixed local file paths; caption text is carried in JSON.
 // Nothing in this path calls a model, transcription or speech service.
-async function run(binary: string, args: string[], cwd: string, signal?: AbortSignal): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child = spawnMediaProcess(binary, args, cwd, signal);
-    let log = '';
-    const collect = (chunk: Buffer) => { log = (log + chunk.toString('utf8')).slice(-24000); };
-    child.stdout.on('data', collect);
-    child.stderr.on('data', collect);
-    const timer = setTimeout(() => child.kill('SIGKILL'), 240000);
-    child.on('error', error => { clearTimeout(timer); reject(error); });
-    child.on('close', code => {
-      clearTimeout(timer);
-      if (code === 0) { resolve(log); return; }
-      const detail = log.match(/CLINIC_CAPTION_ERROR:([^\r\n]+)/)?.[1];
-      reject(Error(detail || '한의원 자막 처리에 실패했습니다. 파일 형식과 서버 설정을 확인해주세요.', { cause: log }));
-    });
-  });
+function run(binary: string, args: string[], cwd: string, signal?: AbortSignal): Promise<string> {
+  return runMediaProcess(binary, args, cwd, signal, log =>
+    log.match(/CLINIC_CAPTION_ERROR:([^\r\n]+)/)?.[1] || '한의원 자막 처리에 실패했습니다. 파일 형식과 서버 설정을 확인해주세요.');
 }
 
 function requireClinic(p: ClinicPlan) {
