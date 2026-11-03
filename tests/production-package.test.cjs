@@ -66,9 +66,10 @@ test('the history hook persists prompt revisions without touching IndexedDB or c
   const other={...item,id:'unrelated',result:'legacy text'};
   let stored=JSON.stringify([other,item]);const writes=[];
   const previous=global.localStorage;
-  global.localStorage={getItem:()=>stored,setItem:(key,value)=>{assert.equal(key,'pov_director_history');stored=value;writes.push(value);}};
+  global.localStorage={getItem:()=>stored,setItem:(key,value)=>{assert.equal(key,'pov_director_history:qa-account');stored=value;writes.push(value);}};
   try{
     const {useHistory}=compile('src/hooks/useHistory.ts',{
+      '../accountSession':{accountKey:name=>name+':qa-account'},
       react:{useState:v=>[typeof v==='function'?v():v,()=>{}],useRef:v=>({current:v}),useCallback:f=>f,useEffect:()=>{}},
       '../utils/db':{db:new Proxy({},{get:()=>{throw Error('Media must not be changed');}})},
     });
@@ -127,7 +128,7 @@ test('the actual generation hook persists authored plans without any fetch/model
     '../authFetch':{authFetch:()=>{throw Error('Unexpected API call');}},
     '../constants':{CHARACTERS:[]},'../utils/db':{db:{}},
   });
-  const hook=useGeneration(()=>{},item=>saved.push(item),{});
+  const hook=useGeneration(()=>{},item=>saved.push(item));
   const pack=readProductionPackage(raw);
   await hook.handleLoadPrepared(pack.episodes[0],pack.revision);
   assert.equal(saved.length,1);assert.equal(saved[0].characterId,'nurse');

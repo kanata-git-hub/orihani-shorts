@@ -94,7 +94,7 @@ test('optional Gemini keyframe generation reuses the first approved set and rend
   '../characterReference':refs,
   '../authFetch':{authFetch:async(url,options)=>{calls.push(JSON.parse(options.body));return Response.json({result:png,review:{status:'pass',issues:[]}});}},
  });
- const hook=useMediaGeneration(()=>{},async()=>{},'modern',()=>{},{},()=>{},{},'owonjang');
+ const hook=useMediaGeneration(()=>{},async()=>{},'modern',()=>{},{},()=>{},'owonjang');
  const raw=JSON.stringify(plan),scenes=extractScenes(raw);
  assert.equal(await hook.handleGenerateImage('frame-2',plan.keyframes[2].imagePrompt,2,scenes,raw),true);
  assert.equal(calls.length,1);

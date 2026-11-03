@@ -73,7 +73,7 @@ test('compiled scene reaches the actual image request without later-action text'
   '../utils/db':{db:{setImageChecks:async()=>{},get:async()=>({images:{}})}},
   '../constants':{CHARACTERS:[{id:'nurse',name:'소미',file:'somi',imgs:[png,png,png]}]},
  });
- const api=useMediaGeneration(()=>{},async()=>{},'new',()=>{},{},()=>{},{},'nurse');
+ const api=useMediaGeneration(()=>{},async()=>{},'new',()=>{},{},()=>{},'nurse');
  const scenes=[{title:'test',prompt:scene.imagePrompt,shot:scene.shot,backgroundAsset:'none',referencePlan:{background:null,props:[]}}];
  assert.equal(await api.handleGenerateImage('test',scene.imagePrompt,0,scenes),true);
  const prompt=calls[0].parts.filter(p=>p.text).map(p=>p.text).join('\n');

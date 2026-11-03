@@ -40,7 +40,7 @@ test('typed composition reaches image generation without changing legacy or manu
     {imageTitle:'three',imagePrompt:'Deok-i in a new visual world',locationId:'gate',backgroundAsset:'none',sceneTransition:'new-scene',shot:{...shot,size:'extreme-wide'}},
   ]}));
   const useMedia=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>({images:{one:png}})}},'../constants':{CHARACTERS:[{id:'deoki',name:'덕이',file:'duck.png',imgs:['front.png','side.png','back.png']} ]}});
-  const api=useMedia.useMediaGeneration(()=>{},async()=>{},'record',()=>{},{},()=>{},{},'deoki');
+  const api=useMedia.useMediaGeneration(()=>{},async()=>{},'record',()=>{},{},()=>{},'deoki');
   try{
     global.fetch=async(url,options)=>{if(url==='/api/generate-image'){requests.push(JSON.parse(options.body));return Response.json({result:png,review:{status:'pass',issues:[]}});}return new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});};
     assert.equal(await api.handleGenerateImage('two',scenes[1].prompt,1,scenes),true);
@@ -146,7 +146,7 @@ test('all three approved originals are real portrait PNG files',()=>{
 test('generation sends the selected original alongside character sheets and fails before a paid call if missing',async()=>{
   const old=global.fetch,calls=[];
   const useMedia=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>({images:{'Scene 1':png}})}},'../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'doctor.png',imgs:['front.png','side.png','back.png']}]}});
-  const {handleGenerateImage}=useMedia.useMediaGeneration(()=>{},async()=>{},'record',()=>{},{},()=>{},{},'owonjang',{'Scene 2':'reception'});
+  const {handleGenerateImage}=useMedia.useMediaGeneration(()=>{},async()=>{},'record',()=>{},{},()=>{},'owonjang',{'Scene 2':'reception'});
   const scenes=[scene('탕비실'),scene('치료실',{title:'Scene 2'})];
   try{
     global.fetch=async(url,options)=>{calls.push({url,body:options?.body});return url==='/api/generate-image'?Response.json({result:png,review:{status:'pass',issues:[]}}):new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});};
@@ -167,7 +167,7 @@ test('actual generation attaches the first same-room image instead of accumulati
   const drifted='data:image/png;base64,BBBB';
   let images={'Scene 1':png,'Scene 2':drifted};
   const useMedia=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>({images})}},'../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'doctor.png',imgs:['front.png','side.png','back.png']}]}});
-  const {handleGenerateImage}=useMedia.useMediaGeneration(msg=>toasts.push(msg),async()=>{},'record',()=>{},{},()=>{},{},'owonjang');
+  const {handleGenerateImage}=useMedia.useMediaGeneration(msg=>toasts.push(msg),async()=>{},'record',()=>{},{},()=>{},'owonjang');
   const scenes=[1,2,3,4].map(i=>scene('O-wonjang and Deok-i in the clinic office.',{title:`Scene ${i}`,backgroundAsset:'none',videoPrompt:'ENVIRONMENT: Warm clinic office.\nACTION: Look down.'}));
   try{
     global.fetch=async(url,options)=>{calls.push({url,body:options?.body});return url==='/api/generate-image'?Response.json({result:png,review:{status:'pass',issues:[]}}):new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});};
@@ -209,7 +209,7 @@ test('regenerating saved cuts keeps the room image but sends only current perfor
     {id:'owonjang',name:'오원장',file:'doctor.png',imgs:['doctor-front.png','doctor-side.png','doctor-back.png']},
     {id:'deoki',name:'덕이',file:'duck.png',imgs:['duck-front.png','duck-side.png','duck-back.png']},
   ]}});
-  const {handleGenerateImage}=useMedia.useMediaGeneration(()=>{},async()=>{},'saved-record',()=>{},{},()=>{},{},'owonjang');
+  const {handleGenerateImage}=useMedia.useMediaGeneration(()=>{},async()=>{},'saved-record',()=>{},{},()=>{},'owonjang');
   try{
     global.fetch=async(url,options)=>{
       if(url==='/api/generate-image'){requests.push(JSON.parse(options.body));return Response.json({result:png,review:{status:'pass',issues:[]}});}

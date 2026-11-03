@@ -58,7 +58,7 @@ test('image generation sends the exact selected still with originals and keeps i
  const create=()=>compile('src/hooks/useMediaGeneration.ts',{
   react:{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>media}},
   '../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'owonjang.png',imgs:[png,png,png]}]},
- }).useMediaGeneration(()=>{},async()=>{},'episode-five',()=>{},{},()=>{},{},'owonjang');
+ }).useMediaGeneration(()=>{},async()=>{},'episode-five',()=>{},{},()=>{},'owonjang');
  try{
   global.fetch=async(url,options)=>{assert.equal(url,'/api/generate-image');request=JSON.parse(options.body);return Response.json({result:png,review:{status:'pass',issues:[]}});};
   assert.equal(await create().handleGenerateImage('second','O-wonjang moves the cart',1,[{title:'first',prompt:'Earlier shot'}]),true);
@@ -82,7 +82,7 @@ test('plan creation persists the snapshot before selecting the new record and ne
   react:{useState:v=>[v,next=>events.push(['state',next])]},
   '../utils/db':{db:{setSceneReference:async(id,ref)=>events.push(['snapshot',id,ref])}},
   '../constants':{CHARACTERS:[{id:'owonjang',name:'오원장'}]},
- }).useGeneration(()=>{},record=>{saved.push(record);events.push(['history',record.id]);},{});
+ }).useGeneration(()=>{},record=>{saved.push(record);events.push(['history',record.id]);});
  try{
   global.fetch=async(url,options)=>{requests.push(JSON.parse(options.body));return Response.json({result:item.result});};
   assert.equal(await hook.handleGenerate('owonjang','5화','15s',undefined,snapshot),true);
@@ -133,7 +133,7 @@ test('clip four receives scene-two food plus the separate set anchor, without le
  const hook=()=>compile('src/hooks/useMediaGeneration.ts',{
   react:{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>media}},
   '../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'owonjang.png',imgs:[png,png,png]}]},
- }).useMediaGeneration(()=>{},async()=>{},item.id,()=>{},{},()=>{},{},'owonjang');
+ }).useMediaGeneration(()=>{},async()=>{},item.id,()=>{},{},()=>{},'owonjang');
  try{
   global.fetch=async(url,options)=>{assert.equal(url,'/api/generate-image');request=JSON.parse(options.body);return Response.json({result:png,review:{status:'pass',issues:[]}});};
   assert.equal(await hook().handleGenerateImage('image-4',scenes[3].prompt,3,scenes),true);
@@ -196,7 +196,7 @@ test('automatic sources attach exact named props, deduplicate set/prop image, us
  const hook=()=>compile('src/hooks/useMediaGeneration.ts',{
   react:{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>media}},
   '../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'owonjang.png',imgs:[png,png,png]}]},
- }).useMediaGeneration(m=>errors.push(m),async()=>{},item.id,()=>{},{'image-3':png},()=>{},{},'owonjang');
+ }).useMediaGeneration(m=>errors.push(m),async()=>{},item.id,()=>{},{'image-3':png},()=>{},'owonjang');
  try{
   global.fetch=async(url,options)=>{request=JSON.parse(options.body);return Response.json({result:png,review:{status:'pass',issues:[]}});};
   assert.equal(await hook().handleGenerateImage('image-4',scenes[3].prompt,3,scenes),true);

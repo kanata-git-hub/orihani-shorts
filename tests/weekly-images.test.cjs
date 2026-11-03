@@ -82,7 +82,7 @@ test('real hook saves images before history and rolls back failed imports',async
    '../authFetch':{authFetch:async(url)=>{assert.ok(url.includes('/weekly/1/images'));events.push('download');return Response.json(response);}},
    '../utils/db':{db:{setImages:async(id,images)=>{assert.equal(Object.keys(images).length,4);events.push('media');if(failure==='media')throw Error('quota');},delete:async()=>events.push('cleanup')}}
   });
-  const hook=useGeneration(()=>{},()=>{events.push('history');if(failure==='history')throw Error('quota');},{});
+  const hook=useGeneration(()=>{},()=>{events.push('history');if(failure==='history')throw Error('quota');});
   if(failure){await assert.rejects(hook.handleLoadPrepared(entry,p.revision),/quota/);assert.equal(states.length,0);assert.deepEqual(events,failure==='media'?['download','media']:['download','media','history','cleanup']);}
   else{const item=await hook.handleLoadPrepared(entry,p.revision);assert.deepEqual(events,['download','media','history']);assert.ok(states.includes(item.result));}
  }

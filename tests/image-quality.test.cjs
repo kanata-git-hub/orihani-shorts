@@ -46,7 +46,7 @@ test('client keeps old images on rejection, persists failed candidate, compariso
    react:{useRef:v=>({current:v})},'../authFetch':{authFetch:async(u,o)=>{requests.push(JSON.parse(o.body));return Response.json(failure);}},
    '../utils/db':{db:{get:async()=>({images:{old:png}}),setImageChecks:async(...args)=>reports.push(args)}},
    '../constants':{CHARACTERS:[{id:'deoki',name:'덕이',file:'duck',imgs:[png,png,png]}]},
-  }).useMediaGeneration(()=>{},async(...v)=>saves.push(v),'record',()=>{},{old:png},v=>state.push(v),{},'deoki');
+  }).useMediaGeneration(()=>{},async(...v)=>saves.push(v),'record',()=>{},{old:png},v=>state.push(v),'deoki');
   const scenes=[{title:'first',prompt:'Deok-i inside a box',referencePlan:{background:null,props:[]},backgroundAsset:'none'}];
   await (compare?hook.handleCompareImages:hook.handleGenerateImage)('first',scenes[0].prompt,0,scenes);
   assert.equal(saves.length,0);assert.equal(state.length,0);assert.equal(reports.length,1);assert.equal(reports[0][2].rows[0].candidate,png);
@@ -147,7 +147,7 @@ test('client recheck preserves old scene even on pass; successful repair applies
    react:{useRef:v=>({current:v})},'../authFetch':{authFetch:async(u,o)=>{requests.push(JSON.parse(o.body));return Response.json({model:'existing-image',candidate:png,result:png,review:{status:'pass',issues:[]}});}},
    '../utils/db':{db:{get:async()=>({images:{first:'data:image/png;base64,BAUG'},imageChecks:{first:{mode:'comparison',rows:[{candidate:png},{candidate:'data:image/png;base64,BwgJ'}]}}}),setImageChecks:async(...v)=>reports.push(v)}},
    '../constants':{CHARACTERS:[{id:'deoki',name:'덕이',file:'duck',imgs:[png,png,png]}]},
-  }).useMediaGeneration(()=>{},async(...v)=>saves.push(v),'record',()=>{},{},()=>{},{},'deoki');
+  }).useMediaGeneration(()=>{},async(...v)=>saves.push(v),'record',()=>{},{},()=>{},'deoki');
   const scenes=[{title:'first',prompt:'Deok-i inside a box',referencePlan:{background:null,props:[]},backgroundAsset:'none'}];
   await hook.handleReviewImage('first',scenes[0].prompt,0,scenes,'',png,repair);
   assert.equal(requests[0].operation,repair?'repair':'review');assert.equal(requests[0].candidate,png);
@@ -207,7 +207,7 @@ test('empty HTTP, HTML errors and invalid JSON recheck preserve the original ima
    react:{useRef:v=>({current:v})},'../authFetch':{authFetch:async()=>response()},
    '../utils/db':{db:{get:async()=>({images:{first:png},imageChecks:{first:{mode:'generation',rows:[old]}}}),setImageChecks:async(...v)=>reports.push(v)}},
    '../constants':{CHARACTERS:[{id:'deoki',name:'덕이',file:'duck',imgs:[png,png,png]}]},
-  }).useMediaGeneration((...v)=>toasts.push(v),async(...v)=>saves.push(v),'record',fn=>busy.push(fn({})),{},()=>{},{},'deoki');
+  }).useMediaGeneration((...v)=>toasts.push(v),async(...v)=>saves.push(v),'record',fn=>busy.push(fn({})),{},()=>{},'deoki');
   const scenes=[{title:'first',prompt:'Deok-i inside a box',referencePlan:{background:null,props:[]},backgroundAsset:'none'}];
   assert.equal(await hook.handleReviewImage('first',scenes[0].prompt,0,scenes,'',png,false),false);
   const row=reports[0][2].rows[0];
@@ -222,7 +222,7 @@ test('manual selection applies only that image without provider calls or changin
  const hook=compile('src/hooks/useMediaGeneration.ts',{
   react:{useRef:v=>({current:v})},'../authFetch':{authFetch:async()=>{throw Error('must not generate');}},
   '../constants':{CHARACTERS:[]},
- }).useMediaGeneration(()=>{},async(...v)=>saves.push(v),'record',()=>{},images,fn=>{images=fn(images);},{},'deoki');
+ }).useMediaGeneration(()=>{},async(...v)=>saves.push(v),'record',()=>{},images,fn=>{images=fn(images);},'deoki');
  assert.equal(await hook.handleApplyImage('first',png),true);
  assert.deepEqual(saves,[['record',{first:png}]]);assert.equal(images.other,'data:image/png;base64,BwgJ');assert.equal(images.first,png);
  assert.equal(await hook.handleApplyImage('first','https://example.com/image'),false);assert.equal(saves.length,1);
@@ -235,7 +235,7 @@ test('a failed new generation keeps the previous candidate available without app
   react:{useRef:v=>({current:v})},'../authFetch':{authFetch:async()=>new Response('',{status:502})},
   '../utils/db':{db:{get:async()=>({imageChecks:{first:{mode:'generation',rows:[{model:IMAGE_MODELS[0],candidate:png,result:png,review:{status:'pass',issues:[]}}]}}}),setImageChecks:async(...v)=>reports.push(v)}},
   '../constants':{CHARACTERS:[{id:'deoki',name:'덕이',file:'duck',imgs:[png,png,png]}]},
- }).useMediaGeneration(()=>{},async(...v)=>saves.push(v),'record',()=>{},{},()=>{},{},'deoki');
+ }).useMediaGeneration(()=>{},async(...v)=>saves.push(v),'record',()=>{},{},()=>{},'deoki');
  const scenes=[{title:'first',prompt:'Deok-i inside a box',referencePlan:{background:null,props:[]},backgroundAsset:'none'}];
  await hook.handleGenerateImage('first',scenes[0].prompt,0,scenes);
  assert.equal(reports[0][2].rows[0].candidate,png);assert.equal(reports[0][2].rows[0].result,undefined);
