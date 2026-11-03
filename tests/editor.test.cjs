@@ -640,7 +640,7 @@ test('clinic font is the approved original and overlays reject clipping', {skip:
   await assert.rejects(()=>generateClinicOverlays(clinicPlan({captions:[{start:0,end:1,text:'가'.repeat(160)}]}),dir),/한 줄/);
 });
 
-test('editor API applies verified account and configured email checks before processing a job', async t => {
+test('editor API verifies eligibility and parses small requests before admitting media work', {timeout:15000}, async t => {
   const express = require('express');
   const { editorRouter } = require(path.join(compiled, 'server/editor/routes.js'));
   const client = global.fetch;
@@ -653,7 +653,14 @@ test('editor API applies verified account and configured email checks before pro
     assert.equal(new URL(url).hostname, 'identitytoolkit.googleapis.com');
     return Response.json({ users: [account] });
   });
+  let bodyStarted;
   const app = express();
+  app.use((req, res, next) => {
+    if (req.headers['x-test-partial']) req.on('newListener', event => {
+      if (event === 'data') bodyStarted();
+    });
+    next();
+  });
   app.use('/api/editor', editorRouter);
   const server = app.listen(0, '127.0.0.1');
   try {
@@ -669,6 +676,21 @@ test('editor API applies verified account and configured email checks before pro
     const response = await request();
     assert.equal(response.status, 400);
     assert.match((await response.json()).error, /나레이션/); // Reached normal input validation without a model call.
+    for (const endpoint of ['voice', 'caption-preview']) {
+      const reading = new Promise(resolve => { bodyStarted = resolve; });
+      const partial = require('node:http').request('http://127.0.0.1:' + server.address().port + '/api/editor/' + endpoint, {
+        method: 'POST', headers: { authorization: 'Bearer synthetic-verified-provider-token', 'content-type': 'application/json', 'x-test-partial': '1' }
+      });
+      partial.on('error', () => {}); // Intentionally abort this unfinished request below.
+      partial.write('{');
+      try {
+        await reading;
+        const other = await request();
+        assert.equal(other.status, 400);
+        assert.match((await other.json()).error, /나레이션/);
+      } finally { partial.destroy(); }
+    }
+
   } finally {
     if (allowed === undefined) delete process.env.EDITOR_ALLOWED_EMAILS; else process.env.EDITOR_ALLOWED_EMAILS = allowed;
     if (project === undefined) delete process.env.EDITOR_FIREBASE_PROJECT_ID; else process.env.EDITOR_FIREBASE_PROJECT_ID = project;
