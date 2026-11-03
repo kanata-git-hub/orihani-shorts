@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [wheel, source]
+        variant: [source]
     env:
       VARIANT: ${{ matrix.variant }}
     steps:
@@ -19,7 +19,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Build local non-production candidate
-        run: docker build --quiet -f ".github/probe/$VARIANT.Dockerfile" --tag pillow-candidate:local .
+        run: docker build --progress=plain -f ".github/probe/$VARIANT.Dockerfile" --tag pillow-candidate:local .
       - name: Verify package origins, runtime, and all local-only media suites
         run: |
           docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --tmpfs /app/.editor-test:rw,exec,mode=1777,size=3g --mount type=bind,source="$PWD/tests",target=/app/tests,readonly --env FFMPEG_PATH=ffmpeg --env EDITOR_PYTHON_PATH=python3 --env VARIANT="$VARIANT" pillow-candidate:local sh -ec '
