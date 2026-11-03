@@ -1,3 +1,4 @@
+import { accountKey } from '../accountSession';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { HistoryItem } from '../types';
 import { db } from '../utils/db';
@@ -7,10 +8,10 @@ import { refreshAuthoredVideoPrompts } from '../workflow/promptRevision';
 import type { ProductionPackage } from '../workflow/productionPackage';
 
 export function useHistory() {
-  const [history,setHistory]=useState<HistoryItem[]>(()=>{try{return JSON.parse(localStorage.getItem('pov_director_history')||'[]');}catch{return [];}});
+  const [history,setHistory]=useState<HistoryItem[]>(()=>{try{return JSON.parse(localStorage.getItem(accountKey('pov_director_history'))||'[]');}catch{return [];}});
   const current=useRef(history);current.current=history;
   const [viewingHistoryId,setViewingHistoryId]=useState<string|null>(null);
-  const persist=(next:HistoryItem[])=>{localStorage.setItem('pov_director_history',JSON.stringify(next));current.current=next;setHistory(next);};
+  const persist=(next:HistoryItem[])=>{localStorage.setItem(accountKey('pov_director_history'),JSON.stringify(next));current.current=next;setHistory(next);};
   const saveHistory=(item:HistoryItem)=>persist([item,...current.current.filter(h=>h.id!==item.id)]);
   const applyVideoPromptRevision=useCallback((pack:ProductionPackage)=>{
     const before=current.current;

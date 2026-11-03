@@ -1,9 +1,10 @@
+import { accountKey } from '../accountSession';
 import type { Draft, DraftSummary } from './draft';
 import { hasDraftContent, summarizeDraft } from './draft';
 
 async function openEditorDB() {
   return new Promise<IDBDatabase>((resolve, reject) => {
-    const r = indexedDB.open('orihani-video-editor', 1);
+    const r = indexedDB.open(accountKey('orihani-video-editor'), 1);
     r.onupgradeneeded = () => r.result.createObjectStore('drafts');
     r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error);
   });

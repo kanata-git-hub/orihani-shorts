@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { bindAccount } from '../accountSession';
 import { auth } from '../lib/firebase';
 import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 
@@ -18,6 +19,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
+      if (!bindAccount(auth.app.options.projectId || '', u?.uid ?? null)) {
+        // Drop the old React tree and its in-memory previews before the next
+        // account can open this page. A reload creates a fresh storage binding.
+        setUser(null);
+        setLoading(true);
+        window.location.reload();
+        return;
+      }
       setUser(u);
       setLoading(false);
     });
@@ -39,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => signOut(auth);
 
-  const isAdmin = user?.email === 'kanata840@gmail.com';
+  const isAdmin = !!user?.emailVerified && user.email === 'kanata840@gmail.com';
 
   return (
     <AuthContext.Provider value={{ user, isAdmin, loading, login, logout }}>

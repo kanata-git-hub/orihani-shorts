@@ -1,3 +1,4 @@
+import { accountKey } from '../accountSession';
 import type { HistoryItem } from '../types';
 import type { MediaSummary } from '../utils/db';
 import { DraftSummary, draftProgress } from '../editor/draft';
@@ -7,7 +8,7 @@ import './workflow.css';
 
 export type RecentTarget = { kind: 'history' | 'editor'; id: string };
 export function readRecentTarget(): RecentTarget | undefined {
-  try { const v = JSON.parse(localStorage.getItem('orihani-recent-work') || 'null'); if (v && ['history','editor'].includes(v.kind) && typeof v.id === 'string') return v; } catch { /* optional preference */ }
+  try { const v = JSON.parse(localStorage.getItem(accountKey('orihani-recent-work')) || 'null'); if (v && ['history','editor'].includes(v.kind) && typeof v.id === 'string') return v; } catch { /* optional preference */ }
 }
 export function RecentWork({history,drafts,media,recent,onHistory,onEditor}:{history:HistoryItem[];drafts:DraftSummary[];media:Record<string,MediaSummary>;recent?:RecentTarget;onHistory:(item:HistoryItem)=>void;onEditor:(id:string)=>void}) {
   let item = recent?.kind === 'history' ? history.find(h => h.id === recent.id) : undefined;
