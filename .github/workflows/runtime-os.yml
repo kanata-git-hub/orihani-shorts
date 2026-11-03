@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - Dockerfile
+      - docker/pillow-*.txt
+      - tests/runtime-pillow.py
       - .dockerignore
       - package.json
       - package-lock.json
@@ -12,6 +14,8 @@ on:
     branches: [main]
     paths:
       - Dockerfile
+      - docker/pillow-*.txt
+      - tests/runtime-pillow.py
       - .dockerignore
       - package.json
       - package-lock.json
@@ -30,13 +34,17 @@ jobs:
           persist-credentials: false
       - name: Build the production image locally
         run: docker build --pull --platform linux/amd64 --tag shorts-os-check .
-      - name: Scan installed OS packages
+      - name: Smoke-test the deployed caption interpreter
+        run: |
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
+            -v "$PWD/tests/runtime-pillow.py:/tmp/runtime-pillow.py:ro" shorts-os-check python3 -I /tmp/runtime-pillow.py
+      - name: Scan installed OS and Python packages
         working-directory: ${{ runner.temp }}
         run: |
           curl -fsSL --retry 3 -o trivy.tar.gz https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-64bit.tar.gz
           echo 'c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0  trivy.tar.gz' | sha256sum --check
           tar -xzf trivy.tar.gz trivy
-          ./trivy image --image-src docker --scanners vuln --pkg-types os --list-all-pkgs --no-progress --format json --output os-scan.json shorts-os-check
+          ./trivy image --image-src docker --scanners vuln --pkg-types os,library --list-all-pkgs --no-progress --format json --output os-scan.json shorts-os-check
       - name: Report findings and check available fixes
         working-directory: ${{ runner.temp }}
         run: |
@@ -51,6 +59,16 @@ jobs:
           packages = {(p["Name"], p["Version"]) for r in systems for p in r.get("Packages", [])}
           if not packages:
               raise SystemExit("No installed OS package inventory was detected.")
+
+          python = [r for r in report.get("Results", []) if r.get("Type") in {"python-pkg", "pip"}]
+          pillow = [p for r in python for p in r.get("Packages", []) if p["Name"].lower() == "pillow"]
+          if not pillow:
+              raise SystemExit("Pillow was missing from the Python vulnerability inventory.")
+          pillow_findings = [v for r in python for v in r.get("Vulnerabilities") or []
+                             if v["PkgName"].lower() == "pillow"]
+          print(f"Pillow {pillow[0]['Version']}: {len(pillow_findings)} Python advisories detected.")
+          if pillow_findings:
+              raise SystemExit("The production Pillow package has a published advisory.")
 
           rows = [v for r in systems for v in (r.get("Vulnerabilities") or [])
                   if v["Severity"] in {"HIGH", "CRITICAL"}]
@@ -78,3 +96,16 @@ jobs:
           if fixable:
               raise SystemExit(f"{len(fixable)} distinct HIGH/CRITICAL OS advisories have a published fix.")
           PY
+
+  caption-arm64:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Exercise the caption runtime on native ARM64
+        run: |
+          docker build --pull --platform linux/arm64 --target caption-runtime -t shorts-caption-arm64 .
+          docker run --rm --user node --network none --cap-drop ALL --security-opt no-new-privileges \
+            -v "$PWD:/app:ro" shorts-caption-arm64 python3 -I /app/tests/runtime-pillow.py

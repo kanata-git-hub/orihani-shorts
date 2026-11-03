@@ -1,0 +1,3 @@
+# Official sdist from https://pypi.org/project/pillow/13.0.0/#files.
+# On update use the new source archive's SHA256, then run the runtime scan and caption tests.
+Pillow==13.0.0 --hash=sha256:cdcd1ba258178f7356d74170c9a81ba4eab6a5d55748bc402a5a2a6fe6be3510
