@@ -225,7 +225,10 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
         });
         repairNotes = readReviewIssues(review.text || '{}');
         if (!repairNotes.length) break;
-        if (pass === MAX_PROMPT_REPAIRS) throw Error(`기획과 프롬프트가 일치하지 않아 생성을 중단했습니다. ${repairNotes.slice(0,3).join(' / ')}`);
+        if (pass === MAX_PROMPT_REPAIRS) {
+          res.status(500).json({ error: `기획과 프롬프트가 일치하지 않아 생성을 중단했습니다. ${repairNotes.slice(0,3).join(' / ')}` });
+          return;
+        }
         }
         converted.promptModel = repairsUsed ? REVIEW_MODEL : initialConverterModel;
         converted.productionModels = { design: PROMPT_MODEL, conversion: initialConverterModel,
