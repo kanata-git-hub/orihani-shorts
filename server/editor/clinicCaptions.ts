@@ -102,7 +102,7 @@ export async function renderClinic(plan: EditPlan, videos: string[], voice: stri
   const output = path.join(dir, 'finished.mp4');
   const args = ['-hide_banner', '-y', '-nostdin', ...uploadedMediaInput(videos[0], false)];
   if (!layers.length) {
-    await run(ffmpeg(), [...args, '-t', String(media.duration), '-map', '0:v:0', '-map', '0:a?', '-map_metadata', '0', '-c', 'copy', '-movflags', '+faststart+use_metadata_tags', output], dir, signal);
+    await run(ffmpeg(), [...args, '-t', String(p.duration + 1), '-map', '0:v:0', '-map', '0:a?', '-map_metadata', '0', '-c', 'copy', '-movflags', '+faststart+use_metadata_tags', output], dir, signal);
   } else {
     for (const layer of layers) args.push('-i', layer.path);
     const filters: string[] = [];
@@ -115,7 +115,7 @@ export async function renderClinic(plan: EditPlan, videos: string[], voice: stri
     });
     await run(ffmpeg(), [...args,
       '-filter_complex_threads', '1', '-filter_complex', filters.join(';'),
-      '-t', String(media.duration), '-map', '[v' + layers.length + ']', '-map', '0:a?', '-map_metadata', '0',
+      '-t', String(p.duration + 1), '-map', '[v' + layers.length + ']', '-map', '0:a?', '-map_metadata', '0',
       '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-pix_fmt', 'yuv420p',
       '-fps_mode', 'passthrough', '-c:a', 'copy', '-threads', '2',
       '-movflags', '+faststart+use_metadata_tags', output,
