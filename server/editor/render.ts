@@ -1,6 +1,6 @@
 import { uploadedMediaInput } from './mediaInput';
 import { clipLengths } from '../../src/editor/media';
-import { spawn } from 'node:child_process';
+import { spawnMediaProcess } from './mediaProcess';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { EditPlan } from '../../src/editor/model';
@@ -10,7 +10,7 @@ import { renderClinic } from './clinicCaptions';
 
 export function command(binary: string, args: string[], cwd: string, signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn(binary, args, { cwd, windowsHide: true, signal });
+    const child = spawnMediaProcess(binary, args, cwd, signal);
     let log = ''; const collect = (b: Buffer) => { log = (log + b.toString()).slice(-24000); };
     child.stderr.on('data', collect); child.stdout.on('data', collect);
     const timer = setTimeout(() => child.kill('SIGKILL'), 240000);

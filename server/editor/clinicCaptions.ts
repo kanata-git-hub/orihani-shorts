@@ -1,5 +1,5 @@
 import { uploadedMediaInput } from './mediaInput';
-import { spawn } from 'node:child_process';
+import { spawnMediaProcess } from './mediaProcess';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { EditPlan } from '../../src/editor/model';
@@ -18,7 +18,7 @@ const appPath = (relative: string) => path.resolve(process.cwd(), relative);
 // Nothing in this path calls a model, transcription or speech service.
 async function run(binary: string, args: string[], cwd: string, signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn(binary, args, { cwd, windowsHide: true, signal, env: { ...process.env, PYTHONUTF8: '1' } });
+    const child = spawnMediaProcess(binary, args, cwd, signal);
     let log = '';
     const collect = (chunk: Buffer) => { log = (log + chunk.toString('utf8')).slice(-24000); };
     child.stdout.on('data', collect);
