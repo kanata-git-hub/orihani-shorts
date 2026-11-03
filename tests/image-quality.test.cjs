@@ -116,8 +116,8 @@ test('network and uncertain checks stop early without escalating or retrying pai
  const unavailable=sequenceAI([badReview,new Error('429 quota')]);
  const stopped=await generateReviewedImage(unavailable,readImageRequest({parts}));
  assert.equal(unavailable.calls.length,4);assert.equal(stopped.repairCount,1);assert.equal(approvedImage(stopped),undefined);
- const ai=sequenceAI([badReview],new Error('503'));const r=await generateReviewedImage(ai,readImageRequest({parts}));
- assert.equal(ai.calls.length,3);assert.equal(r.candidate,'data:image/png;base64,BAUG');assert.match(r.repairError,/503/);assert.equal(approvedImage(r),undefined);
+ const ai=sequenceAI([badReview],Object.assign(new Error('provider-internal-detail'),{status:503}));const r=await generateReviewedImage(ai,readImageRequest({parts}));
+ assert.equal(ai.calls.length,3);assert.equal(r.candidate,'data:image/png;base64,BAUG');assert.match(r.repairError,/503/);assert.doesNotMatch(r.repairError,/provider-internal-detail/);assert.equal(approvedImage(r),undefined);
  for(const check of [new Error('429'),JSON.stringify({issues:[{category:'geometry',severity:'uncertain',evidence:'가려진 문',fix:'Inspect manually.'}]})]){
   const ai=sequenceAI([check]),r=await generateReviewedImage(ai,readImageRequest({parts}));
   assert.equal(ai.calls.length,2);assert.equal(r.repairCount,0);assert.equal(approvedImage(r),undefined);

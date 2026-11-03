@@ -66,3 +66,17 @@ test('real HTTP middleware blocks unauthenticated calls before body parsing and 
     assert.equal(paidCalls, 1);
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 });
+
+test('trusted accounts lookup enforces the current session cutoff including equal seconds', async () => {
+  const signedForTest = (authTime: unknown) => 'header.' + Buffer.from(JSON.stringify({ auth_time:authTime })).toString('base64url') + '.test-signature';
+  const lookup = (validSince: unknown) => async () => reply({ users: [{ ...account, validSince }] });
+  await assert.rejects(verifyAppUser(signedForTest(100),lookup('101')), /AUTH_REQUIRED/);
+  await assert.rejects(verifyAppUser(signedForTest('102'),lookup('101')), /AUTH_REQUIRED/);
+  await assert.rejects(verifyAppUser('not-a-token-with-claims',lookup('101')), /AUTH_REQUIRED/);
+  for (const value of [null, '', 'abc', -1, 1.5, '9007199254740992']) {
+    await assert.rejects(verifyAppUser(signedForTest(102),lookup(value)), /AUTH_REQUIRED/);
+  }
+  for (const authTime of [101,102]) {
+    assert.equal((await verifyAppUser(signedForTest(authTime),lookup('101'))).uid, account.localId);
+  }
+});

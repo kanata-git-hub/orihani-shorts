@@ -27,11 +27,10 @@ async function startServer() {
   if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw Error('올바른 포트 번호가 필요합니다.');
 
   app.use('/api/editor', editorRouter);
-  app.use(['/api/generate', '/api/generate-image'], requireUser);
-  app.use(express.json({ limit: '50mb' }));
+  // Authenticate the two generation routes before allocating their image-sized bodies.
+  app.post(['/api/generate', '/api/generate-image'], requireUser, express.json({ limit: '50mb' }));
 
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  console.log("Server initialized with API key length:", process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.length : 0);
 
   // Load system prompt from AGENTS.md if available
   let agentPrompt = "";
@@ -226,7 +225,10 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
         });
         repairNotes = readReviewIssues(review.text || '{}');
         if (!repairNotes.length) break;
-        if (pass === MAX_PROMPT_REPAIRS) throw Error(`기획과 프롬프트가 일치하지 않아 생성을 중단했습니다. ${repairNotes.slice(0,3).join(' / ')}`);
+        if (pass === MAX_PROMPT_REPAIRS) {
+          res.status(500).json({ error: `기획과 프롬프트가 일치하지 않아 생성을 중단했습니다. ${repairNotes.slice(0,3).join(' / ')}` });
+          return;
+        }
         }
         converted.promptModel = repairsUsed ? REVIEW_MODEL : initialConverterModel;
         converted.productionModels = { design: PROMPT_MODEL, conversion: initialConverterModel,
@@ -249,7 +251,7 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
         return;
     } catch (error: any) {
       // A quota failure must never replay a Pro design or trigger model escalation.
-      res.status(error?.status === 429 ? 429 : 500).json({ error: error.message });
+      res.status(error?.status === 429 ? 429 : 500).json({ error: error?.status === 429 ? '요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.' : '제작안 생성 또는 형식 확인에 실패했습니다.' });
     }
   });
 
@@ -258,7 +260,7 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
     try { input = readImageRequest(req.body); }
     catch (error) { res.status(400).json({ error: (error as Error).message }); return; }
     try { res.json(await generateReviewedImage(ai, input)); }
-    catch (error: any) { res.status(error?.status === 429 ? 429 : 502).json({ error: error.message || '이미지 생성에 실패했습니다.' }); }
+    catch (error: any) { res.status(error?.status === 429 ? 429 : 502).json({ error: error?.status === 429 ? '요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.' : '이미지 생성에 실패했습니다.' }); }
   });
 
   if (process.env.NODE_ENV !== "production") {
