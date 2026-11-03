@@ -12,7 +12,7 @@ import { DraftSummary, draftProgress } from '../editor/draft';
 import { db } from '../utils/db';
 import { videoPromptForCopy, clipVideoText } from '../videoPrompt';
 import { IMAGE_GENERATION_NOTICE } from '../imageQuality';
-import { prepareReelsCaption, prepareSocialCaption } from '../utils/socialCaption';
+import { prepareReelsCaption } from '../utils/socialCaption';
 
 export function HistoryContinue({onApplyImage,klingWorkspace,item,images,generating,onGenerate,onEdit,onBusy,draft,mediaReady,onReferenceScene}:{onApplyImage:(title:string,image:string)=>Promise<boolean>;klingWorkspace?:ReactNode;item:HistoryItem;images:Record<string,string>;generating:Record<string,boolean>;onGenerate:(title:string,prompt:string,i:number,scenes:any[],result?:string)=>Promise<boolean>;onEdit:()=>void;onBusy:(v:boolean)=>void;draft?:DraftSummary;mediaReady:boolean;onReferenceScene?:(title:string)=>void}) {
   const clips=extractClips(item.result).map(clip=>({...clip,videoPrompt:videoPromptForCopy(clip.videoPrompt)})), scenes=extractScenes(item.result);
@@ -29,9 +29,7 @@ export function HistoryContinue({onApplyImage,klingWorkspace,item,images,generat
   const copy=async(text:string,label:string)=>{if(!text.trim())throw Error('복사할 내용이 없습니다.');await navigator.clipboard.writeText(text);setMessage(label+' 복사 완료');};
   const overview=extractOverview(item.result);
   const socialCaption=prepareReelsCaption(overview,item.episode),caption=socialCaption.text;
-  const title=socialCaption.title||socialCaption.body.split('\n')[0];
-  const titleWithTags=prepareSocialCaption(title,socialCaption.hashtags).text;
-  const shortsTitle=Array.from(titleWithTags).length<=100?titleWithTags:Array.from(title).slice(0,100).join('');
+  const shortsTitle=socialCaption.shortsTitle;
   const exportFile=()=>action(async()=>{const media=await db.get(item.id);const raw=makePackage(item,images,media?.sceneReference,media?.clipReferences);const name=(extractOverview(item.result).title||'오리쇼츠').replace(/[\\/:*?"<>|]/g,'').slice(0,60);await shareFile(new File([raw],name+'.ori.json',{type:'application/json'}));setMessage('다른 기기에서 기록 → 작업 파일 가져오기로 열면 됩니다. 영상 파일과 편집 중인 음성은 별도로 보관해주세요.');});
   return <article className="ori-workflow ori-continue">
     <p className="ori-workflow-label">{duration}초 밈 · 이 기록에서 이어하기</p>
