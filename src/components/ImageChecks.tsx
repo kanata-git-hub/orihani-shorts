@@ -73,7 +73,7 @@ export function ImageChecks({ targetId, busy, onCheck, onApply }: { targetId: st
       </div>
     </section>)}
     <details><summary><span>검수 방식·결과 내보내기</span><ChevronDown size={18} aria-hidden="true" /></summary>
-    <p>검수·수정 지시는 Flash, 그림 수정은 Nano Banana 2.1를 사용합니다. 직전 그림에서 지적된 부분만 최대 {MAX_IMAGE_EDITS}회 수정하고 통과하면 바로 멈춥니다. 빈 응답·응답 형식 오류는 그림을 유지하며 검수만 전체 작업에서 1회 재시도합니다. 검수가 끝나지 않아도 아래 그림을 다운로드하거나 직접 확인 후 사용할 수 있습니다.</p>
+    <p>검수·수정 지시는 Flash, 그림 수정은 Nano Banana 2.1을 사용합니다. 직전 그림에서 지적된 부분만 최대 {MAX_IMAGE_EDITS}회 수정하고 통과하면 바로 멈춥니다. 빈 응답·응답 형식 오류는 그림을 유지하며 검수만 전체 작업에서 1회 재시도합니다. 검수가 끝나지 않아도 아래 그림을 다운로드하거나 직접 확인 후 사용할 수 있습니다.</p>
     <button className="ori-image-checks__button ori-image-checks__button--download" type="button" onClick={download}><FileJson size={18} aria-hidden="true" />이미지 검수 결과 JSON 저장</button>
     </details>
   </details>;
