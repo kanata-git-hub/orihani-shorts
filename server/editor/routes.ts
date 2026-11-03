@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { authenticatedApi, verifyAppUser } from '../../serverSecurity';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -34,17 +35,29 @@ export function audioResponse(result: any): Buffer {
 }
 export const editorRouter = express.Router();
 const active = new Set<string>();
-editorRouter.use(async (req, res, next) => {
-  try {
-    const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
-    if (!token) { res.status(401).json({ error: '로그인 후 사용해주세요.' }); return; }
-    const app = getApps().find(a => a.name === 'video-editor') || initializeApp({ projectId: process.env.EDITOR_FIREBASE_PROJECT_ID || 'gen-lang-client-0165298283' }, 'video-editor');
-    const user = await getAuth(app).verifyIdToken(token);
-    const allowed = process.env.EDITOR_ALLOWED_EMAILS?.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-    if (allowed?.length && !allowed.includes(user.email?.toLowerCase() || '')) { res.status(403).json({ error: '영상 편집 사용 권한이 없습니다.' }); return; }
-    res.locals.uid = user.uid; next();
-  } catch { res.status(401).json({ error: '로그인을 다시 확인해주세요.' }); }
-});
+editorRouter.use(authenticatedApi(async token => {
+  const project = process.env.EDITOR_FIREBASE_PROJECT_ID || 'gen-lang-client-0165298283';
+  if (typeof token !== 'string' || token.length < 20 || token.length > 8192) throw Error('AUTH_REQUIRED');
+  let user;
+  if (project === 'gen-lang-client-0165298283') {
+    // accounts:lookup checks the current account, including disabled/deleted status.
+    user = await verifyAppUser(token);
+  } else {
+    const app = getApps().find(a => a.name === 'video-editor') || initializeApp({ projectId: project }, 'video-editor');
+    let identity;
+    try { identity = await getAuth(app).verifyIdToken(token, true); }
+    catch (error) {
+      const code = (error as { code?: string })?.code;
+      if (['auth/argument-error', 'auth/invalid-id-token', 'auth/id-token-expired', 'auth/id-token-revoked', 'auth/user-disabled', 'auth/user-not-found'].includes(code || '')) throw Error('AUTH_REQUIRED');
+      throw Error('AUTH_UNAVAILABLE');
+    }
+    if (!identity.email || identity.email_verified !== true) throw Error('AUTH_REQUIRED');
+    user = { uid: identity.uid, email: identity.email };
+  }
+  const allowed = process.env.EDITOR_ALLOWED_EMAILS?.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  if (allowed?.length && !allowed.includes(user.email.toLowerCase())) throw Error('APPROVAL_REQUIRED');
+  return user;
+}));
 editorRouter.get('/weekly', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   try { res.json(await latestWeekly(req.query.refresh === '1')); }
