@@ -43,20 +43,26 @@ export function prepareReelsCaption(
   overview: { title?: unknown; instagramCaption?: unknown; hashtags?: unknown },
   episode?: { title?: unknown; caption?: unknown } | null,
 ) {
-  const title = cleanTitle(overview.title) || cleanTitle(episode?.title);
+  const recordTitle = cleanTitle(overview.title) || cleanTitle(episode?.title);
+  const title = recordTitle.replace(/^한의원\s+쇼츠\s+\d{2,}\s+(?=\S)/u, '');
   const source = typeof overview.instagramCaption === 'string' && overview.instagramCaption.trim()
     ? overview.instagramCaption : episode?.caption;
   const caption = prepareSocialCaption(source, overview.hashtags);
   let prose = caption.body;
   if (title) {
     const lines = prose.split('\n');
+    const headings = new Set([titleKey(recordTitle), titleKey(title)]);
     // Only consume a standalone leading title, never a sentence mentioning it.
-    while (lines.length && titleKey(lines[0]) === titleKey(title)) {
+    while (lines.length && headings.has(titleKey(lines[0]))) {
       lines.shift();
       while (lines.length && !lines[0].trim()) lines.shift();
     }
     prose = lines.join('\n').trim();
   }
   const body = [title, prose].filter(Boolean).join('\n\n');
-  return { ...prepareSocialCaption(body, caption.hashtags), title };
+  const social = prepareSocialCaption(body, caption.hashtags);
+  const heading = title || social.body.split('\n')[0];
+  const taggedHeading = title !== recordTitle ? heading : prepareSocialCaption(heading, social.hashtags).text;
+  const shortsTitle = Array.from(taggedHeading).length <= 100 ? taggedHeading : Array.from(heading).slice(0,100).join('');
+  return { ...social, title, shortsTitle };
 }

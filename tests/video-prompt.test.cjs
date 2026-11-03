@@ -105,6 +105,20 @@ test('the actual workboard, history and Kling copy buttons use the same correcte
 });
 
 const {prepareReelsCaption,prepareSocialCaption}=compile('src/utils/socialCaption.ts');
+test('clinic Reels use the subtitle once without rewriting stored titles or later prose',()=>{
+ const subtitle='조용한 산책',recordTitle='한의원 쇼츠 101 '+subtitle;
+ const episode={title:'[에피소드 101] '+recordTitle,caption:recordTitle+'\n#산책'};
+ const prose=recordTitle+' 비하인드.';
+ for(const heading of [recordTitle,subtitle,episode.title]){
+  const plan={title:recordTitle,instagramCaption:heading+'\n\n'+prose,hashtags:['산책']};
+  assert.equal(prepareReelsCaption(plan,episode).text,subtitle+'\n\n'+prose+'\n\n#산책');
+  assert.equal(prepareReelsCaption(plan,episode).shortsTitle,subtitle);
+  assert.equal(plan.title,recordTitle);
+ }
+ assert.equal(prepareReelsCaption({},episode).text,subtitle+'\n\n#산책');
+ assert.equal(episode.title,'[에피소드 101] '+recordTitle);
+ assert.equal(prepareReelsCaption({title:'한의원 쇼츠 01 산책'}).title,'산책');
+});
 test('reel captions include the title, plan prose and unique hashtags even with a title-only screenplay caption',()=>{
  const title='42화 구름산책 (하찮은 오리 일상)',prose='오늘도 한 걸음.',hashtags=['#구름산책','#일상'];
  const overview={title,instagramCaption:prose,hashtags};
