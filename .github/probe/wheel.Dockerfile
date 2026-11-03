@@ -3,8 +3,7 @@ FROM base AS pillow-build
 RUN apt-get update && apt-get install -y --no-install-recommends python3-pip && rm -rf /var/lib/apt/lists/*
 RUN printf '%s\n' 'Pillow==13.0.0 --hash=sha256:5f56499c1a74d2b862beb0c33b8016f99d095858455df9d21583bbbc1c15b582 --hash=sha256:19b66ca0a4d25cc0200b381ce824c7ea090db61427315e73cfb05dbf1b35c369' >/tmp/pillow.txt && python3 -m pip --disable-pip-version-check install --no-deps --no-cache-dir --only-binary=:all: --require-hashes --target=/opt/pillow -r /tmp/pillow.txt
 FROM base
-COPY --from=pillow-build /opt/pillow /opt/pillow
-ENV PYTHONPATH=/opt/pillow
+COPY --from=pillow-build /opt/pillow/ /usr/local/lib/python3.13/dist-packages/
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ffmpeg fontconfig fonts-noto-cjk python3 libfreetype6 zlib1g tzdata && rm -rf /var/lib/apt/lists/*
 WORKDIR /app

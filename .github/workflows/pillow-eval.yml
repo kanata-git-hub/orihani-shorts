@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [source]
+        variant: [wheel, source]
     env:
       VARIANT: ${{ matrix.variant }}
     steps:
@@ -28,10 +28,10 @@ jobs:
             ! command -v pip3
             python3 -c "import PIL; from PIL import ImageFont,features; assert PIL.__version__==\"13.0.0\"; print(PIL.__file__, {f:features.version(f) for f in features.get_supported()}); assert ImageFont.truetype(\"/app/public/fonts/Cafe24Ssurround.ttf\",22).getbbox(\"테스트\")"
             echo "Native component inventory"
-            find /opt/pillow -type f \( -name "*.so" -o -name "*.so.*" -o -name "*cdx*" -o -iname "*sbom*" \) -printf "%f\n" | sort
+            find /usr/local/lib/python3.13/dist-packages -type f \( -name "*.so" -o -name "*.so.*" -o -name "*cdx*" -o -iname "*sbom*" \) -printf "%f\n" | sort
             if [ "$VARIANT" = source ]; then
-              test ! -d /opt/pillow/pillow.libs
-              for f in /opt/pillow/PIL/*.so; do ldd "$f"; done > /tmp/linked
+              test ! -d /usr/local/lib/python3.13/dist-packages/pillow.libs
+              for f in /usr/local/lib/python3.13/dist-packages/PIL/*.so; do ldd "$f"; done > /tmp/linked
               ! grep -q "not found" /tmp/linked
               awk "/=> \\// {print \\$3}" /tmp/linked | sort -u | while read -r lib; do dpkg-query -S "$(readlink -f "$lib")" >/dev/null; done
             fi
@@ -63,4 +63,34 @@ jobs:
           for r in [osr]+python:
               findings=r.get("Vulnerabilities",[])
               print("SUMMARY",r["Type"], "packages",len(r.get("Packages",[])), "distinct", {k:len({x["VulnerabilityID"] for x in findings if x["Severity"]==k}) for k in ("CRITICAL","HIGH","MEDIUM","LOW")}, "fixable",sum(bool(x.get("FixedVersion")) for x in findings))
+          PY
+      - name: Independently scan upstream native SBOMs in the exact wheel
+        if: matrix.variant == 'wheel'
+        run: |
+          cd "$RUNNER_TEMP"
+          cid=$(docker create pillow-candidate:local)
+          trap 'docker rm -f "$cid" >/dev/null' EXIT
+          docker cp "$cid:/usr/local/lib/python3.13/dist-packages/pillow-13.0.0.dist-info/sboms" sboms
+          curl -fsSL --retry 3 -o grype.tar.gz 'https://github.com/anchore/grype/releases/download/v0.121.1/grype_0.121.1_linux_amd64.tar.gz'
+          echo 'bc3ea3f9e6fd56ac781c08c6c5e614271b79f438200757f6932085c19b0a4657  grype.tar.gz' | sha256sum -c -
+          tar -xzf grype.tar.gz grype
+          python - <<'PY'
+          import json, pathlib
+          native={}
+          for f in pathlib.Path("sboms").rglob("*.json"):
+              obj=json.load(f.open())
+              for p in obj.get("components",[]):
+                  if p.get("type")!="library" or not p.get("version"): continue
+                  key=(p["name"],p["version"]); native[key]={k:p[k] for k in ("name","version","type","purl","cpe") if k in p}
+          assert len(native)>10, list(native)
+          print("Upstream wheel inventory",sorted(native))
+          with open("native.cdx.json","w") as out:
+              json.dump({"bomFormat":"CycloneDX","specVersion":"1.6","version":1,"components":list(native.values())},out)
+          PY
+          ./grype sbom:native.cdx.json -o json >native-findings.json
+          python - <<'PY'
+          import json,collections
+          findings=json.load(open("native-findings.json"))
+          print("Native inventory scan",dict(collections.Counter(x["vulnerability"]["severity"] for x in findings.get("matches",[]))))
+          print("Native affected components",sorted({x["artifact"]["name"] for x in findings.get("matches",[])}))
           PY
