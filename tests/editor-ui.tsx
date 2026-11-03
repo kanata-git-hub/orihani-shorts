@@ -1,3 +1,4 @@
+import { accountKey, bindAccount } from '../src/accountSession';
 // Local Vite QA entry only; not referenced by index.html or the production build.
 // Uses synthetic data and no authenticated API requests.
 import React, { useState } from 'react';
@@ -13,13 +14,16 @@ import '../src/compact-mobile.css';
 // The internal QA preview is HTTP. Production remains HTTPS with native UUIDs.
 if (!crypto.randomUUID) Object.defineProperty(crypto, 'randomUUID', {value:()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>n.toString(16).padStart(2,'0')).join('')});
 
+if (!['terminal.local', 'localhost'].includes(location.hostname)) throw Error('로컬 검증 전용입니다.');
+bindAccount('qa', 'fixture-user');
+
 async function fixtures() {
   if (location.hostname !== 'terminal.local' && location.hostname !== 'localhost') throw Error('로컬 검증 전용입니다.');
   const result = await fetch('/.editor-test/media/verified-5s.mp4').then(r=>{if(!r.ok)throw Error('먼저 실제 렌더 테스트를 실행해주세요.');return r.blob();});
   const file = new File([result], '검증-5초.mp4', {type:'video/mp4',lastModified:1});
   const history = ['일부 사진 작업','사진 준비 작업','영상 입력 작업','완성된 작업'].map((title,i)=>({id:'qa-'+i,timestamp:100+i,characterId:'deoki',duration:5 as const,result:JSON.stringify({title,scenario:'검증용 대본',location:'검증',instagramCaption:'검증 #밈',hashtags:[],clips:[2,3].map((n,j)=>({title:`장면 ${j+1}`,imageTitle:`사진${j}`,imagePrompt:'test only',videoPrompt:`OUTPUT SPECS: ${n}s`}))}),episode:{duration:5 as const,title,scenario:'검증용',korean:'나레이션: 없음\n[0~2초] 덕이: "가자!"',thumbnail:'치약 짰더니 로켓? 🚀',caption:'검증'}}));
   const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6D1cAAAAASUVORK5CYII=';
-  localStorage.setItem('pov_director_history',JSON.stringify(history));
+  localStorage.setItem(accountKey('pov_director_history'),JSON.stringify(history));
   await db.set(history[0].id,{images:{사진0:image}});
   await db.set(history[1].id,{images:{사진0:image,사진1:image}});
   const base:Draft={id:'episode-history-qa-2',plan:{...defaultPlan(),title:'영상 입력 작업',thumbnail:'치약 짰더니 로켓? 🚀',captions:[{start:0,end:2,text:'가자! 🚀',source:'dialogue',review:'발화 시간을 확인해주세요.'}]},original:'검증용 원문 🚀',voice:'Zubenelgenubi',style:'편안하게',videos:[file]};
@@ -32,7 +36,7 @@ async function fixtures() {
   await editorStore(independent.id,independent);
   await editorStore('list',[{id:independent.id,title:'독립 편집'},summarizeDraft(base,102),summarizeDraft(finished,103)]);
   await editorStore('current',independent.id);
-  localStorage.setItem('orihani-recent-work',JSON.stringify({kind:'editor',id:independent.id}));
+  localStorage.setItem(accountKey('orihani-recent-work'),JSON.stringify({kind:'editor',id:independent.id}));
 }
 function Harness() {
   const [width,setWidth]=useState(390),[ready,setReady]=useState(false),[error,setError]=useState('');

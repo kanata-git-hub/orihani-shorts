@@ -20,7 +20,7 @@ test('real Gemini request attaches all three original views for Dr.O and Korean-
   react:{useRef:v=>({current:v})},'../constants':{CHARACTERS:catalog},
   '../utils/db':{db:{get:async()=>({images:{}}),setImageChecks:async()=>{}}},
  });
- const hook=useMediaGeneration(()=>{},async()=>{},'record',()=>{},{},()=>{},{},'deoki');
+ const hook=useMediaGeneration(()=>{},async()=>{},'record',()=>{},{},()=>{},'deoki');
  try{
   global.fetch=async(url,options)=>{
    if(url==='/api/generate-image'){requests.push(JSON.parse(options.body));return Response.json({result:png,review:{status:'pass',issues:[]}});}
@@ -74,7 +74,7 @@ test('failed and non-image reference downloads stop before generation',async()=>
 });
 if(fs.existsSync(path.join(root,'src/hooks/useMediaGeneration.ts')))test('meme generator sends named originals with a lower-priority previous scene and stops on missing assets',async()=>{
  const calls=[],toasts=[];const old=global.fetch;
- const {handleGenerateImage}=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>({images:{first:png}})}},'../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'오원장.png',imgs:['front.png','side.png','back.png']}]},'../characterReference':policy,'../backgroundAssets':backgrounds,'../sceneReference':episodeReference}).useMediaGeneration(msg=>toasts.push(msg),async()=>{},'record',()=>{},{},()=>{}, {},'owonjang');
+ const {handleGenerateImage}=compile('src/hooks/useMediaGeneration.ts',{'react':{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>({images:{first:png}})}},'../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'오원장.png',imgs:['front.png','side.png','back.png']}]},'../characterReference':policy,'../backgroundAssets':backgrounds,'../sceneReference':episodeReference}).useMediaGeneration(msg=>toasts.push(msg),async()=>{},'record',()=>{},{},()=>{},'owonjang');
  try{global.fetch=async(url,options)=>{calls.push(url);return url==='/api/generate-image'?(calls.push(JSON.parse(options.body)),Response.json({result:png,review:{status:'pass',issues:[]}})):new Response(Buffer.from(png.split(',')[1],'base64'),{headers:{'Content-Type':'image/png'}});};
  assert.equal(await handleGenerateImage('second','O-wonjang holding toothpaste',1,[{title:'first',prompt:'old'}]),true);
  const request=calls.find(x=>typeof x==='object');assert.equal(request.parts.filter(p=>p.inlineData).length,4);assert.match(request.parts.at(-1).text,/O-wonjang: pale warm cream/);

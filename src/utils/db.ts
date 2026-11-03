@@ -1,3 +1,4 @@
+import { accountKey } from '../accountSession';
 import { readSceneReference, readClipReferences, type SceneReference } from '../sceneReference';
 
 export type MediaSummary = { imageTitles: string[] };
@@ -5,7 +6,7 @@ export const MEDIA_CHANGED = 'orihani-media-summary';
 async function openDB() {
   return new Promise<IDBDatabase>((resolve, reject) => {
     let blocked = false;
-    const r = indexedDB.open('pov_director_db', 2);
+    const r = indexedDB.open(accountKey('pov_director_db'), 2);
     r.onupgradeneeded = () => {
       for (const name of ['media', 'summaries']) if (!r.result.objectStoreNames.contains(name)) r.result.createObjectStore(name);
     };

@@ -1,3 +1,4 @@
+import { accountKey } from '../accountSession';
 import { Kling4Start } from '../workflow/Kling4Start';
 import { Kling4Workspace } from '../workflow/Kling4Workspace';
 import { getKling4Plan, legacyKling4Copy } from '../kling4';
@@ -35,7 +36,6 @@ import { captureSceneReference, readClipReferences, type SceneReference } from '
 
 // Hooks
 import { useToast } from '../hooks/useToast';
-import { useSettings } from '../hooks/useSettings';
 import { useHistory } from '../hooks/useHistory';
 import { useMedia } from '../hooks/useMedia';
 import { useGeneration } from '../hooks/useGeneration';
@@ -43,7 +43,6 @@ import { useMediaGeneration } from '../hooks/useMediaGeneration';
 
 export default function App() {
   const { toast, showToast } = useToast();
-  const { apiKeys } = useSettings();
   const { history, viewingHistoryId, setViewingHistoryId, saveHistory, applyVideoPromptRevision, setBackgroundChoice, handleDeleteHistory, handleClearHistory } = useHistory();
   
   const [source,setSource]=useState<SourceEpisode|null>(null);
@@ -56,7 +55,7 @@ export default function App() {
   const [resumeId,setResumeId]=useState<string>();
   const resumeHandled=useCallback(()=>setResumeId(undefined),[]);
   const [recent,setRecent]=useState<RecentTarget|undefined>(readRecentTarget);
-  const remember=useCallback((value:RecentTarget)=>{setRecent(value);try{localStorage.setItem('orihani-recent-work',JSON.stringify(value));}catch{/* preference only */}},[]);
+  const remember=useCallback((value:RecentTarget)=>{setRecent(value);try{localStorage.setItem(accountKey('orihani-recent-work'),JSON.stringify(value));}catch{/* preference only */}},[]);
   const editorActive=useCallback((id:string)=>remember({kind:'editor',id}),[remember]);
   useEffect(()=>{
     let active=true;
@@ -80,7 +79,7 @@ export default function App() {
     error,
     currentWorkboardId,
     handleGenerate: generatePlan, handleLoadPrepared
-  } = useGeneration(showToast, saveHistory, apiKeys);
+  } = useGeneration(showToast, saveHistory);
   useEffect(()=>{if(result&&currentWorkboardId&&!isGenerating)remember({kind:'history',id:currentWorkboardId});},[result,currentWorkboardId,isGenerating,remember]);
   
   const {
@@ -95,7 +94,7 @@ export default function App() {
   } = useMediaGeneration(
     showToast, saveMediaToDB, targetId,
     setGeneratingImages, sceneImages, setSceneImages,
-    apiKeys, view==='history'?(history.find(h=>h.id===viewingHistoryId)?.characterId||selectedCharacter):selectedCharacter,
+    view==='history'?(history.find(h=>h.id===viewingHistoryId)?.characterId||selectedCharacter):selectedCharacter,
     history.find(h=>h.id===targetId)?.backgroundChoices
   );
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { auth } from '../lib/firebase';
+import { authFetch } from '../authFetch';
 import { defaultPlan, EditPlan, importEpisode, validatePlan, isClinicPlan } from './model';
 import { editorStore, draftWriter, persistDraft } from './storage';
 import { Draft, DraftSummary, EditorStage, voiceKey, syncKey, resultKey, voiceIsCurrent, resultIsCurrent, hasDraftContent, restoreDraft, draftStage, draftProgress, summarizeDraft } from './draft';
@@ -19,10 +19,7 @@ function SourcePreview({ file, index }: { file: File; index: number }) {
   return <div><p>{index + 1}번 원본 영상 · {file.name}</p><video className="ori-result" controls playsInline preload="none" src={url} /></div>;
 }
 async function request(url: string, body: FormData | object) {
-  const user = auth.currentUser; if (!user) throw Error('먼저 로그인해주세요.');
-  const headers: Record<string, string> = { Authorization: `Bearer ${await user.getIdToken()}` };
-  if (!(body instanceof FormData)) headers['Content-Type'] = 'application/json';
-  const res = await fetch('/api/editor/' + url, { method: 'POST', headers, body: body instanceof FormData ? body : JSON.stringify(body) });
+  const res = await authFetch('/api/editor/' + url, { method: 'POST', headers: body instanceof FormData ? undefined : { 'Content-Type': 'application/json' }, body: body instanceof FormData ? body : JSON.stringify(body) });
   if (!res.ok) { const error = await res.json().catch(() => ({})); throw Error(error.error || `서버 응답 오류 (${res.status})`); }
   return res.blob();
 }

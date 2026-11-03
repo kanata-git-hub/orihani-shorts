@@ -11,7 +11,6 @@ import { prepareDriveWork } from '../workflow/preparedWork';
 export function useGeneration(
   showToast: (msg: string, type?: "success" | "error") => void,
   saveHistory: (item: any) => void,
-  apiKeys: { gemini: string; kling: string },
 ) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<string>("");

@@ -38,7 +38,8 @@ test('work files carry a self-contained selected still and older work files rema
 });
 test('saved references survive source replacement, deletion and concurrent destination image writes; detach is record-specific',async()=>{
  require('fake-indexeddb/auto');global.window=new EventTarget();
- const {db}=compile('src/utils/db.ts');await db.clear();
+ const account=compile('src/accountSession.ts');account.bindAccount('qa-project','media-fixture');
+ const {db}=compile('src/utils/db.ts',{'../accountSession':account});await db.clear();
  await db.set(item.id,{images:{'image-4':png}});
  await db.setSceneReference('episode-five',snapshot);await db.setSceneReference('episode-six',snapshot);
  await db.setImages(item.id,{'image-4':later});await db.delete(item.id);
@@ -58,7 +59,7 @@ test('image generation sends the exact selected still with originals and keeps i
  const create=()=>compile('src/hooks/useMediaGeneration.ts',{
   react:{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>media}},
   '../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'owonjang.png',imgs:[png,png,png]}]},
- }).useMediaGeneration(()=>{},async()=>{},'episode-five',()=>{},{},()=>{},{},'owonjang');
+ }).useMediaGeneration(()=>{},async()=>{},'episode-five',()=>{},{},()=>{},'owonjang');
  try{
   global.fetch=async(url,options)=>{assert.equal(url,'/api/generate-image');request=JSON.parse(options.body);return Response.json({result:png,review:{status:'pass',issues:[]}});};
   assert.equal(await create().handleGenerateImage('second','O-wonjang moves the cart',1,[{title:'first',prompt:'Earlier shot'}]),true);
@@ -82,7 +83,7 @@ test('plan creation persists the snapshot before selecting the new record and ne
   react:{useState:v=>[v,next=>events.push(['state',next])]},
   '../utils/db':{db:{setSceneReference:async(id,ref)=>events.push(['snapshot',id,ref])}},
   '../constants':{CHARACTERS:[{id:'owonjang',name:'오원장'}]},
- }).useGeneration(()=>{},record=>{saved.push(record);events.push(['history',record.id]);},{});
+ }).useGeneration(()=>{},record=>{saved.push(record);events.push(['history',record.id]);});
  try{
   global.fetch=async(url,options)=>{requests.push(JSON.parse(options.body));return Response.json({result:item.result});};
   assert.equal(await hook.handleGenerate('owonjang','5화','15s',undefined,snapshot),true);
@@ -108,7 +109,8 @@ test('same-episode prop selection is clip-specific and cannot refer to itself or
 });
 test('clip prop snapshots survive regeneration, reload, concurrent saves and work-file round trips',async()=>{
  require('fake-indexeddb/auto');global.window=new EventTarget();
- const {db}=compile('src/utils/db.ts');await db.clear();
+ const account=compile('src/accountSession.ts');account.bindAccount('qa-project','media-fixture');
+ const {db}=compile('src/utils/db.ts',{'../accountSession':account});await db.clear();
  const selected=refs.captureClipReference(item,'image-4',item,'image-2',{'image-2':later});
  await db.set(item.id,{images:{'image-2':later},sceneReference:snapshot});
  await Promise.all([db.setClipReference(item.id,'image-4',selected),db.setImages(item.id,{'image-2':png,'image-3':png})]);
@@ -133,7 +135,7 @@ test('clip four receives scene-two food plus the separate set anchor, without le
  const hook=()=>compile('src/hooks/useMediaGeneration.ts',{
   react:{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>media}},
   '../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'owonjang.png',imgs:[png,png,png]}]},
- }).useMediaGeneration(()=>{},async()=>{},item.id,()=>{},{},()=>{},{},'owonjang');
+ }).useMediaGeneration(()=>{},async()=>{},item.id,()=>{},{},()=>{},'owonjang');
  try{
   global.fetch=async(url,options)=>{assert.equal(url,'/api/generate-image');request=JSON.parse(options.body);return Response.json({result:png,review:{status:'pass',issues:[]}});};
   assert.equal(await hook().handleGenerateImage('image-4',scenes[3].prompt,3,scenes),true);
@@ -196,7 +198,7 @@ test('automatic sources attach exact named props, deduplicate set/prop image, us
  const hook=()=>compile('src/hooks/useMediaGeneration.ts',{
   react:{useRef:v=>({current:v})},'../utils/db':{db:{setImageChecks:async()=>{},get:async()=>media}},
   '../constants':{CHARACTERS:[{id:'owonjang',name:'오원장',file:'owonjang.png',imgs:[png,png,png]}]},
- }).useMediaGeneration(m=>errors.push(m),async()=>{},item.id,()=>{},{'image-3':png},()=>{},{},'owonjang');
+ }).useMediaGeneration(m=>errors.push(m),async()=>{},item.id,()=>{},{'image-3':png},()=>{},'owonjang');
  try{
   global.fetch=async(url,options)=>{request=JSON.parse(options.body);return Response.json({result:png,review:{status:'pass',issues:[]}});};
   assert.equal(await hook().handleGenerateImage('image-4',scenes[3].prompt,3,scenes),true);

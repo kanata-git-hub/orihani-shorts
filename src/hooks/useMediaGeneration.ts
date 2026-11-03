@@ -19,7 +19,6 @@ export function useMediaGeneration(
   setGeneratingImages: React.Dispatch<React.SetStateAction<Record<string, boolean>>>,
   sceneImages: Record<string, string>,
   setSceneImages: React.Dispatch<React.SetStateAction<Record<string, string>>>,
-  apiKeys: { gemini: string; kling: string },
   selectedCharacter: string,
   backgroundChoices: BackgroundChoices = {},
 ) {

@@ -12,6 +12,11 @@ for (const f of ['src/kling4.ts','src/videoPrompt.ts','src/productionContinuity.
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
 }
+const sessionSource = fs.readFileSync(path.join(root, 'src/accountSession.ts'), 'utf8');
+const sessionPath = path.join(compiled, 'src/accountSession.js');
+fs.writeFileSync(sessionPath, ts.transpileModule(sessionSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText);
+const session = require(sessionPath);
+session.bindAccount('qa-project', 'editor-user');
 const { defaultPlan, validatePlan, importEpisode } = require(path.join(compiled, 'src/editor/model.js'));
 const { cleanVideoText } = require(path.join(compiled, 'src/editor/text.js'));
 const draftModel = require(path.join(compiled, 'src/editor/draft.js'));
@@ -81,7 +86,7 @@ test('IndexedDB keeps legacy drafts and Blobs, commits summaries atomically and 
 test('v1 picture store upgrades without losing images and indexes only an opened record',async()=>{
  const {IDBFactory,IDBObjectStore}=require('fake-indexeddb');global.indexedDB=new IDBFactory();global.window=new EventTarget();
  const original={images:{a:'data:image/png;base64,AQID',b:''}};
- await new Promise((resolve,reject)=>{const r=indexedDB.open('pov_director_db',1);r.onupgradeneeded=()=>r.result.createObjectStore('media');r.onerror=()=>reject(r.error);r.onsuccess=()=>{const database=r.result,tx=database.transaction('media','readwrite');tx.objectStore('media').put(original,'legacy-record');tx.oncomplete=()=>{database.close();resolve();};};});
+ await new Promise((resolve,reject)=>{const r=indexedDB.open(session.accountKey('pov_director_db'),1);r.onupgradeneeded=()=>r.result.createObjectStore('media');r.onerror=()=>reject(r.error);r.onsuccess=()=>{const database=r.result,tx=database.transaction('media','readwrite');tx.objectStore('media').put(original,'legacy-record');tx.oncomplete=()=>{database.close();resolve();};};});
  const {db}=require(path.join(compiled,'src/utils/db.js'));
  const calls=[],getAll=IDBObjectStore.prototype.getAll;
  IDBObjectStore.prototype.getAll=function(...args){calls.push(this.name);return getAll.apply(this,args);};
@@ -92,6 +97,38 @@ test('v1 picture store upgrades without losing images and indexes only an opened
    await db.set('second',{images:{x:'data:image/png;base64,AQID'}});await db.delete('second');assert.equal((await db.summaries()).second,undefined);
    assert.deepEqual(await db.get('legacy-record'),original);
  } finally {IDBObjectStore.prototype.getAll=getAll;}
+});
+test('browser media, drafts and history stay with their project and UID across account switches',async()=>{
+  global.indexedDB=new (require('fake-indexeddb').IDBFactory)();
+  global.window=new EventTarget();
+  const paths=[sessionPath,path.join(compiled,'src/editor/storage.js'),path.join(compiled,'src/utils/db.js')];
+  const previous=paths.map(file=>require.cache[file]);
+  const tab=()=>{
+    for(const file of paths)delete require.cache[file];
+    const [scope,editor,media]=paths.map(file=>require(file));
+    return {scope,editor,db:media.db};
+  };
+  try {
+    const a=tab();assert.throws(()=>a.scope.accountKey('pov_director_history'),/로그인/);
+    assert.ok(a.scope.bindAccount('project-a','user-1'));
+    const historyKey=a.scope.accountKey('pov_director_history');
+    const recentKey=a.scope.accountKey('orihani-recent-work');
+    assert.notEqual(historyKey,'pov_director_history');assert.notEqual(recentKey,'orihani-recent-work');
+    await a.editor.editorStore('active',new Blob(['A']));
+    await a.db.set('work',{images:{first:'image-A'}});
+    assert.equal(a.scope.bindAccount('project-a',null),false);
+    assert.equal(a.scope.bindAccount('project-a','user-2'),false);
+    const b=tab();assert.ok(b.scope.bindAccount('project-a','user-2'));
+    assert.notEqual(b.scope.accountKey('pov_director_history'),historyKey);
+    assert.equal(await b.editor.editorStore('active'),undefined);assert.deepEqual(await b.db.summaries(),{});
+    await a.db.setImages('work',{late:'finished for A'});
+    await b.db.clear();await b.editor.editorStore('active','B');
+    const c=tab();c.scope.bindAccount('project-b','user-1');
+    assert.notEqual(c.scope.accountKey('orihani-recent-work'),recentKey);assert.equal(await c.editor.editorStore('active'),undefined);
+    const restored=tab();restored.scope.bindAccount('project-a','user-1');
+    assert.equal(await (await restored.editor.editorStore('active')).text(),'A');
+    assert.deepEqual((await restored.db.get('work')).images,{first:'image-A',late:'finished for A'});
+  } finally {paths.forEach((file,i)=>{if(previous[i])require.cache[file]=previous[i];else delete require.cache[file];});}
 });
 const { subtitles, render, command, inspect } = require(path.join(compiled, 'server/editor/render.js'));
 const { audioResponse } = require(path.join(compiled, 'server/editor/routes.js'));

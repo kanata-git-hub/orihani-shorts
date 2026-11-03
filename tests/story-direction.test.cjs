@@ -41,7 +41,7 @@ test('generation hook sends the selected source rather than only storing it in h
  const hook=compile('src/hooks/useGeneration.ts',{'react':{useState:v=>[v,()=>{}]},'../constants':{CHARACTERS:[{id:'deoki',name:'덕이'}]},'../utils/db':{db:{}}});
  try{
   global.fetch=async(url,options)=>{request=JSON.parse(options.body);return Response.json({result:JSON.stringify(result)});};
-  const api=hook.useGeneration(()=>{},v=>{history=v;},{});
+  const api=hook.useGeneration(()=>{},v=>{history=v;});
   assert.equal(await api.handleGenerate('deoki',episodePrompt(source),'15s',source),true);
   assert.deepEqual(request.sourceEpisode,source);assert.deepEqual(history.episode,source);
  }finally{global.fetch=old;}
