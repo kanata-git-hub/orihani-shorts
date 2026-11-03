@@ -1,0 +1,66 @@
+name: One-time Pillow candidate verification
+on:
+  push:
+    branches: ['audit/pillow-candidate-trixie-20261103']
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [wheel, source]
+    env:
+      VARIANT: ${{ matrix.variant }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build local non-production candidate
+        run: docker build --quiet -f ".github/probe/$VARIANT.Dockerfile" --tag pillow-candidate:local .
+      - name: Verify package origins, runtime, and all local-only media suites
+        run: |
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --tmpfs /app/.editor-test:rw,exec,mode=1777,size=3g --mount type=bind,source="$PWD/tests",target=/app/tests,readonly --env FFMPEG_PATH=ffmpeg --env EDITOR_PYTHON_PATH=python3 --env VARIANT="$VARIANT" pillow-candidate:local sh -ec '
+            test "$(id -u)" -ne 0
+            ! dpkg-query -W -f="${db:Status-Abbrev}" python3-pil | grep -q "^ii"
+            ! command -v pip3
+            python3 -c "import PIL; from PIL import ImageFont,features; assert PIL.__version__==\"13.0.0\"; print(PIL.__file__, {f:features.version(f) for f in features.get_supported()}); assert ImageFont.truetype(\"/app/public/fonts/Cafe24Ssurround.ttf\",22).getbbox(\"테스트\")"
+            echo "Native component inventory"
+            find /opt/pillow -type f \( -name "*.so" -o -name "*.so.*" -o -name "*cdx*" -o -iname "*sbom*" \) -printf "%f\n" | sort
+            if [ "$VARIANT" = source ]; then
+              test ! -d /opt/pillow/pillow.libs
+              for f in /opt/pillow/PIL/*.so; do ldd "$f"; done > /tmp/linked
+              ! grep -q "not found" /tmp/linked
+              awk "/=> \\// {print \\$3}" /tmp/linked | sort -u | while read -r lib; do dpkg-query -S "$(readlink -f "$lib")" >/dev/null; done
+            fi
+            for suite in editor character-reference background-assets scene-reference video-prompt story-direction production-continuity production-package weekly-images weekly-additions clinic-weekly clinic-reserves kling4 image-quality; do
+              if ! node --test "tests/$suite.test.cjs" > /tmp/test.log 2>&1; then tail -35 /tmp/test.log; exit 1; fi
+              echo "Passed $suite"; grep -E "^# (tests|pass|fail|skipped|todo) " /tmp/test.log
+              grep -q "^# skipped 0" /tmp/test.log
+            done
+          '
+      - name: Audit OS and Python package in actual candidate
+        if: always()
+        run: |
+          cd "$RUNNER_TEMP"
+          curl -fsSL --retry 3 -o trivy.tar.gz 'https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-64bit.tar.gz'
+          echo 'c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0  trivy.tar.gz' | sha256sum -c -
+          tar -xzf trivy.tar.gz trivy
+          ./trivy image --image-src docker --scanners vuln --pkg-types os,library --list-all-pkgs --no-progress --format json -o findings.json pillow-candidate:local
+          ./trivy --version
+          python - <<'PY'
+          import json
+          from collections import Counter
+          results=json.load(open("findings.json"))["Results"]
+          osr=next(r for r in results if r.get("Class")=="os-pkgs")
+          assert len(osr["Packages"])>100 and not any(p["Name"]=="python3-pil" for p in osr["Packages"])
+          python=[r for r in results if r.get("Type") in ("python-pkg","pip")]
+          assert any(p.get("Name","").lower()=="pillow" and p["Version"]=="13.0.0" for r in python for p in r.get("Packages",[])), [r.get("Type") for r in results]
+          six={"CVE-2026-"+n for n in ("112393","112398","112403","112900","54058","96639")}
+          assert not {v["VulnerabilityID"] for r in results for v in r.get("Vulnerabilities",[]) if v.get("PkgName","").lower() in ("python3-pil","pillow")} & six
+          for r in [osr]+python:
+              findings=r.get("Vulnerabilities",[])
+              print("SUMMARY",r["Type"], "packages",len(r.get("Packages",[])), "distinct", {k:len({x["VulnerabilityID"] for x in findings if x["Severity"]==k}) for k in ("CRITICAL","HIGH","MEDIUM","LOW")}, "fixable",sum(bool(x.get("FixedVersion")) for x in findings))
+          PY
