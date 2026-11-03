@@ -1,8 +1,9 @@
-# The manifest list covers amd64 and arm64. Refresh it alongside the runtime audit.
-FROM node:22-trixie-slim@sha256:2117f713a417f3aff682ac8f5bc2ebbdf1beed51f36e67ab1e0fd3866b6d2d8f AS base
+# Official multi-architecture images. Ubuntu 26.10 is supported until July 2027.
+FROM node:22-trixie-slim@sha256:2117f713a417f3aff682ac8f5bc2ebbdf1beed51f36e67ab1e0fd3866b6d2d8f AS node-runtime
+FROM ubuntu:26.10@sha256:262df65c0ec6bf8d9dcc87454f4330a05fae4b97825f45854af3b136666584c2 AS base
 FROM base AS pillow-build
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    g++ python3-dev python3-pip python3-wheel zlib1g-dev libfreetype-dev \
+    ca-certificates g++ python3-dev python3-pip python3-wheel zlib1g-dev libfreetype-dev \
     && rm -rf /var/lib/apt/lists/*
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 PIP_NO_CACHE_DIR=1
 COPY docker/pillow-build.txt docker/pillow-source.txt /tmp/
@@ -18,11 +19,15 @@ RUN python3 -m pip download --no-build-isolation --no-deps --no-binary=:all: \
       -C imagequant=disable -C xcb=disable -C avif=disable /tmp/src/pillow-*.tar.gz
 
 FROM base AS caption-runtime
+COPY --from=node-runtime /usr/local/ /usr/local/
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     ffmpeg fontconfig fonts-noto-cjk python3 libfreetype6 zlib1g tzdata \
-    && rm -rf /var/lib/apt/lists/*
-# Debian's default site directory works even with a sanitized subprocess environment.
-COPY --from=pillow-build /opt/pillow/ /usr/local/lib/python3.13/dist-packages/
+    libstdc++6 libatomic1 ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 10001 node \
+    && useradd --uid 10001 --gid node --create-home --shell /usr/sbin/nologin node
+# Ubuntu's default site directory works even with a sanitized subprocess environment.
+COPY --from=pillow-build /opt/pillow/ /usr/local/lib/python3.14/dist-packages/
 
 FROM caption-runtime
 WORKDIR /app

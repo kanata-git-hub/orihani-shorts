@@ -13,3 +13,12 @@ npx --yes firebase-tools@15.30.2 deploy --project gen-lang-client-0165298283 --c
 Refresh open app tabs after the server update so they send ID tokens. Verify one normal signed-in generation and that signed-out generation receives HTTP 401. Keep the server credential in the Cloud Run environment, never Vite client `define` values. Replace potentially exposed Gemini keys through the existing secret configuration, verify the replacement, then revoke the old key; this change does not prove whether a key was previously accessed.
 
 Request limits are per server instance (600 requests/minute and 32 concurrent per UID). They are burst protection, not a distributed billing cap. Existing user access is preserved: Shorts permits verified signed-in users; Translate and Marketing require their existing approval records; Chart accepts existing user/admin roles.
+
+
+## Shorts runtime release checks
+
+The media container uses official Node 22 binaries and Ubuntu 26.10 (Stonking). Ubuntu supports this interim release through July 2027. Migrate to a supported successor before that date. Node 22 reaches end of life on April 30, 2027. Both image references are pinned to manifest-list digests for amd64 and arm64. Refresh the digests when validating security updates.
+
+For the OS inventory, CI evaluates the official Canonical Stonking OCI CVE and USN OVAL definitions against the actual image's package manifest. It also evaluates an intentionally old package manifest as a positive control. An outstanding notice, an applicable high or critical vulnerability, or an inconclusive assessment fails the check. CI reports lower-severity findings for review. Trivy checks the installed Python renderer separately. Its OS findings cannot establish Stonking coverage when it identifies the image as Debian.
+
+The runtime checks exercise the non-root production entry point, registered fonts, offline FFmpeg editor paths, Pillow native libraries and the copied Node binary. AMD64 is the production architecture. The native ARM64 job checks the caption runtime and Node ABI, TLS and ICU.
