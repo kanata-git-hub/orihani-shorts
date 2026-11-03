@@ -130,7 +130,12 @@ export async function generateReviewedImage(ai: any, input: ReturnType<typeof re
       candidate = responseImage(response); model = IMAGE_MODELS[0];
       attempts.push({ candidate, model, providerModel: response.modelVersion, usage: response.usageMetadata,
         generationMs: Date.now() - t, ...await inspect(ai, input.parts, candidate, reviewBudget, previous.candidate) });
-    } catch (error) { repairError = `${repairCount}차 이미지 수정 요청에 실패해 중단했습니다. ` + (error as Error).message; break; }
+    } catch (error) {
+      const status = Number((error as { status?: number })?.status);
+      const detail = Number.isInteger(status) && status >= 400 && status <= 599 ? ` (HTTP ${status})` : '';
+      repairError = `${repairCount}차 이미지 수정 요청에 실패해 중단했습니다.${detail}`;
+      break;
+    }
   }
   const final = attempts.at(-1)!;
   return { model: final.model, providerModel: final.providerModel, inputHash, operation: input.operation,

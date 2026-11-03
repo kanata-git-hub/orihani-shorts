@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const compiled = path.join(root, '.editor-test');
 fs.mkdirSync(compiled, { recursive: true });
 fs.writeFileSync(path.join(compiled, 'package.json'), '{"type":"commonjs"}');
-for (const f of ['src/kling4.ts','src/videoPrompt.ts','src/productionContinuity.ts','src/utils/clipTiming.ts','src/workflow/productionPackage.ts','src/referencePlan.ts','src/shotDirection.ts','src/sceneReference.ts','src/characterReference.ts','src/nooni.ts','src/backgroundAssets.ts','server/workflow/weekly.ts','server/workflow/weeklyImages.ts','src/workflow/importImage.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/clinicCaptions.ts', 'server/editor/typography.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
+for (const f of ['src/kling4.ts','src/videoPrompt.ts','src/productionContinuity.ts','src/utils/clipTiming.ts','src/workflow/productionPackage.ts','src/referencePlan.ts','src/shotDirection.ts','src/sceneReference.ts','src/characterReference.ts','src/nooni.ts','src/backgroundAssets.ts','server/workflow/weekly.ts','server/workflow/weeklyImages.ts','src/workflow/importImage.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/clinicCaptions.ts', 'server/editor/typography.ts', 'serverSecurity.ts', 'server/editor/mediaInput.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
   const dest = path.join(compiled, f.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
@@ -601,4 +601,40 @@ test('clinic font is the approved original and overlays reject clipping', {skip:
   assert.deepEqual(layers.captions.map(c=>c.fontSize),[149,150,121,94]);
   assert.ok(fs.statSync(layers.brand.path).size>0);
   await assert.rejects(()=>generateClinicOverlays(clinicPlan({captions:[{start:0,end:1,text:'가'.repeat(160)}]}),dir),/한 줄/);
+});
+
+test('editor API applies verified account and configured email checks before processing a job', async t => {
+  const express = require('express');
+  const { editorRouter } = require(path.join(compiled, 'server/editor/routes.js'));
+  const client = global.fetch;
+  const project = process.env.EDITOR_FIREBASE_PROJECT_ID;
+  const allowed = process.env.EDITOR_ALLOWED_EMAILS;
+  delete process.env.EDITOR_FIREBASE_PROJECT_ID;
+  process.env.EDITOR_ALLOWED_EMAILS = 'member@example.test';
+  let account = { localId: 'editor-user', email: 'member@example.test', emailVerified: false };
+  t.mock.method(global, 'fetch', async url => {
+    assert.equal(new URL(url).hostname, 'identitytoolkit.googleapis.com');
+    return Response.json({ users: [account] });
+  });
+  const app = express();
+  app.use('/api/editor', editorRouter);
+  const server = app.listen(0, '127.0.0.1');
+  try {
+    await new Promise(resolve => server.once('listening', resolve));
+    const request = () => client('http://127.0.0.1:' + server.address().port + '/api/editor/voice', { method: 'POST',
+      headers: { authorization: 'Bearer synthetic-verified-provider-token', 'content-type': 'application/json' }, body: '{}' });
+    assert.equal((await request()).status, 401);
+    account = { ...account, emailVerified: true, disabled: true };
+    assert.equal((await request()).status, 401);
+    account = { ...account, disabled: false, email: 'outsider@example.test' };
+    assert.equal((await request()).status, 403);
+    account = { ...account, email: 'member@example.test' };
+    const response = await request();
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).error, /나레이션/); // Reached normal input validation without a model call.
+  } finally {
+    if (allowed === undefined) delete process.env.EDITOR_ALLOWED_EMAILS; else process.env.EDITOR_ALLOWED_EMAILS = allowed;
+    if (project === undefined) delete process.env.EDITOR_FIREBASE_PROJECT_ID; else process.env.EDITOR_FIREBASE_PROJECT_ID = project;
+    await new Promise(resolve => server.close(resolve));
+  }
 });

@@ -10,6 +10,7 @@ COPY . .
 RUN mkdir -p /usr/local/share/fonts/orihani && cp src/KyoboHandwriting2024psw.ttf /usr/local/share/fonts/orihani/ && fc-cache -f && fc-match "Kyobo Handwriting 2024"
 RUN npm run build
 
+USER node
 EXPOSE 3000
 
 CMD ["npm", "start"]
