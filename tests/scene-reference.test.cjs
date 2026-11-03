@@ -38,7 +38,8 @@ test('work files carry a self-contained selected still and older work files rema
 });
 test('saved references survive source replacement, deletion and concurrent destination image writes; detach is record-specific',async()=>{
  require('fake-indexeddb/auto');global.window=new EventTarget();
- const {db}=compile('src/utils/db.ts');await db.clear();
+ const account=compile('src/accountSession.ts');account.bindAccount('qa-project','media-fixture');
+ const {db}=compile('src/utils/db.ts',{'../accountSession':account});await db.clear();
  await db.set(item.id,{images:{'image-4':png}});
  await db.setSceneReference('episode-five',snapshot);await db.setSceneReference('episode-six',snapshot);
  await db.setImages(item.id,{'image-4':later});await db.delete(item.id);
@@ -108,7 +109,8 @@ test('same-episode prop selection is clip-specific and cannot refer to itself or
 });
 test('clip prop snapshots survive regeneration, reload, concurrent saves and work-file round trips',async()=>{
  require('fake-indexeddb/auto');global.window=new EventTarget();
- const {db}=compile('src/utils/db.ts');await db.clear();
+ const account=compile('src/accountSession.ts');account.bindAccount('qa-project','media-fixture');
+ const {db}=compile('src/utils/db.ts',{'../accountSession':account});await db.clear();
  const selected=refs.captureClipReference(item,'image-4',item,'image-2',{'image-2':later});
  await db.set(item.id,{images:{'image-2':later},sceneReference:snapshot});
  await Promise.all([db.setClipReference(item.id,'image-4',selected),db.setImages(item.id,{'image-2':png,'image-3':png})]);

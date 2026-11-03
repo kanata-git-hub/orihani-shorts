@@ -56,7 +56,8 @@ test('client keeps old images on rejection, persists failed candidate, compariso
 });
 test('saving review candidates preserves existing images and reference assignments in IndexedDB',async()=>{
  require('fake-indexeddb/auto');global.window=new EventTarget();
- const {db}=compile('src/utils/db.ts');
+ const account=compile('src/accountSession.ts');account.bindAccount('qa-project','media-fixture');
+ const {db}=compile('src/utils/db.ts',{'../accountSession':account});
  await db.set('quality-test',{images:{old:png},clipReferences:{old:{foo:'preserved'}}});
  await db.setImageChecks('quality-test','first',{mode:'generation',rows:[{candidate:png}]});
  const value=await db.get('quality-test');assert.equal(value.images.old,png);assert.equal(value.clipReferences.old.foo,'preserved');assert.equal(value.imageChecks.first.rows[0].candidate,png);
