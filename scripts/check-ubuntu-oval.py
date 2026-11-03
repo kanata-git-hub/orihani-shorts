@@ -4,21 +4,31 @@ from pathlib import Path
 import os
 import xml.etree.ElementTree as ET
 
-NAMESPACE = "oval:com.ubuntu.stonking:"
+NAMESPACE = "oval:com.ubuntu.stonking:def:"
 SEVERITIES = {"critical", "high", "medium", "low", "negligible", "untriaged", "unknown"}
 
 
 def evaluate(feed, result, kind):
-    definitions = {
-        node.get("id"): node for node in ET.parse(feed).iter("{*}definition")
-        if node.get("id")
-    }
-    if not definitions or not all(key.startswith(NAMESPACE) for key in definitions):
-        raise SystemExit(f"Missing or unexpected Ubuntu release in {feed}")
+    root = ET.parse(feed).getroot()
+    generator = root.find("{*}generator")
+    if (generator is None or generator.findtext("{*}product_name") != "Canonical OVAL Generator"
+            or not generator.findtext("{*}product_version")):
+        raise SystemExit(f"Missing Canonical generator identity in {feed}")
+    definitions = {}
+    expected_class = "patch" if feed == "usn.xml" else "vulnerability"
+    for node in root.findall("./{*}definitions/{*}definition"):
+        key = node.get("id", "")
+        platforms = {el.text for el in node.findall("./{*}metadata/{*}affected/{*}platform")}
+        if (not key.startswith(NAMESPACE) or key in definitions or platforms != {"Ubuntu 26.10"}
+                or node.get("class") != expected_class):
+            raise SystemExit(f"Unexpected definition, class or Ubuntu release in {feed}")
+        definitions[key] = node
+    if not definitions:
+        raise SystemExit(f"No Canonical Stonking definitions in {feed}")
     states = Counter()
     findings = Counter()
     seen = set()
-    for row in ET.parse(result).iter("{*}definition"):
+    for row in ET.parse(result).getroot().findall(".//{*}definition"):
         key = row.get("definition_id")
         if not key:
             continue
