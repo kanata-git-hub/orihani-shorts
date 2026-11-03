@@ -1,0 +1,80 @@
+name: Runtime OS security
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - package.json
+      - package-lock.json
+      - .github/workflows/runtime-os.yml
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - package.json
+      - package-lock.json
+      - .github/workflows/runtime-os.yml
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Build the production image locally
+        run: docker build --pull --platform linux/amd64 --tag shorts-os-check .
+      - name: Scan installed OS packages
+        working-directory: ${{ runner.temp }}
+        run: |
+          curl -fsSL --retry 3 -o trivy.tar.gz https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-64bit.tar.gz
+          echo 'c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0  trivy.tar.gz' | sha256sum --check
+          tar -xzf trivy.tar.gz trivy
+          ./trivy image --image-src docker --scanners vuln --pkg-types os --list-all-pkgs --no-progress --format json --output os-scan.json shorts-os-check
+      - name: Report findings and check available fixes
+        working-directory: ${{ runner.temp }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from collections import defaultdict
+
+          with open("os-scan.json") as source:
+              report = json.load(source)
+          systems = [r for r in report.get("Results", []) if r.get("Class") == "os-pkgs"]
+          packages = {(p["Name"], p["Version"]) for r in systems for p in r.get("Packages", [])}
+          if not packages:
+              raise SystemExit("No installed OS package inventory was detected.")
+
+          rows = [v for r in systems for v in (r.get("Vulnerabilities") or [])
+                  if v["Severity"] in {"HIGH", "CRITICAL"}]
+          ids = {v["VulnerabilityID"] for v in rows}
+          critical = {v["VulnerabilityID"] for v in rows if v["Severity"] == "CRITICAL"}
+          fixable = {v["VulnerabilityID"] for v in rows if v.get("FixedVersion")}
+          by_package = defaultdict(list)
+          for v in rows:
+              by_package[(v["PkgName"], v["InstalledVersion"])].append(v)
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as out:
+              print("## Runtime OS package scan", file=out)
+              print(f"Scanned {len(packages)} installed package/version pairs in {', '.join(r['Target'] for r in systems)}.", file=out)
+              print(f"\nDistinct HIGH/CRITICAL advisories: **{len(ids)}** ({len(critical)} critical, {len(ids - critical)} high).", file=out)
+              print(f"Fix available for at least one affected package: **{len(fixable)}**. No fix reported: **{len(ids - fixable)}**.", file=out)
+              if by_package:
+                  print("\n<details><summary>Affected installed packages</summary>\n", file=out)
+                  print("| Package | Installed | Distinct HIGH/CRITICAL | Available fixed versions |", file=out)
+                  print("|---|---|---:|---|", file=out)
+                  for (name, version), hits in sorted(by_package.items()):
+                      fixes = sorted({v["FixedVersion"] for v in hits if v.get("FixedVersion")})
+                      count = len({v["VulnerabilityID"] for v in hits})
+                      print(f"| {name} | {version} | {count} | {', '.join(fixes) or '—'} |", file=out)
+                  print("\n</details>", file=out)
+          if fixable:
+              raise SystemExit(f"{len(fixable)} distinct HIGH/CRITICAL OS advisories have a published fix.")
+          PY
