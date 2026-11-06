@@ -75,6 +75,8 @@ test('real Kling 4.0 copy button copies only the full prompt, without clip prefi
   assert.equal(button.props.disabled,false);await button.props.onClick();assert.equal(copies[0],plan.videoPrompt);
   plan.needsVideoReview=true;tree=Kling4Workspace({...props,result:JSON.stringify(plan)});
   assert.equal(flatten(tree).find(n=>n.type==='button'&&label(n)==='전체 영상 프롬프트 복사').props.disabled,true);
+  plan.aspectRatio='16:9';tree=Kling4Workspace({...props,result:JSON.stringify(plan)});
+  assert.match(label(tree),/가로 16:9/);assert.doesNotMatch(label(tree),/세로 9:16/);
  }finally{descriptor?Object.defineProperty(global,'navigator',descriptor):delete global.navigator;}
 });
 test('image imports detect actual file type and reject disguised non-images',()=>{

@@ -6,6 +6,7 @@ export type VideoLayout = 'single' | 'legacy-clips';
 export type Keyframe = { time: number; title: string; imageTitle: string; imagePrompt: string; referencePlan: ReferencePlan; locationId?: string; backgroundAsset?: string };
 export type Kling4Plan = {
   workflow: 'kling4'; duration: VideoDuration; title: string; location: string; scenario: string;
+  aspectRatio?: '9:16' | '16:9';
   instagramCaption: string; hashtags: string[]; continuity: string; videoPrompt: string; keyframes: Keyframe[];
   needsVideoReview?: boolean;
 };
@@ -19,6 +20,7 @@ export function getKling4Plan(raw: string): Kling4Plan | null {
 export function validateKling4Plan(plan: any): asserts plan is Kling4Plan {
   const fail = (message: string): never => { throw Error(`Kling 4.0 제작안: ${message}`); };
   if (!plan || plan.workflow !== 'kling4' || ![5, 15, 30].includes(plan.duration)) fail('5초·15초·30초 중 영상 길이를 정해주세요.');
+  if (plan.aspectRatio !== undefined && !['9:16', '16:9'].includes(plan.aspectRatio)) fail('화면 비율을 확인해주세요.');
   for (const [key, max] of Object.entries({ title: 1000, location: 3000, scenario: 40000, instagramCaption: 5000, continuity: 10000, videoPrompt: 30000 })) {
     if (typeof plan[key] !== 'string' || !plan[key].trim() || plan[key].length > max) fail(`${key} 내용을 확인해주세요.`);
   }

@@ -5,7 +5,7 @@ import path from 'node:path';
 import type { EditPlan } from '../../src/editor/model';
 import { cleanPlanText, validatePlan } from '../../src/editor/model';
 
-type ClinicPlan = EditPlan & { captionStyle?: 'clinic' | 'legacy'; clinicBrandStart?: number };
+type ClinicPlan = EditPlan;
 export type ClinicOverlays = {
   captions: { path: string; start: number; end: number; fontSize: number }[];
   brand?: { path: string; start: number };

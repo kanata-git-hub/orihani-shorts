@@ -62,6 +62,7 @@ export function readProductionPackage(raw: string): ProductionPackage {
     if (plan.workflow === 'kling4') {
       validateKling4Plan(plan);
       if(plan.duration !== episode.duration) fail('대본과 전체 영상 길이가 다릅니다.');
+      if((plan.aspectRatio || '9:16') !== (episode.aspectRatio || '9:16')) fail('대본과 기획의 화면 비율이 다릅니다.');
       if(plan.needsVideoReview) fail('전체 영상 프롬프트 확인을 완료해주세요.');
       const assets = imageAssets(entry.assets, plan.keyframes.map((f: any) => f.imageTitle));
       return { number: entry.number, characterId: entry.characterId, episode, plan, ...(assets ? {assets} : {}) };
@@ -91,10 +92,10 @@ export function readProductionPackage(raw: string): ProductionPackage {
   return { format: 'orihani-production', version: 1, revision: value.revision, episodes };
 }
 
-// The numeric prefix belongs to the production-file validator. Clinic work uses
-// its independent, official series title in the picker, history and video editor.
+// The numeric prefix belongs to the production-file validator. Clinic and
+// standalone screen work use their own title in the picker, history and editor.
 function authoredEpisode(entry: PreparedEpisode): SourceEpisode {
-  return entry.episode.captionStyle === 'clinic'
+  return entry.episode.captionStyle === 'clinic' || entry.episode.captionStyle === 'screen'
     ? {...entry.episode, title: entry.plan.title}
     : entry.episode;
 }
