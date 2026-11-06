@@ -241,3 +241,45 @@ fixed clinic name appears at the bottom through the source video's end. Work exp
 Drive import and editor handoff preserve both fields without model calls.
 Absent captionStyle keeps existing episodes in the legacy editor.
 These settings change editing only; they do not change the sitcom writing standard.
+
+## Standalone landscape experiments
+
+The same Drive production folder also accepts the exact filename
+`[YYYY-MM-DD] 오리 상상여행 실험작 제작안.json`. The newest dated experiment is
+listed alongside the current weekly packages, independently of the main week's
+date. Keep its revision unique. Its `number` belongs to this experiment, so it
+does not consume or rename a sitcom or clinic episode number. The existing
+eight-source limit still applies; malformed selected files remain visible errors.
+
+For a 30-second landscape experiment use `plan.workflow: "kling4"`,
+`episode.duration: 30` and `plan.duration: 30`. Keyframes need not follow the
+default five-frame template: two to ten strictly increasing keyframes are valid,
+starting at zero and ending no later than the full duration. Preserve real image
+states and the supplied full video prompt; never manufacture an extra frame just
+to reach a default count.
+
+Set these fields on `episode`:
+
+```json
+{
+  "captionStyle": "screen",
+  "videoLayout": "single",
+  "aspectRatio": "16:9",
+  "originalVolume": 1,
+  "korean": "해설: 없음\n화면 자막: (무대사)"
+}
+```
+
+Set `plan.aspectRatio` to the same value. Missing aspectRatio defaults to 9:16;
+existing saved work and clinic captions retain their original behavior. The
+production validator still requires an internal `[에피소드 N]` title prefix;
+screen and clinic entries display `plan.title` in the picker, history and editor.
+
+The screen mode takes one source MP4 with matching aspect ratio (up to
+1920×1080 landscape or 1080×1920 portrait), with AAC audio or no audio. It
+preserves the source dimensions, frame timing, duration and sound. With no
+captions both media streams are copied; with manual timed screen captions only
+the picture is encoded. It never generates narration or requests transcription.
+There is no automatic crop, vertical padding or extra clinic brand. To add
+captions, use explicit times in `episode.korean` or the editor's caption cards.
+The actual source video is supplied by the user after Kling generation.

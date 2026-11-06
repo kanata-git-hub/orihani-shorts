@@ -39,3 +39,4 @@
 .ori-editor .ori-preview-time{text-align:center;font-variant-numeric:tabular-nums}
 .ori-clinic-preview .ori-row{justify-content:space-between}
 @media(max-width:700px){.ori-clinic-preview{padding:12px}.ori-clinic-preview .ori-row button{width:100%}}
+.ori-result.ori-result-landscape{max-width:100%;max-height:540px;aspect-ratio:16/9;object-fit:contain}

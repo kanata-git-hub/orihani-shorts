@@ -22,7 +22,7 @@ export function Kling4Workspace({ result, episodeTitle, images, busy, ready = tr
   const copy = (text: string, label: string) => action(async () => { await navigator.clipboard.writeText(text); setMessage(`${label} 복사 완료`); });
   return <article className="ori-workflow ori-kling4">
     <div className="ori-kling4-heading">
-      <h3>Kling · {plan.duration}초</h3>
+      <h3>Kling · {plan.duration}초{plan.aspectRatio === '16:9' ? ' · 가로 16:9' : ''}</h3>
       <span>이미지 {count}/{plan.keyframes.length}장 준비</span>
     </div>
     <div className="ori-kling4-status" role="status" aria-live="polite">{message}</div>
@@ -62,7 +62,7 @@ export function Kling4Workspace({ result, episodeTitle, images, busy, ready = tr
     </details>
     <details className="ori-kling4-help"><summary>Kling에 넣는 방법</summary>
       <p>이미지를 위 순서와 시점에 배치하고, 전체 프롬프트를 한 번 넣으세요. 캐릭터 원본은 인물 참고용이고, 위 이미지는 영상 속 주요 시점입니다.</p>
-      <p>Kling에서 {plan.duration}초·세로 9:16으로 생성하세요. 완성된 MP4 한 개를 편집에 넣습니다.</p>
+      <p>Kling에서 {plan.duration}초·{plan.aspectRatio === '16:9' ? '가로 16:9' : '세로 9:16'}으로 생성하세요. 완성된 MP4 한 개를 편집에 넣습니다.</p>
       <p>그림이 연결된 Drive 제작안은 시작할 때 함께 불러옵니다. 직접 만든 그림으로 교체할 수도 있습니다.</p>
     </details>
   </article>;

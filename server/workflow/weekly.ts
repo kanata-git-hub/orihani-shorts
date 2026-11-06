@@ -12,6 +12,8 @@ const clinicStem=/^\[(\d{4}-\d{2}-\d{2})\]\s*한의원\s+쇼츠(?:\s+(\d+(?:\s*[
 const extraBonusStem=/^\[(\d{4}-\d{2}-\d{2})\]\s*번외\s+추가\s+(\d+(?:\s*[-·]\s*\d+)?)\s+제작안\.json$/;
 // Only explicitly retained clinic additions persist beyond their original main week.
 const extraClinicStem=/^\[(\d{4}-\d{2}-\d{2})\]\s*한의원\s+쇼츠\s+추가\s+(\d+(?:\s*[-·]\s*\d+)?)\s+제작안\.json$/;
+// One standalone experiment remains available independently of the current weekly date.
+const experimentStem=/^\[(\d{4}-\d{2}-\d{2})\] 오리 상상여행 실험작 제작안\.json$/;
 function packageDate(name:string,pattern=stem){
  const value=pattern.exec(name)?.[1];if(!value)return null;
  const date=new Date(value+'T00:00:00Z');return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value?value:null;
@@ -73,7 +75,9 @@ export function weeklySources(files:DriveFile[]){
   if(numbers.some(n=>claimed.has(n)))throw Error('한의원 쇼츠 제작안의 회차 범위가 겹칩니다. 교체된 추가 제작안은 보관 위치로 옮겨주세요.');
   numbers.forEach(n=>claimed.add(n));
  }
- const selected=[main,...(currentClinic?[currentClinic]:[]),...clinicAdditions,...(bonuses.length?[bonuses[0]]:[]),...Array.from(additions.entries()).sort(([a],[b])=>a.localeCompare(b,'en',{numeric:true})).map(([,file])=>file)];
+ const experiments=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,experimentStem)&&['application/json','text/plain','application/octet-stream'].includes(f.mimeType));
+ experiments.sort((a,b)=>packageDate(b.name,experimentStem)!.localeCompare(packageDate(a.name,experimentStem)!)||(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
+ const selected=[main,...(currentClinic?[currentClinic]:[]),...clinicAdditions,...(bonuses.length?[bonuses[0]]:[]),...Array.from(additions.entries()).sort(([a],[b])=>a.localeCompare(b,'en',{numeric:true})).map(([,file])=>file),...experiments.slice(0,1)];
  if(selected.length>MAX_WEEKLY_SOURCES)throw Error('주간 제작안 파일이 너무 많습니다. 사용이 끝난 추가 제작안은 보관 위치로 옮겨주세요.');
  return selected;
 }
@@ -132,7 +136,7 @@ export function createWeeklyReader(options:{key:()=>string|undefined;fetch?:type
   const namedNumbers=clinicNumbers(file.name);
   if(namedNumbers&&(episodes.length!==namedNumbers.length||episodes.some(e=>e.captionStyle!=='clinic'||!e.prepared||!namedNumbers.includes(e.prepared.number))))throw Error('한의원 쇼츠 파일명의 회차 범위와 제작안 내용이 다릅니다.');
   // A malformed latest document is an error; never silently substitute an older week.
-  return {id:file.id,name:file.name,date:(packageDate(file.name)||packageDate(file.name,clinicStem)||packageDate(file.name,extraClinicStem)||packageDate(file.name,bonusStem)||packageDate(file.name,extraBonusStem))!,url:file.mimeType===docsType?`https://docs.google.com/document/d/${file.id}/edit`:`https://drive.google.com/file/d/${file.id}/view`,text,episodeCount:episodes.length};
+  return {id:file.id,name:file.name,date:(packageDate(file.name)||packageDate(file.name,clinicStem)||packageDate(file.name,extraClinicStem)||packageDate(file.name,bonusStem)||packageDate(file.name,extraBonusStem)||packageDate(file.name,experimentStem))!,url:file.mimeType===docsType?`https://docs.google.com/document/d/${file.id}/edit`:`https://drive.google.com/file/d/${file.id}/view`,text,episodeCount:episodes.length};
   };
   const sources=await Promise.all(weeklySources(files).map(readFile));
   const episodes=readWeeklySources(sources.map(s=>s.text));

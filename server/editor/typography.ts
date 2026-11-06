@@ -35,11 +35,11 @@ function fontAdvances() {
   return advances = widths;
 }
 
-export function fitVideoText(text: string, maxHeight: number) {
+export function fitVideoText(text: string, maxHeight: number, maxWidth = 810, maxSize = 150) {
   const widths = fontAdvances();
   const measure = (s: string) => Array.from(s).reduce((sum, c) => sum + (widths.get(c) ?? 1), 0);
   // 1080 × 75% = 810px, including the existing 3px outline on each side.
-  const width = 804, preferredSize = 100;
+  const width = maxWidth - 6, preferredSize = Math.min(100, maxSize);
   const lines: string[] = [];
   for (const line of text.split('\n')) {
     let row = '';
@@ -57,6 +57,6 @@ export function fitVideoText(text: string, maxHeight: number) {
   }
   const longest = Math.max(1, ...lines.map(measure));
   // Cap tiny utterances and very tall blocks; never stretch glyphs horizontally.
-  const size = Math.max(1, Math.floor(Math.min(150, width / longest, maxHeight / Math.max(1, lines.length))));
+  const size = Math.max(1, Math.floor(Math.min(maxSize, width / longest, maxHeight / Math.max(1, lines.length))));
   return { text: lines.join('\\N'), size };
 }

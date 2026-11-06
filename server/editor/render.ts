@@ -7,6 +7,7 @@ import type { EditPlan } from '../../src/editor/model';
 import { validatePlan, cleanPlanText } from '../../src/editor/model';
 import { fitVideoText } from './typography';
 import { renderClinic } from './clinicCaptions';
+import { renderScreen } from './screenCaptions';
 
 export function command(binary: string, args: string[], cwd: string, signal?: AbortSignal): Promise<string> {
   return runMediaProcess(binary, args, cwd, signal, () => '영상 처리에 실패했습니다. 파일 형식과 서버 로그를 확인해주세요.');
@@ -23,15 +24,19 @@ const escapeASS = (s: string) => s.replace(/\\/g, '＼').replace(/{/g, '｛').re
 const clock = (s: number) => `0:00:${s.toFixed(2).padStart(5, '0')}`;
 export function subtitles(p: EditPlan) {
   p = cleanPlanText(p);
-  const captions = p.captions.map(c => ({ ...c, layout: fitVideoText(escapeASS(c.text), 400) }));
+  const landscape = p.aspectRatio === '16:9';
+  const width = landscape ? 1920 : 1080, height = landscape ? 1080 : 1920;
+  const captions = p.captions.map(c => ({ ...c, layout: fitVideoText(escapeASS(c.text), landscape ? 240 : 400, landscape ? 1440 : 810, landscape ? 90 : 150) }));
   // Upload titles and thumbnail suggestions are metadata, never video overlays.
-  return `[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\nWrapStyle: 2\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Caption,Kyobo Handwriting 2024,150,&H00FFFFFF,&H00FFFFFF,&H00111111,&H80000000,-1,0,0,0,100,100,0,0,1,3,0,5,135,135,0,1\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n` +
-    captions.map(c => `Dialogue: 0,${clock(c.start)},${clock(c.end)},Caption,,0,0,0,,{\\pos(540,1440)\\fs${c.layout.size}}${c.layout.text}`).join('\n');
+  return `[Script Info]\nScriptType: v4.00+\nPlayResX: ${width}\nPlayResY: ${height}\nWrapStyle: 2\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Caption,Kyobo Handwriting 2024,150,&H00FFFFFF,&H00FFFFFF,&H00111111,&H80000000,-1,0,0,0,100,100,0,0,1,3,0,5,135,135,0,1\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n` +
+    captions.map(c => `Dialogue: 0,${clock(c.start)},${clock(c.end)},Caption,,0,0,0,,{\\pos(${width / 2},${landscape ? 864 : 1440})\\fs${c.layout.size}}${c.layout.text}`).join('\n');
 }
 export async function render(p: EditPlan, videos: string[], voice: string | undefined, dir: string, signal?: AbortSignal) {
   p = cleanPlanText(p);
   if (p.captionStyle === 'clinic') return renderClinic(p, videos, voice, dir, signal);
+  if (p.captionStyle === 'screen') return renderScreen(p, videos, voice, dir, subtitles, signal);
   validatePlan(p); const lengths = clipLengths(p.duration,p.videoLayout);
+  const targetSize = p.aspectRatio === '16:9' ? '1920:1080' : '1080:1920';
   if (videos.length !== lengths.length) throw Error(`영상 ${lengths.length}개를 순서대로 넣어주세요.`);
   const narration = voice ? await inspect(voice, dir, signal) : undefined;
   if (narration && (!narration.audio || (!p.voiceSegments?.length && narration.duration / p.voiceSpeed > p.duration + 0.05))) throw Error('나레이션이 영상보다 깁니다. 속도를 조절하거나 대본을 줄여 음성을 다시 만들어주세요. 음성을 잘라내지는 않습니다.');
@@ -40,7 +45,7 @@ export async function render(p: EditPlan, videos: string[], voice: string | unde
   for (let i = 0; i < videos.length; i++) {
     const meta = await inspect(videos[i], dir, signal);
     if (!meta.video || meta.duration < lengths[i] - 0.15 || meta.duration > lengths[i] + 0.5) throw Error(`${i + 1}번 영상은 ${lengths[i]}초 영상이어야 합니다. 현재 ${meta.duration.toFixed(2)}초입니다.`);
-    await command(ff(), ['-y', '-nostdin', ...uploadedMediaInput(videos[i]), ...(!meta.audio ? ['-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo'] : []), '-map', '0:v:0', '-map', meta.audio ? '0:a:0' : '1:a:0', '-vf', 'scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,tpad=stop_mode=clone:stop_duration=0.15', '-af', 'apad', '-t', String(lengths[i]), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', '48000', '-ac', '2', '-threads', '2', `clip${i}.mp4`], dir, signal);
+    await command(ff(), ['-y', '-nostdin', ...uploadedMediaInput(videos[i]), ...(!meta.audio ? ['-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo'] : []), '-map', '0:v:0', '-map', meta.audio ? '0:a:0' : '1:a:0', '-vf', `scale=${targetSize}:force_original_aspect_ratio=decrease,pad=${targetSize}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,tpad=stop_mode=clone:stop_duration=0.15`, '-af', 'apad', '-t', String(lengths[i]), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '20', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ar', '48000', '-ac', '2', '-threads', '2', `clip${i}.mp4`], dir, signal);
   }
   await writeFile(path.join(dir, 'clips.txt'), videos.map((_, i) => `file 'clip${i}.mp4'`).join('\n'));
   await command(ff(), ['-y', '-nostdin', '-f', 'concat', '-safe', '1', '-i', 'clips.txt', '-c', 'copy', 'joined.mp4'], dir, signal);

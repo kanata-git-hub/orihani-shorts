@@ -22,7 +22,9 @@ export interface HistoryItem {
 }
 
 export interface SourceEpisode {
-  captionStyle?: 'clinic' | 'legacy';
+  captionStyle?: 'clinic' | 'legacy' | 'screen';
+  aspectRatio?: '9:16' | '16:9';
+  originalVolume?: number;
   clinicBrandStart?: number;
   videoLayout?: 'single' | 'legacy-clips';
   duration: 5 | 15 | 30;
