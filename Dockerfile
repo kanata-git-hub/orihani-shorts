@@ -1,6 +1,10 @@
 # Official multi-architecture images. Ubuntu 26.10 is supported until July 2027.
 FROM node:22-trixie-slim@sha256:2117f713a417f3aff682ac8f5bc2ebbdf1beed51f36e67ab1e0fd3866b6d2d8f AS node-runtime
 FROM ubuntu:26.10@sha256:262df65c0ec6bf8d9dcc87454f4330a05fae4b97825f45854af3b136666584c2 AS base
+# Apply supported Ubuntu fixes to packages already present in the pinned base.
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 FROM base AS pillow-build
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates g++ python3-dev python3-pip python3-wheel zlib1g-dev libfreetype-dev \
