@@ -29,7 +29,7 @@ test('discovery selects the current clinic bundle only, and reader returns all f
  const file=(name,id,time='2026-11-01T00:00:00Z')=>({name,id:id+'_abcdefghijklmnopqrst',mimeType:'application/json',modifiedTime:time});
  const a=file('[2026-11-01] 3D 오리 삼총사 릴스 개그 시리즈 주간 패키지.json','main');
  const b=file('[2026-11-01] 한의원 쇼츠 01-02 제작안.json','clinic','2026-11-01T01:00:00Z');
- const files=[a,b,file('[2026-11-01] 한의원 쇼츠 제작안.json','old'),file('[2026-10-25] 한의원 쇼츠 01-02 제작안.json','past'),file('[2026-11-08] 한의원 쇼츠 03-04 제작안.json','future'),file('[2026-11-01] 한의원 쇼츠 01-02 검수기록.json','review'),file('[2026-11-01] 한의원 쇼츠 01-02 제작안.orihani-work.json','work')];
+ const files=[a,b,file('[2026-11-01] 한의원 쇼츠 제작안.json','old'),file('[2026-10-25] 한의원 쇼츠 01-02 제작안.json','past'),file('[2026-11-01] 한의원 쇼츠 01-02 검수기록.json','review'),file('[2026-11-01] 한의원 쇼츠 01-02 제작안.orihani-work.json','work')];
  assert.deepEqual(weeklySources(files).map(f=>f.id),[a.id,b.id]);
  const reader=raw=>createWeeklyReader({key:()=> 'test',fetch:async url=>{
   const u=new URL(url);if(u.pathname==='/drive/v3/files')return Response.json({files});

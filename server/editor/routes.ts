@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { render } from './render';
 import { generateClinicOverlays } from './clinicCaptions';
+import { generateKoreanCaptions } from './koreanCaptions';
 import { validatePlan, cleanPlanText } from '../../src/editor/model';
 import { transcribe } from './transcribe';
 import { spokenNumbers } from '../../src/editor/speech';
@@ -93,14 +94,19 @@ editorRouter.post('/caption-preview', async (req, res) => {
   try {
     validatePlan(req.body?.plan);
     const plan = cleanPlanText(req.body.plan);
-    if (plan.captionStyle !== 'clinic') throw Error('한의원 쇼츠 자막을 선택해주세요.');
+    if (plan.captionStyle !== 'clinic' && plan.captionStyle !== 'korean') throw Error('한국판 또는 한의원 자막을 선택해주세요.');
     dir = await mkdtemp(path.join(os.tmpdir(), 'ori-caption-preview-'));
-    const generated = await generateClinicOverlays(plan, dir, abort.signal);
     const overlays = [];
-    for (const caption of generated.captions) {
-      overlays.push({ start: caption.start, end: caption.end, kind: 'caption', dataUrl: 'data:image/png;base64,' + (await readFile(caption.path)).toString('base64') });
+    if (plan.captionStyle === 'korean') {
+      const generated = await generateKoreanCaptions(plan, dir, true, abort.signal);
+      for (const overlay of generated.overlays) overlays.push({start:overlay.start,end:overlay.end,kind:overlay.kind,dataUrl:'data:image/png;base64,'+(await readFile(overlay.path)).toString('base64')});
+    } else {
+      const generated = await generateClinicOverlays(plan, dir, abort.signal);
+      for (const caption of generated.captions) {
+        overlays.push({ start: caption.start, end: caption.end, kind: 'caption', dataUrl: 'data:image/png;base64,' + (await readFile(caption.path)).toString('base64') });
+      }
+      if (generated.brand) overlays.push({ start: generated.brand.start, kind: 'brand', dataUrl: 'data:image/png;base64,' + (await readFile(generated.brand.path)).toString('base64') });
     }
-    if (generated.brand) overlays.push({ start: generated.brand.start, kind: 'brand', dataUrl: 'data:image/png;base64,' + (await readFile(generated.brand.path)).toString('base64') });
     res.set('Cache-Control', 'no-store').json({ overlays });
   } catch (e) {
     if (!res.headersSent && !res.destroyed) res.status(400).json({ error: e instanceof Error ? e.message : '자막 미리보기를 만들지 못했습니다.' });

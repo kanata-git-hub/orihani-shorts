@@ -6,7 +6,7 @@ import { TEXT_POLICY_VERSION } from './text';
 // Bump when rendered layout changes; voice and timing caches remain reusable.
 const RENDER_VERSION = 6;
 
-export type Draft = { id: string; plan: EditPlan; original: string; voice: string; style: string; voiceBlob?: Blob; voiceKey?: string; videos: (File | null)[]; result?: Blob; resultKey?: string; syncKey?: string; textBackup?: Pick<EditPlan, 'title' | 'narration' | 'thumbnail' | 'captions'> };
+export type Draft = { id: string; plan: EditPlan; original: string; voice: string; style: string; voiceBlob?: Blob; voiceKey?: string; videos: (File | null)[]; result?: Blob; resultKey?: string; syncKey?: string; textBackup?: Pick<EditPlan, 'title' | 'narration' | 'thumbnail' | 'captions' | 'headline'> };
 export type EditorStage = 'videos' | 'voice' | 'captions' | 'result';
 export type DraftSummary = { id: string; title: string; updatedAt?: number; version?: 1; state?: EditorStage; videoCount?: number; requiredVideos?: number; hasResult?: boolean; textPolicy?: number; renderVersion?: number };
 const filesKey = (d: Draft) => d.videos.map(f => f && [f.name, f.size, f.lastModified]);
@@ -15,7 +15,7 @@ export const syncKey = (d: Draft) => JSON.stringify([2, voiceKey(d), d.plan.voic
 export const resultKey = (d: Draft) => JSON.stringify([RENDER_VERSION, TEXT_POLICY_VERSION, d.plan, d.voiceKey, filesKey(d)]);
 export const voiceIsCurrent = (d: Draft) => !d.plan.narration.trim() || (!!d.voiceBlob && d.voiceKey === voiceKey(d));
 export const resultIsCurrent = (d: Draft) => !!d.result && d.resultKey === resultKey(d) && voiceIsCurrent(d) && (isDirectPlan(d.plan) || d.syncKey === syncKey(d)) && !d.plan.captions.some(c => c.review);
-export const hasDraftContent = (d: Draft) => !!(d.original.trim() || d.plan.title.trim() || d.plan.narration.trim() || d.plan.thumbnail.trim() || d.plan.captions.length || d.videos.some(Boolean) || d.voiceBlob || d.result);
+export const hasDraftContent = (d: Draft) => !!(d.original.trim() || d.plan.headline?.some(t=>t.trim()) || d.plan.title.trim() || d.plan.narration.trim() || d.plan.thumbnail.trim() || d.plan.captions.length || d.videos.some(Boolean) || d.voiceBlob || d.result);
 export function draftStage(d: Draft): EditorStage {
   if (clipLengths(d.plan.duration,d.plan.videoLayout).some((_, i) => !d.videos[i])) return 'videos';
   if (resultIsCurrent(d)) return 'result';
@@ -27,7 +27,7 @@ export function summarizeDraft(d: Draft, updatedAt = Date.now()): DraftSummary {
 export function restoreDraft(d: Draft): Draft {
   const plan = cleanPlanText(d.plan);
   if (JSON.stringify(plan) === JSON.stringify(d.plan)) return d;
-  const next = { ...d, plan, textBackup: d.textBackup || { title: d.plan.title, narration: d.plan.narration, thumbnail: d.plan.thumbnail, captions: d.plan.captions } };
+  const next = { ...d, plan, textBackup: d.textBackup || { title: d.plan.title, narration: d.plan.narration, thumbnail: d.plan.thumbnail, ...(d.plan.headline ? {headline:d.plan.headline} : {}), captions: d.plan.captions } };
   // Display-only cleanup keeps already verified timings without paid re-analysis.
   if (d.syncKey === syncKey(d) && plan.narration === d.plan.narration) next.syncKey = syncKey(next);
   return next;

@@ -35,6 +35,13 @@ function reader(list=files,values=packs){
  }});
 }
 
+function koreanPack(revision,number,clinic=true){
+ const value=pack(revision,[number],clinic),episode=value.episodes[0].episode;
+ delete episode.clinicBrandStart;
+ Object.assign(episode,{captionStyle:'korean',videoLayout:'single',originalVolume:1,aspectRatio:'9:16',headline:['상시 제목 첫 줄','상시 제목 둘째 줄'],captions:Array.from({length:6},(_,i)=>({start:i*2.5,end:(i+1)*2.5,text:`시험 자막 ${i+1}`,source:'screen'}))});
+ return value;
+}
+
 test('explicit clinic reserves coexist with the current pair and remain when next week is published',()=>{
  assert.deepEqual(weeklySources(files.slice().reverse()).map(f=>f.id),files.map(f=>f.id));
  const next=main('2026-11-08'),nextClinic=file('2026-11-08','한의원 쇼츠 07-08','nextClinic');
@@ -43,16 +50,56 @@ test('explicit clinic reserves coexist with the current pair and remain when nex
  assert.deepEqual(weeklySources([files[0],current,reserve56]).map(f=>f.id),[files[0].id,current.id,reserve56.id]);
 });
 
-test('newest reserve wins per normalized range without reviving archives or ordinary old companions',()=>{
+test('a clinic-only ordinary package may be newer than the main package while retaining the current main',async()=>{
+ const nextClinic=file('2026-11-15','한의원 쇼츠 07','newerClinic');
+ assert.deepEqual(weeklySources([...files,nextClinic]).map(f=>f.id),[files[0].id,nextClinic.id,reserve34.id,reserve56.id]);
+ const nextPack=koreanPack('clinic-only-07',7),list=[files[0],nextClinic,reserve34,reserve56];
+ const catalog=await reader(list,[packs[0],nextPack,packs[2],packs[3]])();
+ assert.deepEqual(catalog.sources.map(s=>s.date),['2026-11-01','2026-11-15','2026-11-01','2026-11-01']);
+ const choices=readWeeklySources(catalog.sources.map(s=>s.text));
+ assert.deepEqual(choices.map(c=>c.prepared.number),[28,29,30,7,3,4,5,6]);
+ assert.equal(choices[3].title,'한의원 쇼츠 07 시험');
+ assert.equal(choices[3].preparedRevision,nextPack.revision);
+ assert.equal(choices[3].prepared.plan.videoPrompt,nextPack.episodes[0].plan.videoPrompt);
+});
+
+test('single clinic additions from two independent weeks preserve all existing choices and exact Korean captions',async()=>{
+ const seventh=file('2026-11-15','한의원 쇼츠 추가 07','reserve07'),eighth=file('2026-11-22','한의원 쇼츠 추가 08','reserve08');
+ const nextPacks=[koreanPack('clinic-only-reserve07',7),koreanPack('clinic-only-reserve08',8)],list=[...files,seventh,eighth];
+ const before=JSON.stringify(packs);
+ assert.deepEqual(weeklySources(list.slice().reverse()).map(f=>f.id),list.map(f=>f.id));
+ const catalog=await reader(list,[...packs,...nextPacks])(),choices=readWeeklySources(catalog.sources.map(s=>s.text));
+ assert.equal(catalog.sources.length,6);assert.equal(catalog.episodeCount,11);
+ assert.deepEqual(choices.map(c=>c.prepared.number),[28,29,30,1,2,3,4,5,6,7,8]);
+ assert.equal(JSON.stringify(packs),before);
+ const entry=nextPacks[1].episodes[0],load=createWeeklyImagesReader({key:()=> 'test',weekly:async()=>catalog,fetch:async url=>{
+  const u=new URL(url);
+  if(u.pathname==='/drive/v3/files')return Response.json({files:Object.values(entry.assets).map(a=>({id:a.fileId,mimeType:'image/png',size:String(png.length)}))});
+  assert.ok(u.pathname.includes('/clinic-only-reserve08_8_'));return new Response(png);
+ }});
+ const images=await load(8,nextPacks[1].revision),work=await prepareDriveWork(entry,nextPacks[1].revision,async url=>{
+  assert.equal(url,'/api/editor/weekly/8/images?revision=clinic-only-reserve08');return Response.json(images);
+ });
+ assert.equal(Object.keys(work.images).length,3);
+ assert.equal(JSON.parse(work.item.result).videoPrompt,entry.plan.videoPrompt);
+ assert.deepEqual(JSON.parse(work.item.result).keyframes,entry.plan.keyframes);
+ const edit=importEpisode(editorEpisode(work.item));validatePlan(edit);
+ assert.equal(edit.title,'한의원 쇼츠 08 시험');assert.equal(edit.captionStyle,'korean');assert.equal(edit.originalVolume,1);assert.equal(edit.narration,'');
+ assert.deepEqual(edit.headline,entry.episode.headline);assert.deepEqual(edit.captions,entry.episode.captions);
+ await assert.rejects(reader([files[0],seventh],[packs[0],koreanPack('main-is-not-clinic',7,false)])(),/파일명의 회차 범위/);
+});
+
+test('newest reserve wins per normalized range independently of the main date without reviving archives',()=>{
  const later=file('2026-11-02','한의원 쇼츠 추가 3 · 4','later');
  const amended=file('2026-11-02','한의원 쇼츠 추가 03-04','amended','2026-11-02T02:00:00Z');
  const oldModifiedLater={...reserve34,modifiedTime:'2026-11-08T03:00:00Z'};
- const noise=[file('2026-11-09','한의원 쇼츠 추가 09-10','future'),file('2026-11-01','한의원 쇼츠 11-12','oldOrdinary'),
+ const newer=file('2026-11-09','한의원 쇼츠 추가 09-10','newer'),latestClinic=file('2026-11-08','한의원 쇼츠 07-08','latestClinic');
+ const noise=[file('2026-11-01','한의원 쇼츠 11-12','oldOrdinary'),
   {...reserve56,id:'archive_abcdefghijklmnopqrst',name:reserve56.name.replace('.json',' 보관.json')},
   {...reserve56,id:'review_abcdefghijklmnopqrst',name:reserve56.name.replace('제작안','검수기록')},
   {...reserve56,id:'work_abcdefghijklmnopqrst',name:reserve56.name.replace('.json','.orihani-work.json')},
   file('2026-02-30','한의원 쇼츠 추가 13-14','invalidDate'),{...reserve56,id:'wrongtype_abcdefghijklmnopq',mimeType:'application/vnd.google-apps.document'}];
- assert.deepEqual(weeklySources([main('2026-11-08'),later,oldModifiedLater,amended,reserve56,...noise]).map(f=>f.id),[main('2026-11-08').id,amended.id,reserve56.id]);
+ assert.deepEqual(weeklySources([main('2026-11-08'),later,oldModifiedLater,amended,reserve56,newer,latestClinic,...noise]).map(f=>f.id),[main('2026-11-08').id,latestClinic.id,amended.id,reserve56.id,newer.id]);
 });
 
 test('exact current replacement retires its reserve while partial overlaps fail visibly',()=>{
@@ -89,10 +136,10 @@ test('malformed reserves, mislabeled ranges and duplicate clinic series numbers 
  assert.equal(readWeeklySources([JSON.stringify(pack('main-number3',[3],false)),JSON.stringify(packs[2])]).length,3);
 });
 
-test('reserve source bounds remain enforced without raising the eight-file limit',()=>{
+test('reserve source bounds remain enforced with explicit counts and no silent truncation',()=>{
  const reserves=Array.from({length:MAX_WEEKLY_SOURCES},(_,i)=>file('2026-11-01','한의원 쇼츠 추가 '+String(i+1).padStart(2,'0'),'bound'+i));
  assert.equal(weeklySources([files[0],...reserves.slice(1)]).length,MAX_WEEKLY_SOURCES);
- assert.throws(()=>weeklySources([files[0],...reserves]),/너무 많/);
+ assert.throws(()=>weeklySources([files[0],...reserves]),new RegExp(`너무 많.*${MAX_WEEKLY_SOURCES+1}개.*${MAX_WEEKLY_SOURCES}개까지`));
 });
 
 test('reserve selection downloads its own images and opens clinic editing without rewriting captions',async()=>{

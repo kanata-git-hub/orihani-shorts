@@ -5,7 +5,7 @@ function compile(rel,mocks={}){
  const code=ts.transpileModule(fs.readFileSync(path.join(root,rel),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true}}).outputText;
  new Function('require','module','exports',code)(n=>Object.hasOwn(mocks,n)?mocks[n]:n.endsWith('.css')?{}:n.startsWith('.')?compile(['.ts','.tsx'].map(ext=>path.join(path.dirname(rel),n)+ext).find(p=>fs.existsSync(path.join(root,p))),mocks):require(n),m,m.exports);return m.exports;
 }
-const {readWeeklySources,MAX_WEEKLY_SOURCES}=compile('src/workflow/productionPackage.ts');
+const {readWeeklySources,MAX_WEEKLY_SOURCES,MAX_WEEKLY_TOTAL_CHARS}=compile('src/workflow/productionPackage.ts');
 const {weeklySources,createWeeklyReader}=compile('server/workflow/weekly.ts');
 const {createWeeklyImagesReader}=compile('server/workflow/weeklyImages.ts');
 const {prepareDriveWork}=compile('src/workflow/preparedWork.ts');
@@ -33,7 +33,14 @@ test('explicit additions preserve the newest normal bonus bundle and select late
  assert.deepEqual(weeklySources([oldBundle,oldAddition,...noise,addition,bonus,main]).map(f=>f.id),[main.id,bonus.id,addition.id]);
  const over=Array.from({length:MAX_WEEKLY_SOURCES},(_,i)=>file('[2026-10-18] 번외 추가 '+(i+1)+' 제작안.json','extra'+i));
  assert.throws(()=>weeklySources([main,...over]),/너무 많/);
- assert.throws(()=>readWeeklySources(Array(MAX_WEEKLY_SOURCES+1).fill(raws[0])),/목록/);
+ assert.throws(()=>readWeeklySources(Array(MAX_WEEKLY_SOURCES+1).fill(raws[0])),new RegExp(`${MAX_WEEKLY_SOURCES+1}개.*${MAX_WEEKLY_SOURCES}개`));
+});
+test('the expanded source count retains the previous aggregate text ceiling',()=>{
+ assert.equal(MAX_WEEKLY_SOURCES,32);assert.equal(MAX_WEEKLY_TOTAL_CHARS,2400000);
+ const large=Array.from({length:MAX_WEEKLY_SOURCES},()=> ' '.repeat(MAX_WEEKLY_TOTAL_CHARS/MAX_WEEKLY_SOURCES+1));
+ assert.throws(()=>readWeeklySources(large),/전체 용량.*2,400,000/);
+ const distinct=Array.from({length:MAX_WEEKLY_SOURCES},(_,i)=>JSON.stringify(pack('bounded-'+i)));
+ assert.equal(readWeeklySources(distinct).length,MAX_WEEKLY_SOURCES);
 });
 test('three sources retain their own revisions and malformed additions fail visibly',async()=>{
  const result=await reader()();

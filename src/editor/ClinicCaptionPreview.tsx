@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { EditPlan, validatePlan } from './model';
 
-type Overlay = { start: number; end?: number; dataUrl: string; kind: 'caption' | 'brand' };
+type Overlay = { start: number; end?: number; dataUrl: string; kind: 'caption' | 'brand' | 'headline' };
 type PreviewResult = { key: string; overlays: Overlay[] };
 
 export function ClinicCaptionPreview({ plan, file, loadPreview, onBusy }: {
@@ -20,7 +20,7 @@ export function ClinicCaptionPreview({ plan, file, loadPreview, onBusy }: {
   const video = useRef<HTMLVideoElement>(null);
   const requestId = useRef(0);
   const animation = useRef<number | undefined>(undefined);
-  const key = JSON.stringify([plan.captionStyle, plan.duration, plan.captions, plan.clinicBrandStart]);
+  const key = JSON.stringify([plan.captionStyle, plan.duration, plan.captions, plan.clinicBrandStart, plan.headline]);
   const current = preview?.key === key;
   useEffect(() => {
     setTime(0); setDuration(0);
@@ -52,7 +52,7 @@ export function ClinicCaptionPreview({ plan, file, loadPreview, onBusy }: {
       if (!Array.isArray(data.overlays) || data.overlays.some(o =>
         !Number.isFinite(o.start) || o.start < 0 ||
         (o.end !== undefined && (!Number.isFinite(o.end) || o.end <= o.start)) ||
-        !['caption', 'brand'].includes(o.kind) ||
+        !['caption', 'brand', 'headline'].includes(o.kind) ||
         typeof o.dataUrl !== 'string' || !o.dataUrl.startsWith('data:image/png;base64,')
       )) throw Error('자막 미리보기를 불러오지 못했습니다.');
       if (id === requestId.current) setPreview({ key, overlays: data.overlays });

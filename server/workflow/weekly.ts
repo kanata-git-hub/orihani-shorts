@@ -1,4 +1,5 @@
 import { MAX_WEEKLY_SOURCES, readWeeklyInput, readWeeklySources } from '../../src/workflow/productionPackage';
+import { isClinicEpisode } from '../../src/workflow/package';
 
 export const WEEKLY_FOLDER = '1O2wOWOLyAXmq96aXOExX0fecwK7jZbq-';
 type DriveFile = {id:string;name:string;mimeType:string;modifiedTime?:string};
@@ -37,8 +38,10 @@ export function weeklySources(files:DriveFile[]){
  const main=newestWeekly(files),date=packageDate(main.name)!;
  const bonuses=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,bonusStem)===date&&['application/json','text/plain','application/octet-stream'].includes(f.mimeType));
  bonuses.sort((a,b)=>(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
- const clinics=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,clinicStem)===date&&['application/json','text/plain','application/octet-stream'].includes(f.mimeType));
- clinics.sort((a,b)=>(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
+ // Main and clinic productions have independent schedules. A clinic-only week
+ // must not disappear because its completed package is newer than the main one.
+ const clinics=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,clinicStem)&&['application/json','text/plain','application/octet-stream'].includes(f.mimeType));
+ clinics.sort((a,b)=>packageDate(b.name,clinicStem)!.localeCompare(packageDate(a.name,clinicStem)!)||(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
  const extras=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,extraBonusStem)===date&&['application/json','text/plain','application/octet-stream'].includes(f.mimeType));
  extras.sort((a,b)=>(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
  const additions=new Map<string,DriveFile>();
@@ -48,7 +51,7 @@ export function weeklySources(files:DriveFile[]){
  }
  const reserves=files.filter(f=>{
   if(typeof f?.name!=='string'||typeof f.id!=='string'||!(/^[\w-]{20,}$/.test(f.id))||!['application/json','text/plain','application/octet-stream'].includes(f.mimeType))return false;
-  const reserveDate=packageDate(f.name,extraClinicStem);return reserveDate!==null&&reserveDate<=date;
+  return packageDate(f.name,extraClinicStem)!==null;
  });
  reserves.sort((a,b)=>packageDate(b.name,extraClinicStem)!.localeCompare(packageDate(a.name,extraClinicStem)!)||(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
  const retained=new Map<string,DriveFile>();
@@ -63,7 +66,7 @@ export function weeklySources(files:DriveFile[]){
  for(const file of files){
   if(typeof file?.name!=='string'||typeof file.id!=='string'||!(/^[\w-]{20,}$/.test(file.id))||!['application/json','text/plain','application/octet-stream'].includes(file.mimeType))continue;
   const replacementDate=packageDate(file.name,clinicStem),label=clinicStem.exec(file.name)?.[2];
-  if(!replacementDate||replacementDate>date||!label)continue;
+  if(!replacementDate||!label)continue;
   const [start,last]=label.split(/\s*[-·]\s*/).map(Number),key=start+'-'+(last??start),reserve=retained.get(key);
   if(reserve&&replacementDate>=packageDate(reserve.name,extraClinicStem)!)retained.delete(key);
  }
@@ -78,7 +81,7 @@ export function weeklySources(files:DriveFile[]){
  const experiments=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,experimentStem)&&['application/json','text/plain','application/octet-stream'].includes(f.mimeType));
  experiments.sort((a,b)=>packageDate(b.name,experimentStem)!.localeCompare(packageDate(a.name,experimentStem)!)||(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
  const selected=[main,...(currentClinic?[currentClinic]:[]),...clinicAdditions,...(bonuses.length?[bonuses[0]]:[]),...Array.from(additions.entries()).sort(([a],[b])=>a.localeCompare(b,'en',{numeric:true})).map(([,file])=>file),...experiments.slice(0,1)];
- if(selected.length>MAX_WEEKLY_SOURCES)throw Error('주간 제작안 파일이 너무 많습니다. 사용이 끝난 추가 제작안은 보관 위치로 옮겨주세요.');
+ if(selected.length>MAX_WEEKLY_SOURCES)throw Error(`주간 제작안 파일이 너무 많습니다(${selected.length}개). 현재 한 번에 ${MAX_WEEKLY_SOURCES}개까지 불러올 수 있습니다. 파일을 자동으로 제외하거나 옮기지 않았습니다.`);
  return selected;
 }
 async function readText(response:Response,limit:number){
@@ -134,7 +137,7 @@ export function createWeeklyReader(options:{key:()=>string|undefined;fetch?:type
   if(text.length>300000||/^\s*<!doctype html|^\s*<html/i.test(text))throw Error('주간 대본을 텍스트로 읽지 못했습니다. 문서 공유 권한을 확인해주세요.');
   const episodes=readWeeklyInput(text);
   const namedNumbers=clinicNumbers(file.name);
-  if(namedNumbers&&(episodes.length!==namedNumbers.length||episodes.some(e=>e.captionStyle!=='clinic'||!e.prepared||!namedNumbers.includes(e.prepared.number))))throw Error('한의원 쇼츠 파일명의 회차 범위와 제작안 내용이 다릅니다.');
+  if(namedNumbers&&(episodes.length!==namedNumbers.length||episodes.some(e=>!isClinicEpisode(e)||!e.prepared||!namedNumbers.includes(e.prepared.number))))throw Error('한의원 쇼츠 파일명의 회차 범위와 제작안 내용이 다릅니다.');
   // A malformed latest document is an error; never silently substitute an older week.
   return {id:file.id,name:file.name,date:(packageDate(file.name)||packageDate(file.name,clinicStem)||packageDate(file.name,extraClinicStem)||packageDate(file.name,bonusStem)||packageDate(file.name,extraBonusStem)||packageDate(file.name,experimentStem))!,url:file.mimeType===docsType?`https://docs.google.com/document/d/${file.id}/edit`:`https://drive.google.com/file/d/${file.id}/view`,text,episodeCount:episodes.length};
   };

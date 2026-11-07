@@ -2,22 +2,29 @@ import type { VoiceSegment } from './speech';
 import { cleanVideoText } from './text';
 import { normalizeScriptTable, isCaptionPlaceholder } from './script';
 export type Caption = { start: number; end: number; text: string; source?: 'narration' | 'dialogue' | 'screen'; review?: string };
-export type EditPlan = { duration: 5 | 15 | 30; videoLayout?: 'single' | 'legacy-clips'; captionStyle?: 'clinic' | 'legacy' | 'screen'; aspectRatio?: '9:16' | '16:9'; clinicBrandStart?: number; title: string; narration: string; thumbnail: string; captions: Caption[]; originalVolume: number; voiceVolume: number; voiceSpeed: number; voiceSegments?: VoiceSegment[]; dialogueRanges?: {start:number;end:number}[]; importWarning?: string };
+export type EditPlan = { duration: 5 | 15 | 30; videoLayout?: 'single' | 'legacy-clips'; captionStyle?: 'clinic' | 'legacy' | 'screen' | 'korean'; headline?: [string, string]; aspectRatio?: '9:16' | '16:9'; clinicBrandStart?: number; title: string; narration: string; thumbnail: string; captions: Caption[]; originalVolume: number; voiceVolume: number; voiceSpeed: number; voiceSegments?: VoiceSegment[]; dialogueRanges?: {start:number;end:number}[]; importWarning?: string };
 // A missing style is legacy so saved drafts keep their original behavior.
+export const isKoreanPlan = (p: EditPlan) => p.captionStyle === 'korean';
 export const isClinicPlan = (p: EditPlan) => p.captionStyle === 'clinic';
 // Manual screen captions use the supplied sound and timings; no paid speech step.
-export const isDirectPlan = (p: EditPlan) => isClinicPlan(p) || p.captionStyle === 'screen';
+export const isDirectPlan = (p: EditPlan) => isClinicPlan(p) || isKoreanPlan(p) || p.captionStyle === 'screen';
 export const defaultPlan = (): EditPlan => ({ duration: 5, title: '', narration: '', thumbnail: '', captions: [], originalVolume: 0.2, voiceVolume: 1, voiceSpeed: 1 });
 export function cleanPlanText(p: EditPlan): EditPlan {
-  return { ...p, title: cleanVideoText(p.title), narration: cleanVideoText(p.narration), thumbnail: cleanVideoText(p.thumbnail), captions: p.captions.map(c => ({ ...c, text: cleanVideoText(c.text) })).filter((c, i) => !isCaptionPlaceholder(c.text) && (c.text || !p.captions[i].text.trim())) };
+  return { ...p, ...(p.headline ? { headline: p.headline.map(t => cleanVideoText(t).replace(/\s+/g, ' ').trim()) as [string, string] } : {}), title: cleanVideoText(p.title), narration: cleanVideoText(p.narration), thumbnail: cleanVideoText(p.thumbnail), captions: p.captions.map(c => ({ ...c, text: cleanVideoText(c.text) })).filter((c, i) => !isCaptionPlaceholder(c.text) && (c.text || !p.captions[i].text.trim())) };
 }
 export function validatePlan(p: EditPlan) {
   if (!p || ![5, 15, 30].includes(p.duration)) throw Error('영상 길이를 확인해주세요.');
   if (p.videoLayout !== undefined && !['single','legacy-clips'].includes(p.videoLayout)) throw Error('영상 입력 방식을 확인해주세요.');
-  if (p.captionStyle !== undefined && !['clinic','legacy','screen'].includes(p.captionStyle)) throw Error('자막 스타일을 확인해주세요.');
+  if (p.captionStyle !== undefined && !['clinic','legacy','screen','korean'].includes(p.captionStyle)) throw Error('자막 스타일을 확인해주세요.');
   if (p.aspectRatio !== undefined && !['9:16','16:9'].includes(p.aspectRatio)) throw Error('화면 비율을 확인해주세요.');
   if (isClinicPlan(p) && p.aspectRatio === '16:9') throw Error('한의원 쇼츠 자막은 세로 9:16 영상에 사용해주세요.');
   if (isDirectPlan(p) && (p.videoLayout !== 'single' || (typeof p.narration === 'string' && p.narration.trim()) || p.voiceSegments?.length)) throw Error(`${isClinicPlan(p) ? '한의원' : '화면'} 자막은 완성 영상 한 개에 넣습니다. 해설 음성이 필요하면 기존 편집을 선택해주세요.`);
+  if (isKoreanPlan(p)) {
+    if (p.duration !== 15 || p.aspectRatio !== '9:16') throw Error('한국판은 15초 · 세로 9:16 · 1080×1920으로 제작해주세요.');
+    if (!Array.isArray(p.headline) || p.headline.length !== 2 || p.headline.some(t => typeof t !== 'string' || !t.trim() || t.length > 80 || /[\r\n]/.test(t))) throw Error('영상에 계속 표시할 제목 두 줄을 입력해주세요.');
+    if (!Array.isArray(p.captions) || !p.captions.length) throw Error('한국판에는 문구와 시간이 정해진 화면 자막이 필요합니다.');
+    if (p.originalVolume !== 1) throw Error('한국판은 원본 음량 100%를 유지합니다.');
+  }
   if (p.captionStyle === 'screen' && p.originalVolume !== 1) throw Error('화면 자막 모드는 원본 음량 100%를 유지합니다.');
   if (p.clinicBrandStart !== undefined && (!isClinicPlan(p) || !Number.isFinite(p.clinicBrandStart) || p.clinicBrandStart < 0 || p.clinicBrandStart >= p.duration + 0.5)) throw Error('하단 한의원명 시작 시간을 확인해주세요.');
   if(p.duration===30&&p.videoLayout==='legacy-clips')throw Error('30초는 전체 영상 한 개를 넣어주세요.');
@@ -25,7 +32,7 @@ export function validatePlan(p: EditPlan) {
   if (!Array.isArray(p.captions) || p.captions.length > 30) throw Error('자막은 30개까지 가능합니다.');
   let last = 0;
   for (const c of p.captions) {
-    if (!Number.isFinite(c.start) || !Number.isFinite(c.end) || c.start < last || c.end <= c.start || c.end > p.duration + (isDirectPlan(p) ? 0.5 : 0) || typeof c.text !== 'string' || !c.text.trim() || c.text.length > 160) throw Error('자막의 시작·끝 시간과 문구를 확인해주세요. 자막 시간은 겹칠 수 없습니다.');
+    if (!Number.isFinite(c.start) || !Number.isFinite(c.end) || c.start < last || c.end <= c.start || c.end > p.duration + (isDirectPlan(p) && !isKoreanPlan(p) ? 0.5 : 0) || typeof c.text !== 'string' || !c.text.trim() || c.text.length > 160) throw Error('자막의 시작·끝 시간과 문구를 확인해주세요. 자막 시간은 겹칠 수 없습니다.');
     last = c.end;
   }
   for (const k of ['originalVolume', 'voiceVolume'] as const) if (!Number.isFinite(p[k]) || p[k] < 0 || p[k] > 1) throw Error('음량은 0~100%로 설정해주세요.');
@@ -46,8 +53,9 @@ export function validatePlan(p: EditPlan) {
 export function importEpisode(e: any): EditPlan {
   if (!e || ![5, 15, 30].includes(e.duration) || typeof e.korean !== 'string' || e.korean.length > 20000) throw Error('에피소드 자료의 형식을 확인해주세요.');
   const p=defaultPlan();p.duration=e.duration;if(e.videoLayout!==undefined)p.videoLayout=e.videoLayout;p.title=String(e.title||'').slice(0,300);
-  if(e.captionStyle!==undefined&&!['clinic','legacy','screen'].includes(e.captionStyle))throw Error('자막 스타일을 확인해주세요.');
+  if(e.captionStyle!==undefined&&!['clinic','legacy','screen','korean'].includes(e.captionStyle))throw Error('자막 스타일을 확인해주세요.');
   if(e.captionStyle!==undefined)p.captionStyle=e.captionStyle;
+  if(e.headline!==undefined){if(!Array.isArray(e.headline)||e.headline.length!==2||e.headline.some((t:unknown)=>typeof t!=='string'||t.length>80))throw Error('상시 제목 두 줄을 확인해주세요.');p.headline=[...e.headline] as [string,string];}
   if(e.aspectRatio!==undefined){if(!['9:16','16:9'].includes(e.aspectRatio))throw Error('화면 비율을 확인해주세요.');p.aspectRatio=e.aspectRatio;}
   if(e.originalVolume!==undefined){if(!Number.isFinite(e.originalVolume)||e.originalVolume<0||e.originalVolume>1)throw Error('원본 음량을 확인해주세요.');p.originalVolume=e.originalVolume;}
   if(isDirectPlan(p)){p.videoLayout='single';p.originalVolume=1;if(e.captionStyle==='clinic'&&e.clinicBrandStart!==undefined)p.clinicBrandStart=e.clinicBrandStart;}
@@ -80,11 +88,17 @@ export function importEpisode(e: any): EditPlan {
   p.narration=narration.join(' ');
   const bounds=p.duration===30||p.videoLayout==='single'?[0,p.duration]:p.duration===15?[0,4,8,11,15]:[0,2,5];
   p.captions=pending.map((c,i)=>({text:c.text,source:isDirectPlan(p)?'screen':c.source||(p.narration?'narration':'dialogue'),start:c.start??(pending.length===bounds.length-1?bounds[i]:0),end:c.end??(pending.length===bounds.length-1?bounds[i+1]:p.duration),...(!c.start&&!c.end&&pending.length!==bounds.length-1?{review:isDirectPlan(p)?'영상을 보며 자막 시작·끝 시간을 확인해주세요.':'발화 시간을 자동으로 찾습니다.'}:{})}));
+  if (e.captions !== undefined) {
+    if (!Array.isArray(e.captions) || e.captions.length > 30 || e.captions.some((c:any) => !c || !Number.isFinite(c.start) || !Number.isFinite(c.end) || typeof c.text !== 'string' || c.text.length > 160)) throw Error('화면 자막 타임라인을 확인해주세요.');
+    p.captions=e.captions.map((c:any)=>({start:c.start,end:c.end,text:c.text,source:'screen'}));
+  }
   const scenario=String(e.scenario||'');
   for(const m of scenario.matchAll(/(?:Dialog(?:ue)?\s*[:：]\s*[^:"“'\n]{1,30}|오원장|소미|덕이|눈이|Nooni)\s*[:：]\s*["“']([^"”'\n]+)["”']/gi))dialogue.push(m[1]);
   const comparison=(text:string)=>text.replace(/[^가-힣a-z0-9]/gi,'').toLowerCase();
-  for(const text of dialogue)if(!p.captions.some(c=>comparison(c.text)===comparison(text)))p.captions.push({text,start:0,end:p.duration,source:'dialogue',review:'원본 영상에서 대사 시간을 자동으로 찾습니다.'});
+  for(const text of (e.captions !== undefined ? [] : dialogue))if(!p.captions.some(c=>comparison(c.text)===comparison(text)))p.captions.push({text,start:0,end:p.duration,source:'dialogue',review:'원본 영상에서 대사 시간을 자동으로 찾습니다.'});
   p.thumbnail=cleanVideoText(String(e.thumbnail||'').split('\n').map(s=>s.replace(/^[\s*#-]+/,'').replace(/\*\*/g,'')).join('\n')).slice(0,100);
   if(uncertain||(!p.narration&&!noNarration&&lines.some((s:string)=>/나레이션|내레이션|해설/.test(s))))p.importWarning='해설 표기를 확실히 구분하지 못한 부분이 있습니다. 읽을 대본에는 해설만 있는지 확인해주세요.';
-  return cleanPlanText(p);
+  const cleaned=cleanPlanText(p);
+  if(isKoreanPlan(cleaned))validatePlan(cleaned);
+  return cleaned;
 }
