@@ -1,6 +1,6 @@
 import { validateKling4Plan } from '../kling4';
 import type { HistoryItem, SourceEpisode } from '../types';
-import { sourceEpisode } from './package';
+import { sourceEpisode, isClinicEpisode } from './package';
 import { parseWeekly } from './weekly';
 import { compileProductionPlan } from '../productionContinuity';
 import { validateClipTiming } from '../utils/clipTiming';
@@ -9,7 +9,8 @@ import { readShotDirection, readSceneTransition } from '../shotDirection';
 import { clipVideoText, KLING_PROMPT_TARGET } from '../videoPrompt';
 
 export const MAX_PRODUCTION_CHARS = 300000;
-export const MAX_WEEKLY_SOURCES = 8;
+export const MAX_WEEKLY_SOURCES = 32;
+export const MAX_WEEKLY_TOTAL_CHARS = 2400000;
 export type ProductionImage = { fileId: string; sha256: string };
 export type PreparedEpisode = { number: number; characterId: string; episode: SourceEpisode; plan: Record<string, any>; assets?: Record<string, ProductionImage> };
 export type ProductionPackage = { format: 'orihani-production'; version: 1; revision: string; episodes: PreparedEpisode[] };
@@ -95,7 +96,7 @@ export function readProductionPackage(raw: string): ProductionPackage {
 // The numeric prefix belongs to the production-file validator. Clinic and
 // standalone screen work use their own title in the picker, history and editor.
 function authoredEpisode(entry: PreparedEpisode): SourceEpisode {
-  return entry.episode.captionStyle === 'clinic' || entry.episode.captionStyle === 'screen'
+  return isClinicEpisode(entry.episode) || entry.episode.captionStyle === 'screen'
     ? {...entry.episode, title: entry.plan.title}
     : entry.episode;
 }
@@ -112,14 +113,16 @@ export function readWeeklyInput(raw: string): WeeklyChoice[] {
 // Keep each source's own revision and asset manifest, including separately added bonuses.
 // A production file still contains at most three episodes.
 export function readWeeklySources(sources: string[]): WeeklyChoice[] {
-  if (!Array.isArray(sources) || !sources.length || sources.length > MAX_WEEKLY_SOURCES || sources.some(s => typeof s !== 'string')) fail('주간 제작안 목록을 확인해주세요.');
+  if (!Array.isArray(sources) || !sources.length || sources.some(s => typeof s !== 'string')) fail('주간 제작안 목록을 확인해주세요.');
+  if (sources.length > MAX_WEEKLY_SOURCES) fail(`제작안 ${sources.length}개가 최대 ${MAX_WEEKLY_SOURCES}개를 넘었습니다. 누적 제작안을 정리해주세요.`);
+  if (sources.reduce((sum, s) => sum + s.length, 0) > MAX_WEEKLY_TOTAL_CHARS) fail('누적 제작안 전체 용량이 2,400,000자를 넘었습니다. 이미지가 포함되지 않은 제작안인지 확인해주세요.');
   const choices = sources.flatMap(readWeeklyInput);
   const seen = new Set<string>(), clinicNumbers = new Set<number>();
   for (const choice of choices) {
     const key = choice.prepared ? `${choice.preparedRevision}:${choice.prepared.number}` : choice.title;
     if (seen.has(key)) fail('주간 제작안의 회차와 버전이 중복됩니다.');
     seen.add(key);
-    if (choice.captionStyle === 'clinic' && choice.prepared) {
+    if (isClinicEpisode(choice) && choice.prepared) {
       if (clinicNumbers.has(choice.prepared.number)) fail('한의원 쇼츠 회차가 중복됩니다. 교체된 추가 제작안을 확인해주세요.');
       clinicNumbers.add(choice.prepared.number);
     }

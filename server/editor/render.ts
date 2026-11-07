@@ -8,6 +8,7 @@ import { validatePlan, cleanPlanText } from '../../src/editor/model';
 import { fitVideoText } from './typography';
 import { renderClinic } from './clinicCaptions';
 import { renderScreen } from './screenCaptions';
+import { renderKorean } from './koreanCaptions';
 
 export function command(binary: string, args: string[], cwd: string, signal?: AbortSignal): Promise<string> {
   return runMediaProcess(binary, args, cwd, signal, () => '영상 처리에 실패했습니다. 파일 형식과 서버 로그를 확인해주세요.');
@@ -33,6 +34,7 @@ export function subtitles(p: EditPlan) {
 }
 export async function render(p: EditPlan, videos: string[], voice: string | undefined, dir: string, signal?: AbortSignal) {
   p = cleanPlanText(p);
+  if (p.captionStyle === 'korean') return renderKorean(p, videos, voice, dir, signal);
   if (p.captionStyle === 'clinic') return renderClinic(p, videos, voice, dir, signal);
   if (p.captionStyle === 'screen') return renderScreen(p, videos, voice, dir, subtitles, signal);
   validatePlan(p); const lengths = clipLengths(p.duration,p.videoLayout);

@@ -20,13 +20,19 @@ jobs:
         run: |
           mkdir -p ~/.local/share/fonts
           cp src/KyoboHandwriting2024psw.ttf ~/.local/share/fonts/
+          cp public/fonts/Cafe24Ssurround.ttf ~/.local/share/fonts/
           fc-cache -f
           fc-match -f '%{family}\n' 'Kyobo Handwriting 2024'
           fc-match -f '%{file}' 'Kyobo Handwriting 2024' | grep -E '/KyoboHandwriting2024psw[.]ttf$'
+          fc-match -f '%{file}' '카페24 써라운드' | grep -E '/Cafe24Ssurround[.]ttf$'
       - run: npm ci
       - run: npm run lint
       - run: npx tsc --noEmit --target ES2022 --module ESNext --moduleResolution bundler --esModuleInterop --skipLibCheck server.ts server/editor/routes.ts server/editor/render.ts
       - run: node --test tests/editor.test.cjs
+        env:
+          FFMPEG_PATH: ffmpeg
+          EDITOR_PYTHON_PATH: python3
+      - run: node --test tests/korean-editor.test.cjs
         env:
           FFMPEG_PATH: ffmpeg
           EDITOR_PYTHON_PATH: python3

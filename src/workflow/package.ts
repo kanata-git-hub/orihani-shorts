@@ -1,4 +1,5 @@
 import { getKling4Plan, validateKling4Plan } from '../kling4';
+import { defaultPlan, validatePlan } from '../editor/model';
 import { HistoryItem, SourceEpisode } from '../types';
 import { extractClips, extractOverview } from '../utils/extractors';
 import { isBackgroundChoice } from '../backgroundAssets';
@@ -6,19 +7,30 @@ import { readSceneReference, readClipReferences, type ClipReferences, type Scene
 
 export const MAX_PACKAGE_BYTES = 48 * 1024 * 1024;
 const text = (v: unknown, max: number) => typeof v === 'string' && v.length <= max;
+export function isClinicEpisode(v: Pick<SourceEpisode, 'title' | 'captionStyle'>): boolean {
+  return v.captionStyle === 'clinic' || /^(?:\[에피소드\s*\d+\]\s*)?한의원 쇼츠\s*\d+(?:\s|$)/.test(v.title);
+}
 export function sourceEpisode(v: any): SourceEpisode {
   if (!v || ![5,15,30].includes(v.duration) || !text(v.korean,20000) || !text(v.scenario,40000) || !text(v.title,1000) || !text(v.thumbnail,3000) || !text(v.caption || '',5000)) throw Error('주간 대본의 형식을 확인해주세요.');
   if (v.videoLayout !== undefined && !['single','legacy-clips'].includes(v.videoLayout)) throw Error('영상 입력 방식을 확인해주세요.');
-  if (v.captionStyle !== undefined && !['clinic','legacy','screen'].includes(v.captionStyle)) throw Error('자막 스타일을 확인해주세요.');
+  if (v.captionStyle !== undefined && !['clinic','legacy','screen','korean'].includes(v.captionStyle)) throw Error('자막 스타일을 확인해주세요.');
   if (v.aspectRatio !== undefined && !['9:16','16:9'].includes(v.aspectRatio)) throw Error('화면 비율을 확인해주세요.');
   if (v.captionStyle === 'clinic' && v.aspectRatio === '16:9') throw Error('한의원 쇼츠 자막은 세로 9:16 영상에 사용해주세요.');
   if (v.originalVolume !== undefined && (!Number.isFinite(v.originalVolume) || v.originalVolume < 0 || v.originalVolume > 1)) throw Error('원본 음량을 확인해주세요.');
   if (v.clinicBrandStart !== undefined && (v.captionStyle !== 'clinic' || !Number.isFinite(v.clinicBrandStart) || v.clinicBrandStart < 0 || v.clinicBrandStart >= v.duration + 0.5)) throw Error('한의원명 표시 시간을 확인해주세요.');
+  if (v.captionStyle === 'korean') {
+    if (v.videoLayout !== 'single' || v.originalVolume !== 1) throw Error('한국판 제작안은 전체 영상 한 개와 원본 음량 100%가 필요합니다.');
+    validatePlan({...defaultPlan(),...v,narration:'',captions:v.captions});
+  }
+  if (v.headline !== undefined && (!Array.isArray(v.headline) || v.headline.length !== 2 || v.headline.some((s:unknown) => !text(s,80)))) throw Error('상시 제목 두 줄을 확인해주세요.');
+  if (v.captions !== undefined && (!Array.isArray(v.captions) || v.captions.length > 30 || v.captions.some((c:any) => !c || !Number.isFinite(c.start) || !Number.isFinite(c.end) || !text(c.text,160) || (c.source !== undefined && c.source !== 'screen')))) throw Error('화면 자막 타임라인을 확인해주세요.');
   return {duration:v.duration,title:v.title,korean:v.korean,scenario:v.scenario,thumbnail:v.thumbnail,caption:v.caption||'',
     ...(v.videoLayout !== undefined ? {videoLayout:v.videoLayout} : {}),
     ...(v.captionStyle !== undefined ? {captionStyle:v.captionStyle} : {}),
     ...(v.aspectRatio !== undefined ? {aspectRatio:v.aspectRatio} : {}),
     ...(v.originalVolume !== undefined ? {originalVolume:v.originalVolume} : {}),
+    ...(v.headline !== undefined ? {headline:[...v.headline] as [string,string]} : {}),
+    ...(v.captions !== undefined ? {captions:v.captions.map((c:any)=>({start:c.start,end:c.end,text:c.text,source:'screen' as const}))} : {}),
     ...(v.clinicBrandStart !== undefined ? {clinicBrandStart:v.clinicBrandStart} : {})};
 }
 export function recordDuration(item: HistoryItem): 5|15|30 {

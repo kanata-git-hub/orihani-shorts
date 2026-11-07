@@ -4,6 +4,7 @@ import { SourceEpisode } from '../types';
 import { auth } from '../lib/firebase';
 import { MAX_WEEKLY_SOURCES, readWeeklyInput, readWeeklySources, type PreparedEpisode, type WeeklyChoice } from './productionPackage';
 import { PromptComparison } from './PromptComparison';
+import { isClinicEpisode } from './package';
 import './workflow.css';
 
 export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
@@ -39,8 +40,8 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
   };
   useEffect(()=>{void latest();return()=>{revision.current++;};},[]);
   const chosen=episodes[index];
-  const clinicCount=episodes.filter(e=>e.captionStyle==='clinic').length;
-  const bonusCount=episodes.filter(e=>e.captionStyle!=='clinic'&&/^(?:\[에피소드\s*\d+\]\s*)?번외\s*\d+/.test(e.title)).length;
+  const clinicCount=episodes.filter(isClinicEpisode).length;
+  const bonusCount=episodes.filter(e=>!isClinicEpisode(e)&&/^(?:\[에피소드\s*\d+\]\s*)?번외\s*\d+/.test(e.title)).length;
   const choose=async()=>{
     if(!chosen||disabled||opening)return;
     interrupt();

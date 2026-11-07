@@ -30,7 +30,7 @@ test('standalone experiment joins the current sources and survives a later weekl
  const current=[clinic,reserve,experiment,bonus,main];
  assert.deepEqual(weeklySources(current).map(f=>f.id),[main.id,clinic.id,reserve.id,bonus.id,experiment.id]);
  const next=file('[2026-11-08] 3D 오리 삼총사 릴스 개그 시리즈 주간 패키지.json','next');
- assert.deepEqual(weeklySources([...current,next]).map(f=>f.id),[next.id,reserve.id,experiment.id]);
+ assert.deepEqual(weeklySources([...current,next]).map(f=>f.id),[next.id,clinic.id,reserve.id,experiment.id]);
 });
 test('experiment selection uses newest valid date, then modification time and stable ID',()=>{
  const older=file('[2026-11-05] 오리 상상여행 실험작 제작안.json','older','2026-11-07T01:00:00Z');
@@ -48,7 +48,7 @@ test('experiment selection uses newest valid date, then modification time and st
  assert.deepEqual(weeklySources([older,stale,tied,...ignored,experiment,main]).map(f=>f.id),[main.id,experiment.id]);
  assert.deepEqual(weeklySources([experiment,main,...ignored,tied,stale,older]).map(f=>f.id),[main.id,experiment.id]);
 });
-test('standalone source consumes the existing eight-source bound',()=>{
+test('standalone source consumes the shared bounded source capacity',()=>{
  const additions=Array.from({length:MAX_WEEKLY_SOURCES-2},(_,i)=>file('[2026-11-01] 번외 추가 '+(i+1)+' 제작안.json','extra'+i));
  assert.equal(weeklySources([main,...additions,experiment]).length,MAX_WEEKLY_SOURCES);
  assert.throws(()=>weeklySources([main,...additions,experiment,file('[2026-11-01] 번외 제작안.json','bonus')]),/너무 많/);
