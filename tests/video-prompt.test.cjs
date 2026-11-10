@@ -11,7 +11,7 @@ function compile(rel,mocks={}){
  new Function('require','module','exports',code)(name=>name.endsWith('/authFetch')?{authFetch:(...args)=>fetch(...args)}:mocks[name]||(name.endsWith('.css')?{}:name.startsWith('.')?compile(localModule(rel,name)):require(name)),m,m.exports);
  if(!Object.keys(mocks).length)cache.set(rel,m.exports);return m.exports;
 }
-const {videoPromptForCopy:prepare,normalizeVideoPlan,SILENT_CLIP_AUDIO,bindClipStartFrame}=compile('src/videoPrompt.ts');
+const {videoPromptForCopy:prepare,normalizeVideoPlan,SILENT_CLIP_AUDIO,NONVERBAL_CLIP_AUDIO,bindClipStartFrame}=compile('src/videoPrompt.ts');
 const quiet='REFERENCE INSTRUCTION: @image1 = Scene 1 start frame reference.\nOUTPUT SPECS: 4s, vertical 9:16.\nACTION: Deok-i pushes a vacuum cleaner across the floor.\nAUDIO: A steady vacuum motor and soft wheel sounds.\nSTRICT RULES: Solid contact with the floor.';
 const speaking='[CLIP 3]REFERENCE INSTRUCTION: @image3 = Scene 3 start frame reference.OUTPUT SPECS: 3s, vertical 9:16.CINEMATOGRAPHY: Medium shot.ENVIRONMENT: Warm wooden clinic reception.ACTION: Somi opens the door, nods and delivers line.DIALOGUE : Somi : "문 열었어요. 들어오세요."STRICT RULES: Keep the doorway stable.';
 const legacy='[RECURRING PROP DESIGN — START FRAME PRIORITY]The supplied start-frame image defines the exact design of recurring props. Preserve their silhouette, materials, colors, proportions and attached components throughout this clip. If an incidental prop description above conflicts with the visible start frame, keep the start-frame design and perform the current scripted action with it. Animate only the specified action and state changes; do not redesign the prop or add unpictured components. Character identity stays consistent with the bound character assets.';
@@ -180,4 +180,23 @@ test('all workboard, history and continue reel buttons copy the same visible tit
    assert.ok(!copies.at(-1).includes(prose));
   }
  }finally{if(oldNavigator)Object.defineProperty(global,'navigator',oldNavigator);else delete global.navigator;global.setTimeout=oldTimeout;}
+});
+
+test('only explicitly scripted nonverbal reactions survive the wordless audio guard',()=>{
+ const source='ACTION: React to the falling box.\nDIALOGUE: None.\nVOCALS: Brief nonverbal reaction: one short gasp at 2 seconds.\nAUDIO: Box thud.';
+ const output=prepare(source);
+ assert.ok(output.startsWith(source));assert.ok(output.includes(NONVERBAL_CLIP_AUDIO));assert.ok(!output.includes(SILENT_CLIP_AUDIO));
+ assert.equal(prepare(output),output,'clipboard normalization is idempotent');
+ const quiet=prepare('ACTION: React to the box.\nDIALOGUE: None.\nAUDIO: Box thud.');
+ assert.ok(quiet.includes(SILENT_CLIP_AUDIO));assert.ok(!quiet.includes(NONVERBAL_CLIP_AUDIO));
+});
+
+test('bilingual title/body/tag sets preserve both languages and authored order across every copy helper',()=>{
+ const {prepareSocialCaption,prepareReelsCaption}=compile('src/utils/socialCaption.ts');
+ const source=['English public title','English body','#Duck #Daily #Animation #Comedy #Relatable','한국어 공개 제목 (오리도 그래요)','한국어 본문','#오리 #일상 #애니메이션 #공감 #유머'].join('\n\n');
+ assert.equal(prepareSocialCaption(source,['추가하지마']).text,source);
+ const result=prepareReelsCaption({title:'[에피소드 7] 내부 구분 제목',instagramCaption:source,hashtags:['추가하지마']});
+ assert.equal(result.text,source);assert.equal(result.title,'한국어 공개 제목 (오리도 그래요)');
+ assert.equal(result.shortsTitle,result.title);assert.equal(result.hashtags.length,10);
+ assert.equal(prepareReelsCaption({title:'내부 제목'},{caption:source}).text,source);
 });

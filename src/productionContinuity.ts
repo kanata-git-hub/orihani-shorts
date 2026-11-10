@@ -89,7 +89,7 @@ export function compileProductionPlan(plan: any) {
     // Deliberate allowlist: never pass frame.action/endState, later scenes or the
     // model's old imagePrompt to the image generator, even when they are present.
     const imagePrompt = `[SINGLE START FRAME — SCENE ${index + 1}]
-One clean vertical 9:16 start-frame image in the established matte 3D mascot style. No title, dialogue captions, montage or panels.
+One clean vertical 9:16 start-frame image. Keep the characters in their established matte 3D mascot style; follow SET AND LIGHT for the environment rather than imposing that style on the whole scene. Match contact shadows, occlusion and scale to that setting. No title, dialogue captions, montage or panels.
 Visible cast: ${frame.visibleCharacters.join(', ') || 'No characters in this crop'}.
 SET AND LIGHT: ${frame.environment}
 ${shotDirectionInstruction(shot)}

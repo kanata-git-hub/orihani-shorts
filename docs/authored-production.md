@@ -283,3 +283,19 @@ the picture is encoded. It never generates narration or requests transcription.
 There is no automatic crop, vertical padding or extra clinic brand. To add
 captions, use explicit times in `episode.korean` or the editor's caption cards.
 The actual source video is supplied by the user after Kling generation.
+
+## New Korean headline size
+
+New Korean episodes use `episode.koreanTitlePreset: "wide"` alongside
+`captionStyle: "korean"`, `headline: ["first line", "second line"]` and the
+authored `captions` timeline. The editor calibrates the actual rendered longest
+headline line to 90–95% of the 1080-pixel frame, retaining the font's proportions
+and a shared size for both lines. Existing packages or saved drafts with no preset,
+or with `"balanced"`, retain the earlier geometry when opened or exported again.
+Do not add the new field to approved earlier episodes as an automatic migration.
+
+A new blank Korean edit defaults to the larger title. The title-size control allows
+an explicit choice, and previews refresh when it changes. Captions, audio and duration
+are unaffected. Keep each headline line reasonably similar in length; very short or
+overlong lines that cannot fit without taking over the picture fail with an editing
+message rather than being stretched or clipped.

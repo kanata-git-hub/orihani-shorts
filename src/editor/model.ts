@@ -2,7 +2,7 @@ import type { VoiceSegment } from './speech';
 import { cleanVideoText } from './text';
 import { normalizeScriptTable, isCaptionPlaceholder } from './script';
 export type Caption = { start: number; end: number; text: string; source?: 'narration' | 'dialogue' | 'screen'; review?: string };
-export type EditPlan = { duration: 5 | 15 | 30; videoLayout?: 'single' | 'legacy-clips'; captionStyle?: 'clinic' | 'legacy' | 'screen' | 'korean'; headline?: [string, string]; aspectRatio?: '9:16' | '16:9'; clinicBrandStart?: number; title: string; narration: string; thumbnail: string; captions: Caption[]; originalVolume: number; voiceVolume: number; voiceSpeed: number; voiceSegments?: VoiceSegment[]; dialogueRanges?: {start:number;end:number}[]; importWarning?: string };
+export type EditPlan = { duration: 5 | 15 | 30; videoLayout?: 'single' | 'legacy-clips'; captionStyle?: 'clinic' | 'legacy' | 'screen' | 'korean'; koreanTitlePreset?: 'balanced' | 'wide'; headline?: [string, string]; aspectRatio?: '9:16' | '16:9'; clinicBrandStart?: number; title: string; narration: string; thumbnail: string; captions: Caption[]; originalVolume: number; voiceVolume: number; voiceSpeed: number; voiceSegments?: VoiceSegment[]; dialogueRanges?: {start:number;end:number}[]; importWarning?: string };
 // A missing style is legacy so saved drafts keep their original behavior.
 export const isKoreanPlan = (p: EditPlan) => p.captionStyle === 'korean';
 export const isClinicPlan = (p: EditPlan) => p.captionStyle === 'clinic';
@@ -16,6 +16,7 @@ export function validatePlan(p: EditPlan) {
   if (!p || ![5, 15, 30].includes(p.duration)) throw Error('영상 길이를 확인해주세요.');
   if (p.videoLayout !== undefined && !['single','legacy-clips'].includes(p.videoLayout)) throw Error('영상 입력 방식을 확인해주세요.');
   if (p.captionStyle !== undefined && !['clinic','legacy','screen','korean'].includes(p.captionStyle)) throw Error('자막 스타일을 확인해주세요.');
+  if (p.koreanTitlePreset !== undefined && (!isKoreanPlan(p) || !['balanced','wide'].includes(p.koreanTitlePreset))) throw Error('한국판 제목 크기를 확인해주세요.');
   if (p.aspectRatio !== undefined && !['9:16','16:9'].includes(p.aspectRatio)) throw Error('화면 비율을 확인해주세요.');
   if (isClinicPlan(p) && p.aspectRatio === '16:9') throw Error('한의원 쇼츠 자막은 세로 9:16 영상에 사용해주세요.');
   if (isDirectPlan(p) && (p.videoLayout !== 'single' || (typeof p.narration === 'string' && p.narration.trim()) || p.voiceSegments?.length)) throw Error(`${isClinicPlan(p) ? '한의원' : '화면'} 자막은 완성 영상 한 개에 넣습니다. 해설 음성이 필요하면 기존 편집을 선택해주세요.`);
@@ -55,6 +56,7 @@ export function importEpisode(e: any): EditPlan {
   const p=defaultPlan();p.duration=e.duration;if(e.videoLayout!==undefined)p.videoLayout=e.videoLayout;p.title=String(e.title||'').slice(0,300);
   if(e.captionStyle!==undefined&&!['clinic','legacy','screen','korean'].includes(e.captionStyle))throw Error('자막 스타일을 확인해주세요.');
   if(e.captionStyle!==undefined)p.captionStyle=e.captionStyle;
+  if(e.koreanTitlePreset!==undefined){if(e.captionStyle!=='korean'||!['balanced','wide'].includes(e.koreanTitlePreset))throw Error('한국판 제목 크기를 확인해주세요.');p.koreanTitlePreset=e.koreanTitlePreset;}
   if(e.headline!==undefined){if(!Array.isArray(e.headline)||e.headline.length!==2||e.headline.some((t:unknown)=>typeof t!=='string'||t.length>80))throw Error('상시 제목 두 줄을 확인해주세요.');p.headline=[...e.headline] as [string,string];}
   if(e.aspectRatio!==undefined){if(!['9:16','16:9'].includes(e.aspectRatio))throw Error('화면 비율을 확인해주세요.');p.aspectRatio=e.aspectRatio;}
   if(e.originalVolume!==undefined){if(!Number.isFinite(e.originalVolume)||e.originalVolume<0||e.originalVolume>1)throw Error('원본 음량을 확인해주세요.');p.originalVolume=e.originalVolume;}

@@ -14,6 +14,7 @@ export function sourceEpisode(v: any): SourceEpisode {
   if (!v || ![5,15,30].includes(v.duration) || !text(v.korean,20000) || !text(v.scenario,40000) || !text(v.title,1000) || !text(v.thumbnail,3000) || !text(v.caption || '',5000)) throw Error('주간 대본의 형식을 확인해주세요.');
   if (v.videoLayout !== undefined && !['single','legacy-clips'].includes(v.videoLayout)) throw Error('영상 입력 방식을 확인해주세요.');
   if (v.captionStyle !== undefined && !['clinic','legacy','screen','korean'].includes(v.captionStyle)) throw Error('자막 스타일을 확인해주세요.');
+  if (v.koreanTitlePreset !== undefined && (v.captionStyle !== 'korean' || !['balanced','wide'].includes(v.koreanTitlePreset))) throw Error('한국판 제목 크기를 확인해주세요.');
   if (v.aspectRatio !== undefined && !['9:16','16:9'].includes(v.aspectRatio)) throw Error('화면 비율을 확인해주세요.');
   if (v.captionStyle === 'clinic' && v.aspectRatio === '16:9') throw Error('한의원 쇼츠 자막은 세로 9:16 영상에 사용해주세요.');
   if (v.originalVolume !== undefined && (!Number.isFinite(v.originalVolume) || v.originalVolume < 0 || v.originalVolume > 1)) throw Error('원본 음량을 확인해주세요.');
@@ -27,6 +28,7 @@ export function sourceEpisode(v: any): SourceEpisode {
   return {duration:v.duration,title:v.title,korean:v.korean,scenario:v.scenario,thumbnail:v.thumbnail,caption:v.caption||'',
     ...(v.videoLayout !== undefined ? {videoLayout:v.videoLayout} : {}),
     ...(v.captionStyle !== undefined ? {captionStyle:v.captionStyle} : {}),
+    ...(v.koreanTitlePreset !== undefined ? {koreanTitlePreset:v.koreanTitlePreset} : {}),
     ...(v.aspectRatio !== undefined ? {aspectRatio:v.aspectRatio} : {}),
     ...(v.originalVolume !== undefined ? {originalVolume:v.originalVolume} : {}),
     ...(v.headline !== undefined ? {headline:[...v.headline] as [string,string]} : {}),

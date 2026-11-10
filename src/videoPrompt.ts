@@ -14,11 +14,18 @@ AUDIO: During this clip, background ambience and synchronized object/action soun
 VOCALS: None during this clip. No speech, narration, singing, or vocal sounds in any language, including off-screen voices.
 PERFORMANCE: During this clip, characters act without speaking or speech-like mouth movements.`;
 
+export const NONVERBAL_CLIP_AUDIO = `[CLIP AUDIO — SCRIPTED NONVERBAL REACTION ONLY]
+AUDIO: Keep the source's explicitly requested brief nonverbal reaction and synchronized ambience/action sounds. Any requested music is instrumental.
+VOCALS: Only the already specified wordless reaction; no words, meaningful speech, narration, singing, chatter or added vocalizations.
+PERFORMANCE: No speech-like lip movement; preserve the scripted physical reaction.`;
+
 export const videoAudioInstruction = `MANDATORY AUDIO DIRECTION FOR EVERY CLIP:
-Preserve the source script's exact spoken lines and their assigned clips. Do not add dialogue, narration, exclamations or vocal reactions to a wordless scene. Captions, UI text, thoughts and sound-effect labels are not spoken lines.
+Preserve the source script's exact spoken lines and their assigned clips. Do not add dialogue, narration or unrequested vocal reactions to a wordless scene. Preserve an explicitly scripted brief nonverbal reaction without turning it into words. Captions, UI text, thoughts and sound-effect labels are not spoken lines.
 Always write DIALOGUE and AUDIO on separate lines, alongside the other video prompt headings.
-For a clip without a spoken line, write DIALOGUE: None. Then include this exact block:
+For a clip without a spoken line, write DIALOGUE: None. If the source explicitly specifies a brief nonverbal reaction, write VOCALS: Brief nonverbal reaction: followed by that exact reaction and timing, then use the scripted-reaction block below. Otherwise include this exact silent block:
 ${SILENT_CLIP_AUDIO}
+Scripted-reaction block (only with an explicit source reaction):
+${NONVERBAL_CLIP_AUDIO}
 Also describe the specific non-vocal ambience and object/action sounds that fit the scene, such as room tone, a vacuum motor, footsteps or a door click. Do not fill the silence with crowd chatter, muttering or voice references. Preserve the visual action; speech-like mouth movements are excluded, but eating or surprised expressions must remain possible.
 For a speaking clip, write DIALOGUE: Character English Name: "Exact Korean line". Only the named speaker delivers that line in Korean without translation or extra words; other characters stay silent. Retain any explicitly requested voice-over under NARRATION instead of inventing one. Describe supporting ambience and effects under AUDIO. Never apply the no-voices block to a clip with an explicit spoken line.
 These audio requirements apply even when older examples omit dialogue/audio sections or discourage visual negative prompts.`;
@@ -53,7 +60,7 @@ export function videoPromptForCopy(raw:string):string {
   let prompt=raw.replace(/\\r\\n|\\n/g,'\n');
   const escape=(text:string)=>text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const oldBlock=new RegExp(escape(LEGACY_PROP_MARKER)+'\\s*'+LEGACY_PROP_TEXT.split(/\s+/).map(escape).join('\\s+'),'g');
-  prompt=prompt.replace(oldBlock,'').replace(SILENT_CLIP_AUDIO,'').trim();
+  prompt=prompt.replace(oldBlock,'').replace(SILENT_CLIP_AUDIO,'').replace(NONVERBAL_CLIP_AUDIO,'').trim();
   if(!prompt)return '';
   const sections=fields(prompt);
   const spoken=sections.filter(s=>/^(?:DIALOGUES?|DIALOG|NARRATION|VOICE[ -]?OVER)$/.test(s.name));
@@ -63,7 +70,8 @@ export function videoPromptForCopy(raw:string):string {
   if(/(?:O[- ]wonjang|Somi|Deok[- ]i|오원장|소미|덕이|눈이|Nooni)\s*(?:\([^)]*\))?\s*[:：]\s*["“「']/i.test(legacyAction))return prompt;
   const speechCue=/\b(?:says?|speaks?|speaking|asks?|replies|reply|whispers?|mutters?|shouts?|sings?|singing|narrat(?:es?|ion)|voice[ -]?over|delivers? (?:the |a )?line)\b|말한다|말하며|속삭|대답한다|나레이션|내레이션/i;
   if(speechCue.test(legacyAction)&&(!spoken.length||/["“「][^"”」]*[\p{L}\p{N}][^"”」]*["”」]/u.test(legacyAction)))return prompt;
-  return prompt+(spoken.some(s=>/^DIALOG/.test(s.name))?'':'\nDIALOGUE: None.')+'\n\n'+SILENT_CLIP_AUDIO;
+  const reaction=sections.some(s=>s.name==='VOCALS'&&/^Brief nonverbal reaction:\s*\S/i.test(s.value));
+  return prompt+(spoken.some(s=>/^DIALOG/.test(s.name))?'':'\nDIALOGUE: None.')+'\n\n'+(reaction?NONVERBAL_CLIP_AUDIO:SILENT_CLIP_AUDIO);
 }
 
 export function normalizeVideoPlan(raw:string):string {
