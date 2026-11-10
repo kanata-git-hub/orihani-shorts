@@ -145,7 +145,7 @@ For a supplied finished screenplay, preserve its caption and hashtags exactly, i
                 hashtags: { 
                   type: "ARRAY", 
                   items: { type: "STRING" },
-                  description: "Exactly five relevant Korean-edition hashtags without #; keep the English hashtags separate in instagramCaption. Preserve supplied metadata hashtags." 
+                  description: "Exactly five relevant Korean-edition hashtags without #; keep the English hashtags separate in instagramCaption. Preserve supplied metadata hashtags."
                 },
                 propBible: propBibleSchema,
                 clips: {
