@@ -24,11 +24,13 @@ function production(clinic=false){
 }
 
 test('authored main and clinic packages carry mandatory headlines and exact timeline through images, history and editor',()=>{
- for(const clinic of [false,true]){
-  const raw=production(clinic),pack=readProductionPackage(JSON.stringify(raw)),entry=pack.episodes[0];
+ for(const clinic of [false,true]) for(const preset of [undefined,'balanced','wide']){
+  const raw=production(clinic);if(preset)raw.episodes[0].episode.koreanTitlePreset=preset;
+  const pack=readProductionPackage(JSON.stringify(raw)),entry=pack.episodes[0];
   const item=preparedHistory(entry,pack.revision),images=Object.fromEntries(entry.plan.keyframes.map(f=>[f.imageTitle,'data:image/png;base64,AAAA']));
   const restored=readPackage(makePackage(item,images)),edit=importEpisode(editorEpisode(restored.item));
   validatePlan(edit);assert.deepEqual(edit.headline,raw.episodes[0].episode.headline);assert.deepEqual(edit.captions,captions);assert.deepEqual(restored.images,images);
+  assert.equal(edit.koreanTitlePreset,preset);
   assert.equal(edit.narration,'');assert.equal(edit.originalVolume,1);assert.equal(edit.videoLayout,'single');assert.equal(edit.captionStyle,'korean');
   assert.equal(isClinicEpisode(readWeeklyInput(JSON.stringify(raw))[0]),clinic);
   assert.equal(restored.item.result,item.result,'author prompts are never rewritten');
@@ -39,7 +41,7 @@ test('authored main and clinic packages carry mandatory headlines and exact time
 
 test('new Korean preset rejects missing text, changed length/ratio, voice and incorrect caption times while old presets remain readable',()=>{
  validatePlan(korean());
- for(const patch of [{captions:[]},{headline:['','제목']},{headline:['줄\n바꿈','제목']},{duration:30},{aspectRatio:'16:9'},{originalVolume:.2},{narration:'읽지 마세요'},{captions:[{start:0,end:15.1,text:'끝'}]}])assert.throws(()=>validatePlan(korean(patch)));
+ for(const patch of [{koreanTitlePreset:'unknown'},{captions:[]},{headline:['','제목']},{headline:['줄\n바꿈','제목']},{duration:30},{aspectRatio:'16:9'},{originalVolume:.2},{narration:'읽지 마세요'},{captions:[{start:0,end:15.1,text:'끝'}]}])assert.throws(()=>validatePlan(korean(patch)));
  assert.equal(defaultPlan().captionStyle,undefined);
  const old={duration:15,title:'기존',scenario:'기존 원고',korean:'해설: 없음',thumbnail:'기존',caption:''};
  assert.equal(importEpisode(old).captionStyle,undefined);
@@ -61,7 +63,7 @@ test('real libass calibration and transparent preview match approved geometry, c
   const ass=fs.readFileSync(generated.ass,'utf8');
   assert.match(ass,/카페24 써라운드/);assert.match(ass,/&H006AD9FF/);assert.match(ass,/\\pos\(540,1535\)/);assert.match(ass,/\\pos\(540,1746\)/);
   assert.ok(!ass.includes('Kyobo'));assert.equal(generated.overlays.length,3);
-  const geometry=JSON.parse(execFileSync('python3',['-c',`from PIL import Image\nimport json,sys\nims=[Image.open(p).convert('RGBA') for p in sys.argv[1:]]\nprint(json.dumps([{'corner':im.getpixel((0,0))[3],'bbox':im.getchannel('A').getbbox(),'alpha':im.getextrema()[3]} for im in ims]))`,...generated.overlays.map(o=>o.path)],{encoding:'utf8'}));
+  const geometry=JSON.parse(execFileSync(process.env.EDITOR_PYTHON_PATH||'python3',['-c',`from PIL import Image\nimport json,sys\nims=[Image.open(p).convert('RGBA') for p in sys.argv[1:]]\nprint(json.dumps([{'corner':im.getpixel((0,0))[3],'bbox':im.getchannel('A').getbbox(),'alpha':im.getextrema()[3]} for im in ims]))`,...generated.overlays.map(o=>o.path)],{encoding:'utf8'}));
   assert.ok(geometry.every(g=>g.corner===0&&g.alpha[1]>0),'preview is transparent with visible text');
   assert.ok(geometry[0].bbox[1]<400&&geometry[0].bbox[3]>1746,'persistent title and brand share a static layer');
   assert.ok(geometry[1].bbox[1]>=1535&&geometry[1].bbox[3]<1700,'timed caption layer is separate');
@@ -76,15 +78,42 @@ test('real Korean export keeps full 1080 portrait frame, source audio and length
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ori-korean-video-'));
  try{
   const input=path.join(dir,'source.mp4');
-  execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-y','-f','lavfi','-i','color=c=0x245b7d:s=1080x1920:r=5:d=15','-f','lavfi','-i','sine=frequency=440:sample_rate=48000:duration=15','-c:v','libx264','-preset','ultrafast','-threads','2','-pix_fmt','yuv420p','-c:a','aac','-shortest',input]);
-  const audio=file=>execFileSync('ffmpeg',['-v','error','-i',file,'-map','0:a:0','-c','copy','-f','hash','-hash','sha256','-'],{encoding:'utf8'}).trim();
-  const output=await render(korean(),[input],undefined,dir);
+  execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-hide_banner','-loglevel','error','-y','-f','lavfi','-i','color=c=0x245b7d:s=1080x1920:r=5:d=15','-f','lavfi','-i','sine=frequency=440:sample_rate=48000:duration=15','-c:v','libx264','-preset','ultrafast','-threads','2','-pix_fmt','yuv420p','-c:a','aac','-shortest',input]);
+  const audio=file=>execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-v','error','-i',file,'-map','0:a:0','-c','copy','-f','hash','-hash','sha256','-'],{encoding:'utf8'}).trim();
+  const output=await render(korean({koreanTitlePreset:'wide'}),[input],undefined,dir);
   assert.equal(audio(output),audio(input),'AAC source audio packets are copied without narration/mixing');
-  const meta=JSON.parse(execFileSync('ffprobe',['-v','error','-show_streams','-show_format','-of','json',output],{encoding:'utf8'}));
+  const meta=JSON.parse(execFileSync(process.env.FFPROBE_PATH||'ffprobe',['-v','error','-show_streams','-show_format','-of','json',output],{encoding:'utf8'}));
   const v=meta.streams.find(s=>s.codec_type==='video');assert.equal(v.width,1080);assert.equal(v.height,1920);assert.ok(Math.abs(Number(meta.format.duration)-15)<.05);
-  execFileSync('ffmpeg',['-v','error','-y','-ss','14.8','-i',output,'-frames:v','1',path.join(dir,'last.png')]);
-  const pixel=JSON.parse(execFileSync('python3',['-c',`from PIL import Image\nimport json,sys\nim=Image.open(sys.argv[1]).convert('RGB')\nregion=im.crop((80,1535,1000,1660)); count=sum(1 for r,g,b in region.getdata() if r>210 and g>210 and b>190)\nprint(json.dumps({'edge':im.getpixel((0,900)),'captionPixels':count}))`,path.join(dir,'last.png')],{encoding:'utf8'}));
+  execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-v','error','-y','-ss','14.8','-i',output,'-frames:v','1',path.join(dir,'last.png')]);
+  const pixel=JSON.parse(execFileSync(process.env.EDITOR_PYTHON_PATH||'python3',['-c',`from PIL import Image\nimport json,sys\nim=Image.open(sys.argv[1]).convert('RGB')\nregion=im.crop((80,1535,1000,1660)); count=sum(1 for r,g,b in region.getdata() if r>210 and g>210 and b>190)\nprint(json.dumps({'edge':im.getpixel((0,900)),'captionPixels':count}))`,path.join(dir,'last.png')],{encoding:'utf8'}));
   assert.ok(pixel.edge[2]>80,'original full frame has no inserted letterbox');assert.ok(pixel.captionPixels>100,'final caption remains visible');
   await assert.rejects(()=>render(korean(),[input],'voice.wav',dir),/별도 음성/);
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('wide headlines use the measured 90–95% width, shared size, separated lines and unchanged lower captions',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ori-korean-wide-'));
+ try{
+  for(const headline of [['밥 먹으려 하면','꼭 할 일이 생김'],['첫 화면의 상황','반응'],['아주 길어진 제목도 화면에 맞춰요','둘째 줄']]){
+   const p=korean({koreanTitlePreset:'wide',headline});
+   const generated=await generateKoreanCaptions(p,dir,true);
+   const layout=generated.layout;
+   assert.equal(layout.koreanTitlePreset,'wide');
+   assert.equal(layout.headlineFontSizes[0],layout.headlineFontSizes[1]);
+   assert.ok(Math.max(...layout.headlineInkWidths)>=972&&Math.max(...layout.headlineInkWidths)<=1026);
+   const ass=fs.readFileSync(generated.ass,'utf8');
+   assert.match(ass,/\\pos\(540,1535\)/);assert.match(ass,/\\pos\(540,1746\)/);
+   const geometry=JSON.parse(execFileSync(process.env.EDITOR_PYTHON_PATH||'python3',['-c',`from PIL import Image\nimport json,sys\nim=Image.open(sys.argv[1]).convert('RGBA')\n# Static preview: inspect headline ink only, excluding the brand.\nink=im.crop((0,0,1080,1000)).convert('RGB').convert('L').point(lambda x:255 if x>90 else 0)\nrows=[y for y in range(1000) if ink.crop((0,y,1080,y+1)).getbbox()]\ngaps=[b-a for a,b in zip(rows,rows[1:]) if b-a>1]\nprint(json.dumps({'bbox':ink.getbbox(),'gap':max(gaps,default=0)}))`,generated.overlays[0].path],{encoding:'utf8'}));
+   assert.ok(geometry.bbox[0]>20&&geometry.bbox[2]<1060,'title is not clipped at the frame edges');
+   assert.ok(geometry.gap>=20,'separate title lines have visible space');
+   assert.equal(geometry.bbox[1],layout.balancedOuterMarginPx);
+  }
+  const wide=await generateKoreanCaptions(korean({koreanTitlePreset:'wide'}),dir);
+  const wideSize=wide.layout.headlineFontSizes[0];
+  const old=await generateKoreanCaptions(korean(),dir);
+  const oldText=fs.readFileSync(old.ass,'utf8');
+  assert.ok(wideSize>old.layout.headlineFontSizes[0],'ordinary new titles grow, not just their container');
+  const explicitOld=await generateKoreanCaptions(korean({koreanTitlePreset:'balanced'}),dir);
+  assert.equal(fs.readFileSync(explicitOld.ass,'utf8'),oldText,'missing and balanced preserve the exact prior ASS');
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

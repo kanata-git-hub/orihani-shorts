@@ -5,7 +5,7 @@ import { cleanPlanText, validatePlan } from '../../src/editor/model';
 import { uploadedMediaInput } from './mediaInput';
 import { runMediaProcess } from './mediaProcess';
 
-type Layout = { titleY: [number, number]; headlineFontSizes: number[]; captionFontSizes: number[]; titleTopInkY: number; maximumCaptionBottomInkY: number; balancedOuterMarginPx: number; horizontalCenter: number };
+type Layout = { koreanTitlePreset?: 'balanced' | 'wide'; headlineInkWidths?: number[] | null; titleY: [number, number]; headlineFontSizes: number[]; captionFontSizes: number[]; titleTopInkY: number; maximumCaptionBottomInkY: number; balancedOuterMarginPx: number; horizontalCenter: number };
 type Overlay = { path: string; start: number; end?: number; kind: 'headline' | 'caption' };
 const ffmpeg = () => process.env.FFMPEG_PATH || 'ffmpeg';
 function run(binary: string, args: string[], cwd: string, signal?: AbortSignal) {
@@ -25,15 +25,20 @@ export async function generateKoreanCaptions(plan: EditPlan, dir: string, previe
   await mkdir(path.join(dir, 'fonts'), { recursive: true });
   await copyFile(path.resolve('public/fonts/Cafe24Ssurround.ttf'), path.join(dir, 'fonts/Cafe24Ssurround.ttf'));
   await writeFile(path.join(dir, 'korean-request.json'), JSON.stringify({
-    headline: p.headline, duration,
+    headline: p.headline, duration, koreanTitlePreset: p.koreanTitlePreset,
     captions: p.captions.map(c => ({...c, end: Math.abs(c.end - p.duration) < 0.000001 ? duration : c.end})),
   }));
   const script = path.resolve('scripts/render-korean-captions.py');
   const python = process.env.EDITOR_PYTHON_PATH || 'python3';
   await run(python, [script, 'prepare', dir], dir, signal);
-  await run(ffmpeg(), ['-hide_banner', '-loglevel', 'error', '-y', '-nostdin', '-f', 'lavfi', '-i', 'color=black:s=1080x1920:r=24',
-    '-vf', 'ass=korean-geometry.ass:fontsdir=fonts', '-frames:v', '1', '-threads', '1', 'korean-geometry.png'], dir, signal);
-  const layout: Layout = JSON.parse((await run(python, [script, 'finish', dir], dir, signal)).trim());
+  let layout: Layout | undefined;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await run(ffmpeg(), ['-hide_banner', '-loglevel', 'error', '-y', '-nostdin', '-f', 'lavfi', '-i', 'color=black:s=1080x1920:r=24',
+      '-vf', 'ass=korean-geometry.ass:fontsdir=fonts', '-frames:v', '1', '-threads', '1', 'korean-geometry.png'], dir, signal);
+    const measured = JSON.parse((await run(python, [script, 'finish', dir], dir, signal)).trim());
+    if (!measured.needsCalibration) { layout = measured; break; }
+  }
+  if (!layout) throw Error('제목 크기를 맞추지 못했습니다. 문구를 짧게 다듬어주세요.');
   if (!Array.isArray(layout.titleY) || layout.titleY.length !== 2 || layout.titleY.some(y => !Number.isFinite(y)) || layout.horizontalCenter !== 540) throw Error('한국판 자막 배치를 확인하지 못했습니다.');
   const overlays: Overlay[] = [];
   if (preview) {

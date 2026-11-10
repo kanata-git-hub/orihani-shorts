@@ -20,7 +20,7 @@ export function ClinicCaptionPreview({ plan, file, loadPreview, onBusy }: {
   const video = useRef<HTMLVideoElement>(null);
   const requestId = useRef(0);
   const animation = useRef<number | undefined>(undefined);
-  const key = JSON.stringify([plan.captionStyle, plan.duration, plan.captions, plan.clinicBrandStart, plan.headline]);
+  const key = JSON.stringify([plan.captionStyle, plan.duration, plan.captions, plan.clinicBrandStart, plan.headline, plan.koreanTitlePreset]);
   const current = preview?.key === key;
   useEffect(() => {
     setTime(0); setDuration(0);

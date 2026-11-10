@@ -113,12 +113,12 @@ Use these specific English names: 오원장 = O-wonjang, 소미 = Somi, 덕이 =
 ${videoAudioInstruction}
 
 CRITICAL TITLE GUIDELINES:
-For a supplied finished screenplay, preserve its Korean-only title and episode number. Otherwise create a catchy, extremely short YouTube Shorts style title combining Korean and English in a single line. Example format: "선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)". Keep it punchy and very short.
+For a supplied finished screenplay, preserve its title and episode number exactly. Otherwise use a concise natural Korean title in the title field; keep the English public title separate in instagramCaption. Do not force both languages into a single title line.
 
 CRITICAL INSTAGRAM GUIDELINES:
-For a supplied finished screenplay, preserve the supplied caption and five hashtags. The defaults below apply only to original free-form plans.
-1. Caption: Create an extremely short, punchy one-line caption combining Korean and English. It MUST be a single line. Example format: "선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)". Do NOT write long paragraphs or separate sentences.
-2. Hashtags: Provide EXACTLY 5 hashtags in this exact order: '#[Core Topic 1 in Korean]', '#[Core Topic 1 in English]', '#Humor', '#Relatable', and '#유머'.`;
+For a supplied finished screenplay, preserve its caption and hashtags exactly, including bilingual blocks and line breaks. The defaults below apply only to original free-form plans.
+1. instagramCaption: Provide six blocks separated by blank lines: natural English public title, English body, five English hashtags, Korean public title, Korean body, five Korean hashtags. Do not put title/body/hashtags/language labels inside copyable text. Keep the wording concise and witty without a forced mixed-language line.
+2. hashtags: Keep exactly five relevant Korean-edition hashtags in this existing metadata field. The English-edition hashtags belong in their own instagramCaption block. Do not invent a new public series name.`;
 
         let converted: any;
         let repairNotes: string[] = [];
@@ -138,14 +138,14 @@ For a supplied finished screenplay, preserve the supplied caption and five hasht
             responseSchema: {
               type: "OBJECT",
               properties: {
-                title: { type: "STRING", description: "Catchy, extremely short YouTube Shorts style title combining Korean and English (e.g., '선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)')" },
+                title: { type: "STRING", description: "Concise natural Korean title; preserve a supplied finished screenplay title and episode number exactly. English title is separate in instagramCaption." },
                 location: { type: "STRING", description: "Background location in Korean" },
                 scenario: { type: "STRING", description: "The full step-by-step storyboard in Korean" },
-                instagramCaption: { type: "STRING", description: "Extremely short one-line bilingual caption (e.g., '선선하다 싶었는데 29도?? 😂 (29°C?! I'm shocked 💀)')" },
+                instagramCaption: { type: "STRING", description: "Preserve supplied caption exactly. For new free-form copy use six blank-line-separated blocks: English title, English body, five English hashtags, Korean title, Korean body, five Korean hashtags. No field labels." },
                 hashtags: { 
                   type: "ARRAY", 
                   items: { type: "STRING" },
-                  description: "Exactly 5 hashtags (without # symbol) in this exact order: [Core Topic 1 in Korean], [Core Topic 1 in English], Humor, Relatable, 유머." 
+                  description: "Exactly five relevant Korean-edition hashtags without #; keep the English hashtags separate in instagramCaption. Preserve supplied metadata hashtags." 
                 },
                 propBible: propBibleSchema,
                 clips: {

@@ -1,6 +1,18 @@
+// New bilingual copy is two complete title/body/five-tag sets, in authored order.
+function bilingualCaption(value: unknown) {
+  const text = typeof value === 'string' ? value.replace(/\\n/g, '\n').trim() : '';
+  const blocks = text.split(/\r?\n\s*\r?\n/).map(b => b.trim());
+  const tagLine = /^(?:#[\p{L}\p{M}\p{N}_]+\s+){4}#[\p{L}\p{M}\p{N}_]+$/u;
+  if (blocks.length !== 6 || !tagLine.test(blocks[2]) || !tagLine.test(blocks[5])) return undefined;
+  return { blocks, text, body: [blocks[0], blocks[1], blocks[3], blocks[4]].join('\n\n'),
+    hashtags: [...blocks[2].split(/\s+/), ...blocks[5].split(/\s+/)].map(tag => tag.slice(1)) };
+}
+
 // Weekly captions already contain hashtags; free-form plans may supply them separately.
 // Keep prose (including inline hashtags) intact and collect standalone tag lines once.
 export function prepareSocialCaption(caption: unknown, hashtags: unknown = []) {
+  const bilingual = bilingualCaption(caption);
+  if (bilingual) return {body:bilingual.body, hashtags:bilingual.hashtags, text:bilingual.text};
   const source = typeof caption === 'string' ? caption.replace(/\\n/g, '\n') : '';
   const tagPattern = /#[\p{L}\p{M}\p{N}_]+/gu;
   const collected: string[] = [];
@@ -47,6 +59,8 @@ export function prepareReelsCaption(
   const title = recordTitle.replace(/^한의원\s+쇼츠\s+\d{2,}\s+(?=\S)/u, '');
   const source = typeof overview.instagramCaption === 'string' && overview.instagramCaption.trim()
     ? overview.instagramCaption : episode?.caption;
+  const bilingual = bilingualCaption(source);
+  if (bilingual) return {body:bilingual.body, hashtags:bilingual.hashtags, text:bilingual.text, title:bilingual.blocks[3], shortsTitle:Array.from(bilingual.blocks[3]).slice(0,100).join('')};
   const caption = prepareSocialCaption(source, overview.hashtags);
   let prose = caption.body;
   if (title) {
