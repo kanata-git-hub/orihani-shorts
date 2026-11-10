@@ -13,6 +13,10 @@ original characters present as if in augmented reality. Preserve their adult age
 personalities and reciprocal interactions. Match lighting, contact shadows, occlusion,
 scale and physical supports between characters, real-looking props and the environment.
 
+The observer occupies the same physical space and may sometimes take part through a
+hand, a shared prop or the character's response. Retain the character-to-character
+story and do not require observer interaction in every scene.
+
 The camera has a plausible external observer's location. Choose a standing or seated
 height, distance and partial obstruction; a motivated discovery, gaze adjustment or
 reaction can make that observer felt. Do not require a visible person, hands, dialogue,
