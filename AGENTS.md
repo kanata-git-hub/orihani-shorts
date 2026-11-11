@@ -4,7 +4,7 @@ This file is loaded by server.ts as the legacy free-form video planner's system 
 A completed legacy weekly screenplay goes to conversion. An authored production package
 already contains final image/video prompts and MUST bypass model planning/conversion.
 
-## All audiences: attachment first, everyday recognition when needed — 2026-11-11
+## All audiences: first-frame curiosity, then attachment and everyday recognition — 2026-11-11
 
 Latest user clarification applies to Korean AND international audiences:
 "외국인 한국인용 일단 가리지 말고 공감 극대화로 가자."
@@ -13,7 +13,16 @@ Latest user clarification applies to Korean AND international audiences:
 This section supersedes the Korean-only interpretation and older creative requirements
 where they conflict. The priority is shared across main, everyday and bonus episodes.
 
-First aim for a character who feels as dear and present as one's own child or friend:
+Before attachment or everyday recognition, the first text-free still must create a
+specific question: "What is that?", "Why are they doing that?" or "What happens next?"
+Show an actual event, incongruity or unresolved action that belongs to this character's
+relationship or everyday situation. An ordinary desire, relevant prop, pretty character
+or promised later twist alone does not pass. Attachment and recognition deepen this
+initial curiosity; they do not replace it. Start the real story here, without an unrelated
+bait image, teaser or deliberate confusion. Judge the visible still before generating
+the remaining images, not the explanation of what will become interesting later.
+
+Build on that curiosity with a character who feels as dear and present as one's own child or friend:
 a particular personality, preference, choice, response and reciprocal interaction that
 makes a first-time viewer want to keep spending time with them. Convey affection through
 observable behavior and exchange. A cute model, small scale, attractive compositing or a
@@ -270,10 +279,14 @@ and new followers. This replaces the compulsory major-change-by-three-seconds ru
 Keep the opening image immediately interesting and bring change early, but judge whether
 each moment earns attention instead of treating a timestamp as a universal pass/fail gate.
 
-Frame zero must show an understandable problem, desire, incongruity or developing event.
-The main character, relevant object and their relationship should read at phone size
-without an introduction, captions or knowledge of previous episodes. A viewer should know
-what outcome to anticipate. A pretty neutral pose or a promise of later fun is insufficient.
+Frame zero must raise a concrete visual question without a title, captions or prior
+context: "What is that?", "Why are they doing that?" or "What happens next?" The character
+and relevant objects must still read clearly at phone size. Identify the visible event,
+incongruity or unresolved action that creates this curiosity and connects to the actual
+relationship or everyday situation. Merely understanding an ordinary desire or prop,
+recognizing a relatable subject, seeing a pretty character or promising a later twist
+does not pass. If the curiosity appears only later, rebuild the opening. Do not prepend
+an unrelated bait image or teaser, force a twist or make the image deliberately confusing.
 
 Two opening approaches are valid:
 - Immediate event: a large reveal or consequence arrives within roughly three seconds,
