@@ -11,7 +11,7 @@ export function isClinicEpisode(v: Pick<SourceEpisode, 'title' | 'captionStyle'>
   return v.captionStyle === 'clinic' || /^(?:\[에피소드\s*\d+\]\s*)?한의원 쇼츠\s*\d+(?:\s|$)/.test(v.title);
 }
 export function sourceEpisode(v: any): SourceEpisode {
-  if (!v || ![5,15,30].includes(v.duration) || !text(v.korean,20000) || !text(v.scenario,40000) || !text(v.title,1000) || !text(v.thumbnail,3000) || !text(v.caption || '',5000)) throw Error('주간 대본의 형식을 확인해주세요.');
+  if (!v || ![5,12,15,30].includes(v.duration) || !text(v.korean,20000) || !text(v.scenario,40000) || !text(v.title,1000) || !text(v.thumbnail,3000) || !text(v.caption || '',5000)) throw Error('주간 대본의 형식을 확인해주세요.');
   if (v.videoLayout !== undefined && !['single','legacy-clips'].includes(v.videoLayout)) throw Error('영상 입력 방식을 확인해주세요.');
   if (v.captionStyle !== undefined && !['clinic','legacy','screen','korean'].includes(v.captionStyle)) throw Error('자막 스타일을 확인해주세요.');
   if (v.koreanTitlePreset !== undefined && (v.captionStyle !== 'korean' || !['balanced','wide'].includes(v.koreanTitlePreset))) throw Error('한국판 제목 크기를 확인해주세요.');
@@ -35,7 +35,7 @@ export function sourceEpisode(v: any): SourceEpisode {
     ...(v.captions !== undefined ? {captions:v.captions.map((c:any)=>({start:c.start,end:c.end,text:c.text,source:'screen' as const}))} : {}),
     ...(v.clinicBrandStart !== undefined ? {clinicBrandStart:v.clinicBrandStart} : {})};
 }
-export function recordDuration(item: HistoryItem): 5|15|30 {
+export function recordDuration(item: HistoryItem): 5|12|15|30 {
   const plan=getKling4Plan(item.result);
   if(plan){validateKling4Plan(plan);if(item.duration!==undefined&&item.duration!==plan.duration)throw Error('기획과 영상 길이가 다릅니다.');return plan.duration;}
   if(item.duration!==undefined){if(item.duration!==5&&item.duration!==15)throw Error('5초 또는 15초 기획을 선택해주세요.');return item.duration;}

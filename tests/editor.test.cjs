@@ -476,7 +476,7 @@ test('transcription timing failure returns reviewable metadata after exactly one
   assert.equal(requests,1);assert.ok(analysis.timingWarning);assert.deepEqual(analysis.words,[]);
   httpStatus=429;await assert.rejects(()=>transcribe('test.mp4',dir,new AbortController().signal,4),/429/);assert.equal(requests,2);
   meta={...meta,audio:false};assert.deepEqual(await transcribe('test.mp4',dir,new AbortController().signal,4),{words:[],model:'no-audio'});assert.equal(requests,2);
-  for(const duration of [15,30]){meta={duration:duration+0.04,audio:false,video:true};assert.deepEqual(await transcribe('test.mp4',dir,new AbortController().signal,duration),{words:[],model:'no-audio'});}
+  for(const duration of [12,15,30]){meta={duration:duration+0.04,audio:false,video:true};assert.deepEqual(await transcribe('test.mp4',dir,new AbortController().signal,duration),{words:[],model:'no-audio'});}
   meta={duration:31,audio:false,video:true};await assert.rejects(()=>transcribe('test.mp4',dir,new AbortController().signal,30),/30초/);
  } finally {if(previousKey===undefined)delete process.env.GEMINI_API_KEY;else process.env.GEMINI_API_KEY=previousKey;fs.rmSync(dir,{recursive:true,force:true});}
 });

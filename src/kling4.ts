@@ -1,7 +1,7 @@
 import type { HistoryItem } from './types';
 import { readReferencePlan, type ReferencePlan } from './referencePlan';
 
-export type VideoDuration = 5 | 15 | 30;
+export type VideoDuration = 5 | 12 | 15 | 30;
 export type VideoLayout = 'single' | 'legacy-clips';
 export type Keyframe = { time: number; title: string; imageTitle: string; imagePrompt: string; referencePlan: ReferencePlan; locationId?: string; backgroundAsset?: string };
 export type Kling4Plan = {
@@ -12,14 +12,14 @@ export type Kling4Plan = {
 };
 // These are production defaults, not model limits. Extra frames are only useful
 // when a particular pose, prop state or location really needs to be pinned down.
-export const defaultKeyframeTimes = (duration: VideoDuration): number[] => duration === 5 ? [0, 5] : duration === 15 ? [0, 7.5, 15] : [0, 7.5, 15, 22.5, 30];
+export const defaultKeyframeTimes = (duration: VideoDuration): number[] => duration === 5 ? [0, 5] : duration === 12 ? [0, 6, 12] : duration === 15 ? [0, 7.5, 15] : [0, 7.5, 15, 22.5, 30];
 export const CHARACTER_DRIVE_URL = 'https://drive.google.com/drive/folders/1lEWI-ISBZ44Fa_-FYj9S2EWzgHV1Pckt';
 export function getKling4Plan(raw: string): Kling4Plan | null {
   try { const plan = JSON.parse(raw); return plan?.workflow === 'kling4' ? plan : null; } catch { return null; }
 }
 export function validateKling4Plan(plan: any): asserts plan is Kling4Plan {
   const fail = (message: string): never => { throw Error(`Kling 4.0 제작안: ${message}`); };
-  if (!plan || plan.workflow !== 'kling4' || ![5, 15, 30].includes(plan.duration)) fail('5초·15초·30초 중 영상 길이를 정해주세요.');
+  if (!plan || plan.workflow !== 'kling4' || ![5, 12, 15, 30].includes(plan.duration)) fail('5초·12초·15초·30초 중 영상 길이를 정해주세요.');
   if (plan.aspectRatio !== undefined && !['9:16', '16:9'].includes(plan.aspectRatio)) fail('화면 비율을 확인해주세요.');
   for (const [key, max] of Object.entries({ title: 1000, location: 3000, scenario: 40000, instagramCaption: 5000, continuity: 10000, videoPrompt: 30000 })) {
     if (typeof plan[key] !== 'string' || !plan[key].trim() || plan[key].length > max) fail(`${key} 내용을 확인해주세요.`);

@@ -19,11 +19,11 @@ function production(duration=15){
  const plan={workflow:'kling4',duration,title:'연결 시험',location:'공원',scenario:episode.scenario,instagramCaption:'하나의 이야기',hashtags:['오리','공원','친구','일상','짧은영상'],continuity:'One blue bench, unchanged width. Same tree and path. No new props.',videoPrompt:'ONE continuous video.\n'+('Preserve the actual action and Korean dialogue. '.repeat(50)),keyframes:defaultKeyframeTimes(duration).map((time,i)=>({time,title:'장면 '+i,imageTitle:'frame-'+i,imagePrompt:`At ${time}s: precise pose and object state.`,locationId:'park',backgroundAsset:'none',referencePlan:{background:i?1:null,props:i?[{scene:1,objects:['벤치']}]:[]}}))};
  return {format:'orihani-production',version:1,revision:'test',episodes:[{number:99,characterId:'owonjang',episode,plan}]};
 }
-test('5/15/30-second production imports preserve exact prompts, portable images and one-video editor handoff',()=>{
- for(const duration of [5,15,30]){
+test('5/12/15/30-second production imports preserve exact prompts, portable images and one-video editor handoff',()=>{
+ for(const duration of [5,12,15,30]){
   const raw=production(duration),pack=readProductionPackage(JSON.stringify(raw)),entry=pack.episodes[0];
   const item=preparedHistory(entry,pack.revision),clips=extractClips(item.result);
-  assert.equal(clips.length,{5:2,15:3,30:5}[duration]);
+  assert.equal(clips.length,{5:2,12:3,15:3,30:5}[duration]);
   assert.equal(JSON.parse(item.result).videoPrompt,raw.episodes[0].plan.videoPrompt);
   assert.ok(JSON.parse(item.result).videoPrompt.length>1900);
   const images=Object.fromEntries(clips.map(c=>[c.imageTitle,'data:image/png;base64,AAAA']));

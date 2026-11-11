@@ -68,7 +68,7 @@ export async function renderKorean(plan: EditPlan, videos: string[], voice: stri
   requireKorean(p);
   if (videos.length !== 1 || voice) throw Error('한국판 자막에는 별도 음성 없이 완성 영상 한 개를 넣어주세요.');
   const media = await inspect(videos[0], dir, signal);
-  if (media.duration < 14.85 || media.duration > 15.5) throw Error('한국판에는 15초 원본 영상을 넣어주세요.');
+  if (media.duration < p.duration - 0.15 || media.duration > p.duration + 0.5) throw Error(`한국판에는 ${p.duration}초 원본 영상을 넣어주세요.`);
   if (media.width !== 1080 || media.height !== 1920) throw Error('한국판에는 1080×1920 세로 9:16 원본을 넣어주세요. 화면을 임의로 자르거나 줄이지 않습니다.');
   if (media.audioCodec && media.audioCodec !== 'aac') throw Error('원본 소리를 그대로 유지하려면 AAC 소리가 포함된 MP4 영상을 넣어주세요.');
   if (p.captions.some(c => c.start >= media.duration || (c.end !== p.duration && c.end > media.duration + 0.02))) throw Error('자막 시간이 원본 영상 길이를 벗어납니다.');

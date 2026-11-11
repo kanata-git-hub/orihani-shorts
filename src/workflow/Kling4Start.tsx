@@ -14,7 +14,7 @@ keyframes에는 ${times.length}장 전체를 넣으세요. time은 0초부터 �
   return <details className="ori-workflow ori-kling4-start">
     <summary>새 제작안 준비하기 <span>ChatGPT</span></summary>
     <p>영상 길이를 고르고 요청문을 ChatGPT에 붙여넣으세요. 완성된 기획·이미지는 위에서 가져옵니다.</p>
-    <div className="ori-keyframe-picker" role="group" aria-label="Kling 4.0 영상 길이">{([5, 15, 30] as const).map(d => <button key={d} aria-pressed={duration === d} onClick={() => setDuration(d)}>{d}초 · {defaultKeyframeTimes(d).length}장</button>)}</div>
+    <div className="ori-keyframe-picker" role="group" aria-label="Kling 4.0 영상 길이">{([5, 12, 15, 30] as const).map(d => <button key={d} aria-pressed={duration === d} onClick={() => setDuration(d)}>{d}초 · {defaultKeyframeTimes(d).length}장</button>)}</div>
     <p>시작·중요 변화·끝을 주요장면으로 정합니다. 기본 {times.length}장 → 완성 영상 1개</p>
     <button onClick={async () => { try { await navigator.clipboard.writeText(request); setMessage('ChatGPT에 붙여넣을 제작 요청문을 복사했습니다.'); } catch { setMessage('복사하지 못했습니다. 다시 눌러주세요.'); } }}>ChatGPT 제작 요청문 복사</button>
     <p role="status">{message}</p>

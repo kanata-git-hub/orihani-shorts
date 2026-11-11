@@ -20,7 +20,7 @@ export function HistoryContinue({onApplyImage,klingWorkspace,item,images,generat
   const [index,setIndex]=useState(0),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
   const editLocked=busy||Object.values(generating).some(Boolean);
   const kling4=getKling4Plan(item.result);
-  let duration:5|15|30;try{duration=recordDuration(item);}catch{return <p>이 기록의 클립 수를 확인해주세요.</p>;}
+  let duration:5|12|15|30;try{duration=recordDuration(item);}catch{return <p>이 기록의 클립 수를 확인해주세요.</p>;}
   const missing=clips.filter(c=>!images[c.imageTitle]);
   const step=chosenStep||(mediaReady&&clips.length>0&&!missing.length?'kling':'images');
   const clipCountValid=(!!kling4||clips.length===(duration===5?2:4))&&new Set(clips.map(c=>c.imageTitle)).size===clips.length;

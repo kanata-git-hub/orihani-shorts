@@ -10,16 +10,18 @@ Kling remains the user's video-generation step.
 ## Kling 4.0 — current format for new work
 
 Keep the same `orihani-production` version-1 envelope and episode metadata. In `plan`,
-use `workflow: "kling4"`, numeric `duration` (5, 15 or 30), `continuity`, one
+use `workflow: "kling4"`, numeric `duration` (5, 12, 15 or 30), `continuity`, one
 `videoPrompt` for the entire video, and `keyframes` instead of `clips`.
 Keep title, location, scenario, instagramCaption and five hashtags as before.
 `plan.scenario` and `episode.scenario` must match exactly; so must duration and title.
 
-Defaults are 5 seconds / 2 images, 15 seconds / 3 images, 30 seconds / 5 images.
+Defaults are 5 seconds / 2 images, 12 or 15 seconds / 3 images, 30 seconds / 5 images.
 These are image-production defaults, not a fixed number of story beats. Use 2–10
 keyframes only when justified by the event; do not create extra stills per camera cut.
-Suggested timestamps are [0,5], [0,7.5,15], [0,7.5,15,22.5,30], adjusted to the story.
-All formats feed **one finished MP4** into the editor.
+Suggested timestamps are [0,5], [0,6,12], [0,7.5,15], [0,7.5,15,22.5,30], adjusted to the story.
+All formats feed **one finished MP4** into the editor. Korean caption styling supports
+12- and 15-second portrait videos; authored caption times must fit the selected length.
+The editor preserves the source video length and audio instead of stretching a shorter story.
 
 Each keyframe has:
 
