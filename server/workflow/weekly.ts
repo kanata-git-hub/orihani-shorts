@@ -15,6 +15,9 @@ const extraBonusStem=/^\[(\d{4}-\d{2}-\d{2})\]\s*번외\s+추가\s+(\d+(?:\s*[-�
 const extraClinicStem=/^\[(\d{4}-\d{2}-\d{2})\]\s*한의원\s+쇼츠\s+추가\s+(\d+(?:\s*[-·]\s*\d+)?)\s+제작안\.json$/;
 // One standalone experiment remains available independently of the current weekly date.
 const experimentStem=/^\[(\d{4}-\d{2}-\d{2})\] 오리 상상여행 실험작 제작안\.json$/;
+// The new sitcom has its own numbering and release date; it does not replace
+// the legacy main week or hide that week's companion bonus productions.
+const sitcomStem=/^\[(\d{4}-\d{2}-\d{2})\]\s*오리시트콤\s+[1-9]\d*(?:\s*[-·]\s*[1-9]\d*)?화\s+제작안\.json$/;
 function packageDate(name:string,pattern=stem){
  const value=pattern.exec(name)?.[1];if(!value)return null;
  const date=new Date(value+'T00:00:00Z');return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value?value:null;
@@ -80,7 +83,9 @@ export function weeklySources(files:DriveFile[]){
  }
  const experiments=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,experimentStem)&&['application/json','text/plain','application/octet-stream'].includes(f.mimeType));
  experiments.sort((a,b)=>packageDate(b.name,experimentStem)!.localeCompare(packageDate(a.name,experimentStem)!)||(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
- const selected=[main,...(currentClinic?[currentClinic]:[]),...clinicAdditions,...(bonuses.length?[bonuses[0]]:[]),...Array.from(additions.entries()).sort(([a],[b])=>a.localeCompare(b,'en',{numeric:true})).map(([,file])=>file),...experiments.slice(0,1)];
+ const sitcoms=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,sitcomStem)&&['application/json','text/plain','application/octet-stream'].includes(f.mimeType));
+ sitcoms.sort((a,b)=>packageDate(b.name,sitcomStem)!.localeCompare(packageDate(a.name,sitcomStem)!)||(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
+ const selected=[...sitcoms.slice(0,1),main,...(currentClinic?[currentClinic]:[]),...clinicAdditions,...(bonuses.length?[bonuses[0]]:[]),...Array.from(additions.entries()).sort(([a],[b])=>a.localeCompare(b,'en',{numeric:true})).map(([,file])=>file),...experiments.slice(0,1)];
  if(selected.length>MAX_WEEKLY_SOURCES)throw Error(`주간 제작안 파일이 너무 많습니다(${selected.length}개). 현재 한 번에 ${MAX_WEEKLY_SOURCES}개까지 불러올 수 있습니다. 파일을 자동으로 제외하거나 옮기지 않았습니다.`);
  return selected;
 }
@@ -139,7 +144,7 @@ export function createWeeklyReader(options:{key:()=>string|undefined;fetch?:type
   const namedNumbers=clinicNumbers(file.name);
   if(namedNumbers&&(episodes.length!==namedNumbers.length||episodes.some(e=>!isClinicEpisode(e)||!e.prepared||!namedNumbers.includes(e.prepared.number))))throw Error('한의원 쇼츠 파일명의 회차 범위와 제작안 내용이 다릅니다.');
   // A malformed latest document is an error; never silently substitute an older week.
-  return {id:file.id,name:file.name,date:(packageDate(file.name)||packageDate(file.name,clinicStem)||packageDate(file.name,extraClinicStem)||packageDate(file.name,bonusStem)||packageDate(file.name,extraBonusStem)||packageDate(file.name,experimentStem))!,url:file.mimeType===docsType?`https://docs.google.com/document/d/${file.id}/edit`:`https://drive.google.com/file/d/${file.id}/view`,text,episodeCount:episodes.length};
+  return {id:file.id,name:file.name,date:(packageDate(file.name)||packageDate(file.name,sitcomStem)||packageDate(file.name,clinicStem)||packageDate(file.name,extraClinicStem)||packageDate(file.name,bonusStem)||packageDate(file.name,extraBonusStem)||packageDate(file.name,experimentStem))!,url:file.mimeType===docsType?`https://docs.google.com/document/d/${file.id}/edit`:`https://drive.google.com/file/d/${file.id}/view`,text,episodeCount:episodes.length};
   };
   const sources=await Promise.all(weeklySources(files).map(readFile));
   const episodes=readWeeklySources(sources.map(s=>s.text));
@@ -153,4 +158,5 @@ export function createWeeklyReader(options:{key:()=>string|undefined;fetch?:type
  };
 }
 export const latestWeekly=createWeeklyReader({key:()=>process.env.WEEKLY_DRIVE_API_KEY||process.env.GEMINI_API_KEY});
+
 
