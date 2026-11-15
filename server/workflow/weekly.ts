@@ -83,7 +83,7 @@ export function weeklySources(files:DriveFile[]){
  }
  const experiments=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,experimentStem)&&['application/json','text/plain','application/octet-stream'].includes(f.mimeType));
  experiments.sort((a,b)=>packageDate(b.name,experimentStem)!.localeCompare(packageDate(a.name,experimentStem)!)||(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
- const sitcoms=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,sitcomStem)&&['application/json','text/plain','application/octet-stream'].includes(f.mimeType));
+ const sitcoms=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,sitcomStem)&&[docsType,'application/json','text/plain','application/octet-stream'].includes(f.mimeType));
  sitcoms.sort((a,b)=>packageDate(b.name,sitcomStem)!.localeCompare(packageDate(a.name,sitcomStem)!)||(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
  const selected=[...sitcoms.slice(0,1),main,...(currentClinic?[currentClinic]:[]),...clinicAdditions,...(bonuses.length?[bonuses[0]]:[]),...Array.from(additions.entries()).sort(([a],[b])=>a.localeCompare(b,'en',{numeric:true})).map(([,file])=>file),...experiments.slice(0,1)];
  if(selected.length>MAX_WEEKLY_SOURCES)throw Error(`주간 제작안 파일이 너무 많습니다(${selected.length}개). 현재 한 번에 ${MAX_WEEKLY_SOURCES}개까지 불러올 수 있습니다. 파일을 자동으로 제외하거나 옮기지 않았습니다.`);

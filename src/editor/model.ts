@@ -4,6 +4,8 @@ import { normalizeScriptTable, isCaptionPlaceholder } from './script';
 export type Caption = { start: number; end: number; text: string; source?: 'narration' | 'dialogue' | 'screen'; review?: string };
 export type EditPlan = { duration: 5 | 12 | 15 | 30; videoLayout?: 'single' | 'legacy-clips'; captionStyle?: 'clinic' | 'legacy' | 'screen' | 'korean'; koreanTitlePreset?: 'balanced' | 'wide'; headline?: [string, string]; aspectRatio?: '9:16' | '16:9'; clinicBrandStart?: number; title: string; narration: string; thumbnail: string; captions: Caption[]; originalVolume: number; voiceVolume: number; voiceSpeed: number; voiceSegments?: VoiceSegment[]; dialogueRanges?: {start:number;end:number}[]; importWarning?: string };
 // A missing style is legacy so saved drafts keep their original behavior.
+export const KOREAN_VIDEO_DURATIONS = [12, 15, 30] as const;
+export const isKoreanDuration = (value: unknown): value is typeof KOREAN_VIDEO_DURATIONS[number] => value === 12 || value === 15 || value === 30;
 export const isKoreanPlan = (p: EditPlan) => p.captionStyle === 'korean';
 export const isClinicPlan = (p: EditPlan) => p.captionStyle === 'clinic';
 // Manual screen captions use the supplied sound and timings; no paid speech step.
@@ -21,7 +23,7 @@ export function validatePlan(p: EditPlan) {
   if (isClinicPlan(p) && p.aspectRatio === '16:9') throw Error('한의원 쇼츠 자막은 세로 9:16 영상에 사용해주세요.');
   if (isDirectPlan(p) && (p.videoLayout !== 'single' || (typeof p.narration === 'string' && p.narration.trim()) || p.voiceSegments?.length)) throw Error(`${isClinicPlan(p) ? '한의원' : '화면'} 자막은 완성 영상 한 개에 넣습니다. 해설 음성이 필요하면 기존 편집을 선택해주세요.`);
   if (isKoreanPlan(p)) {
-    if (![12, 15].includes(p.duration) || p.aspectRatio !== '9:16') throw Error('한국판은 12초 또는 15초 · 세로 9:16 · 1080×1920으로 제작해주세요.');
+    if (!isKoreanDuration(p.duration) || p.aspectRatio !== '9:16') throw Error('한국판은 12초, 15초 또는 30초 · 세로 9:16 · 1080×1920으로 제작해주세요.');
     if (!Array.isArray(p.headline) || p.headline.length !== 2 || p.headline.some(t => typeof t !== 'string' || !t.trim() || t.length > 80 || /[\r\n]/.test(t))) throw Error('영상에 계속 표시할 제목 두 줄을 입력해주세요.');
     if (!Array.isArray(p.captions) || !p.captions.length) throw Error('한국판에는 문구와 시간이 정해진 화면 자막이 필요합니다.');
     if (p.originalVolume !== 1) throw Error('한국판은 원본 음량 100%를 유지합니다.');

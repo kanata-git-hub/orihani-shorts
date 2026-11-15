@@ -18,13 +18,13 @@ const captions=[{start:0,end:1.2,text:'잠깐만요',source:'screen'},{start:1.2
 const korean=(patch={})=>({...defaultPlan(),duration:15,videoLayout:'single',captionStyle:'korean',aspectRatio:'9:16',originalVolume:1,headline:['첫 화면의 상황','이어지는 반응'],captions,...patch});
 function production(clinic=false,duration=15){
  const title=clinic?'한의원 쇼츠 09 시험':'31화 시험 (하찮은 오리 일상)';
- const episode={...korean({duration,captions:captions.map(c=>({...c,end:Math.min(c.end,duration)}))}),title:`[에피소드 ${clinic?9:31}] ${title}`,scenario:'검사용 상황',korean:'해설: 없음\n화면 자막: 0~15초 이 원문은 구조화 타임라인으로 대체',thumbnail:'공개 제목',caption:'게시 설명'};
+ const episode={...korean({duration,captions:captions.map((c,i)=>({...c,end:i===captions.length-1?duration:c.end}))}),title:`[에피소드 ${clinic?9:31}] ${title}`,scenario:'검사용 상황',korean:'해설: 없음\n화면 자막: 0~15초 이 원문은 구조화 타임라인으로 대체',thumbnail:'공개 제목',caption:'게시 설명'};
  const plan={workflow:'kling4',duration,aspectRatio:'9:16',title,location:'검사용 장소',scenario:episode.scenario,instagramCaption:'게시 설명',hashtags:['검사','오리','일상','애니메이션','유머'],continuity:'Reference continuity.',videoPrompt:`Keep the original ${duration}-second story and its keyframes.`,keyframes:[0,duration/2,duration].map((time,i)=>({time,title:'주요장면 '+i,imageTitle:'검사 '+i,imagePrompt:'Exact image state at '+time,locationId:'room',backgroundAsset:'none',referencePlan:{background:null,props:[]}}))};
  return {format:'orihani-production',version:1,revision:clinic?'clinic-korean-test':'main-korean-test',episodes:[{number:clinic?9:31,characterId:'deoki',episode,plan}]};
 }
 
 test('authored main and clinic packages carry mandatory headlines and exact timeline through images, history and editor',()=>{
- for(const duration of [12,15]) for(const clinic of [false,true]) for(const preset of [undefined,'balanced','wide']){
+ for(const duration of [12,15,30]) for(const clinic of [false,true]) for(const preset of [undefined,'balanced','wide']){
   const raw=production(clinic,duration);if(preset)raw.episodes[0].episode.koreanTitlePreset=preset;
   const pack=readProductionPackage(JSON.stringify(raw)),entry=pack.episodes[0];
   const item=preparedHistory(entry,pack.revision),images=Object.fromEntries(entry.plan.keyframes.map(f=>[f.imageTitle,'data:image/png;base64,AAAA']));
@@ -42,9 +42,10 @@ test('authored main and clinic packages carry mandatory headlines and exact time
 test('new Korean preset rejects missing text, changed length/ratio, voice and incorrect caption times while old presets remain readable',()=>{
  validatePlan(korean());
  validatePlan(korean({duration:12,captions:[{start:0,end:12,text:'끝까지'}]}));
+ validatePlan(korean({duration:30,captions:[{start:27.8,end:30,text:'와, 편하다.'}]}));
  assert.throws(()=>validatePlan(korean({duration:12})),/자막/);
  assert.throws(()=>validatePlan({...defaultPlan(),duration:12,videoLayout:'legacy-clips'}),/영상 한 개/);
- for(const patch of [{koreanTitlePreset:'unknown'},{captions:[]},{headline:['','제목']},{headline:['줄\n바꿈','제목']},{duration:30},{aspectRatio:'16:9'},{originalVolume:.2},{narration:'읽지 마세요'},{captions:[{start:0,end:15.1,text:'끝'}]}])assert.throws(()=>validatePlan(korean(patch)));
+ for(const patch of [{koreanTitlePreset:'unknown'},{captions:[]},{headline:['','제목']},{headline:['줄\n바꿈','제목']},{duration:5},{aspectRatio:'16:9'},{originalVolume:.2},{narration:'읽지 마세요'},{captions:[{start:0,end:15.1,text:'끝'}]}])assert.throws(()=>validatePlan(korean(patch)));
  assert.equal(defaultPlan().captionStyle,undefined);
  const old={duration:15,title:'기존',scenario:'기존 원고',korean:'해설: 없음',thumbnail:'기존',caption:''};
  assert.equal(importEpisode(old).captionStyle,undefined);
@@ -78,9 +79,9 @@ test('real libass calibration and transparent preview match approved geometry, c
 });
 
 test('real Korean export keeps full 1080 portrait frame, source audio and length, with captions until the final frame',async()=>{
- for(const duration of [12,15]){
+ for(const duration of [12,15,30]){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ori-korean-video-'));
- const plan=korean({duration,koreanTitlePreset:'wide',captions:captions.map(c=>({...c,end:Math.min(c.end,duration)}))});
+ const plan=korean({duration,koreanTitlePreset:'wide',captions:captions.map((c,i)=>({...c,end:i===captions.length-1?duration:c.end}))});
  try{
   const input=path.join(dir,'source.mp4');
   execFileSync(process.env.FFMPEG_PATH||'ffmpeg',['-hide_banner','-loglevel','error','-y','-f','lavfi','-i',`color=c=0x245b7d:s=1080x1920:r=5:d=${duration}`,'-f','lavfi','-i',`sine=frequency=440:sample_rate=48000:duration=${duration}`,'-c:v','libx264','-preset','ultrafast','-threads','2','-pix_fmt','yuv420p','-c:a','aac','-shortest',input]);

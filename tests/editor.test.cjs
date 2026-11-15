@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const compiled = path.join(root, '.editor-test');
 fs.mkdirSync(compiled, { recursive: true });
 fs.writeFileSync(path.join(compiled, 'package.json'), '{"type":"commonjs"}');
-for (const f of ['src/kling4.ts','src/videoPrompt.ts','src/productionContinuity.ts','src/utils/clipTiming.ts','src/workflow/productionPackage.ts','src/referencePlan.ts','src/shotDirection.ts','src/sceneReference.ts','src/characterReference.ts','src/nooni.ts','src/backgroundAssets.ts','server/workflow/weekly.ts','server/workflow/weeklyImages.ts','src/workflow/importImage.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/clinicCaptions.ts', 'server/editor/screenCaptions.ts', 'server/editor/koreanCaptions.ts', 'server/editor/typography.ts', 'serverSecurity.ts', 'server/editor/mediaInput.ts', 'server/editor/mediaProcess.ts', 'server/editor/routes.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
+for (const f of ['src/kling4.ts','src/videoPrompt.ts','src/productionContinuity.ts','src/utils/clipTiming.ts','src/workflow/productionPackage.ts','src/referencePlan.ts','src/shotDirection.ts','src/sceneReference.ts','src/characterReference.ts','src/nooni.ts','src/backgroundAssets.ts','server/workflow/weekly.ts','server/workflow/weeklyImages.ts','src/workflow/importImage.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/mediaLimits.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/clinicCaptions.ts', 'server/editor/screenCaptions.ts', 'server/editor/koreanCaptions.ts', 'server/editor/typography.ts', 'serverSecurity.ts', 'server/editor/mediaInput.ts', 'server/editor/mediaProcess.ts', 'server/editor/routes.ts', 'server/editor/download.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
   const dest = path.join(compiled, f.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
@@ -518,7 +518,7 @@ test('decimal counters and grouped large numbers have readable Korean pronunciat
  assert.equal(spokenNumbers('1,234,567,890원'),'십이억 삼천사백오십육만 칠천팔백구십 원');
 });
 test('all input clips must pass size and duration checks before speech analysis',()=>{
- assert.throws(()=>validateMediaSizes([{size:27*1024*1024}],5),/26MB/);
+ assert.throws(()=>validateMediaSizes([{size:30*1024*1024+1}],5),/30MiB/);
  assert.throws(()=>validateMediaSizes([{size:1},null,{size:1},{size:1}],15),/각 칸/);
  assert.throws(()=>validateMediaSizes([1,2,3,4].map(()=>({size:8*1024*1024})),15),/합계/);
  assert.throws(()=>validateMediaDuration(5,4,1),/2번 영상/);assert.throws(()=>validateMediaDuration(Infinity,5,0));
