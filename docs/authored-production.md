@@ -20,7 +20,7 @@ These are image-production defaults, not a fixed number of story beats. Use 2–
 keyframes only when justified by the event; do not create extra stills per camera cut.
 Suggested timestamps are [0,5], [0,6,12], [0,7.5,15], [0,7.5,15,22.5,30], adjusted to the story.
 All formats feed **one finished MP4** into the editor. Korean caption styling supports
-12- and 15-second portrait videos; authored caption times must fit the selected length.
+12-, 15- and 30-second portrait videos; authored caption times must fit the selected length.
 The editor preserves the source video length and audio instead of stretching a shorter story.
 
 Each keyframe has:
@@ -69,7 +69,9 @@ No generation, review or paid provider call is made. Existing work stays untouch
 Manual **직접 만든 이미지 가져오기** remains available for local replacements.
 Use **전체 영상 프롬프트 복사**, place the keyframes at their
 indicated timestamps in Kling, and import its one completed video into the editor.
-The existing 26MB file / 28MB combined upload bound still applies.
+The upload bounds are 30 MiB per file and 31 MiB per complete multipart request;
+the client reserves 64 KiB for the plan and multipart framing. Finished MP4 exports
+stream without Content-Length, retaining backpressure and cancellation cleanup.
 
 Existing records retain their original images, clips, edit drafts and render outputs.
 **Kling 4.0 작업으로 복사** creates a separate ID with all images at their true legacy

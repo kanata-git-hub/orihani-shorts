@@ -7,6 +7,8 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { render } from './render';
+import { downloadVideo } from './download';
+import { MAX_MEDIA_FILE_BYTES, MAX_MEDIA_REQUEST_BYTES } from '../../src/editor/mediaLimits';
 import { generateClinicOverlays } from './clinicCaptions';
 import { generateKoreanCaptions } from './koreanCaptions';
 import { validatePlan, cleanPlanText } from '../../src/editor/model';
@@ -138,13 +140,13 @@ editorRouter.post('/voice', async (req, res) => {
 
 editorRouter.post(['/render','/transcribe'], async (req, res) => {
   const size = Number(req.headers['content-length']);
-  if (!Number.isFinite(size) || size <= 0 || size > 28 * 1024 * 1024) { res.locals.release(); res.status(413).json({ error: '영상과 음성 합계는 28MB 이하여야 합니다.' }); return; }
+  if (!Number.isFinite(size) || size <= 0 || size > MAX_MEDIA_REQUEST_BYTES) { res.locals.release(); res.status(413).json({ error: '영상·음성과 업로드 정보 합계는 31MiB(약 32.5MB) 이하여야 합니다.' }); return; }
   let dir: string | undefined; const abort = new AbortController();
   const timeout = setTimeout(() => abort.abort(), 270000);
   const cancel = () => { if (!res.writableFinished) abort.abort(); }; res.on('close', cancel);
   try {
     dir = await mkdtemp(path.join(os.tmpdir(), 'ori-edit-'));
-    const upload = multer({ dest: dir, limits: { files: 5, fileSize: 26 * 1024 * 1024, fields: 1, fieldSize: 32000, parts: 6 } }).fields([{ name: 'videos', maxCount: 4 }, { name: 'voice', maxCount: 1 }]);
+    const upload = multer({ dest: dir, limits: { files: 5, fileSize: MAX_MEDIA_FILE_BYTES, fields: 1, fieldSize: 32000, parts: 6 } }).fields([{ name: 'videos', maxCount: 4 }, { name: 'voice', maxCount: 1 }]);
     await new Promise<void>((resolve, reject) => {
       const stopped = () => { cleanup(); reject(Error('업로드가 중단되었습니다.')); };
       const cleanup = () => { req.off('aborted', stopped); abort.signal.removeEventListener('abort', stopped); };
@@ -166,10 +168,10 @@ editorRouter.post(['/render','/transcribe'], async (req, res) => {
     if(plan.narration?.trim()&&!files.voice?.length)throw Error('해설 음성 파일이 필요합니다.');
     const output = await render(plan, files.videos.map(f => f.path), files.voice?.[0]?.path, dir, abort.signal);
     res.set('Cache-Control', 'no-store');
-    await new Promise<void>((resolve, reject) => res.download(output, 'orihani-edited.mp4', err => err ? reject(err) : resolve()));
+    await downloadVideo(output, res, abort.signal);
   } catch (e) {
     console.error('Editor render failed', e instanceof Error ? e.message : 'unknown');
-    if (!res.headersSent && !res.destroyed) res.status(400).json({ error: e instanceof Error ? e.message : '영상 처리 실패' });
+    if (!res.headersSent && !res.destroyed && !res.writableEnded) res.status(400).json({ error: e instanceof Error ? e.message : '영상 처리 실패' });
   } finally { clearTimeout(timeout); res.off('close', cancel); res.locals.release(); if (dir) await rm(dir, { recursive: true, force: true }); }
 });
 

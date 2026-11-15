@@ -83,3 +83,45 @@ test('Drive reader returns all 16 choices with independent dates and revisions',
  assert.equal(JSON.parse(result.sources[0].text).revision,'sitcom-v1.7');
  assert.equal(JSON.parse(result.sources[1].text).revision,'legacy');
 });
+
+test('a newer native Google Doc sitcom replaces the old sitcom while retaining legacy choices',()=>{
+ const doc={...file('[2026-11-16] 오리시트콤 1화 제작안.json','nativeSnow'),mimeType:'application/vnd.google-apps.document'};
+ const old=file('[2026-11-15] 오리시트콤 1-3화 제작안.json','old-v4');
+ const previous=weeklySources(existing);
+ const result=weeklySources([...existing,old,doc]);
+ assert.deepEqual(result.map(f=>f.id),[doc.id,...previous.map(f=>f.id)]);
+ assert.ok(!result.some(f=>f.id===old.id));
+ const ignored={...doc,id:'unpublished_abcdefghijklmnopqrst',name:'[작업중] '+doc.name};
+ assert.deepEqual(weeklySources([...existing,old,ignored]).map(f=>f.id),[old.id,...previous.map(f=>f.id)]);
+});
+
+test('native 30-second sitcom JSON is exported and parsed without reading the withdrawn source',async()=>{
+ const doc={...file('[2026-11-16] 오리시트콤 1화 제작안.json','nativeSnow'),mimeType:'application/vnd.google-apps.document'};
+ const old=file('[2026-11-15] 오리시트콤 1-3화 제작안.json','old-v4');
+ const draft=JSON.parse(pack('snow-doc',[1]));
+ const entry=draft.episodes[0];
+ entry.episode={...entry.episode,duration:30,videoLayout:'single',captionStyle:'screen',aspectRatio:'9:16',originalVolume:1,captions:[{start:28,end:30,text:'와, 편하다.',source:'screen'}]};
+ entry.plan.duration=30;
+ entry.plan.keyframes[1].time=30;
+ const raw=JSON.stringify(draft),requests=[];
+ const reader=createWeeklyReader({key:()=> 'test',fetch:async url=>{
+  const u=new URL(url);requests.push(u);
+  if(u.pathname==='/drive/v3/files')return Response.json({files:[main,old,doc]});
+  if(u.pathname==='/drive/v3/files/'+doc.id+'/export'){
+   assert.equal(u.searchParams.get('mimeType'),'text/plain');
+   assert.equal(u.searchParams.has('alt'),false);
+   return new Response('\uFEFF'+raw+'\n');
+  }
+  assert.equal(u.pathname,'/drive/v3/files/'+main.id);
+  assert.equal(u.searchParams.get('alt'),'media');
+  return new Response(pack('legacy',[28,29,30]));
+ }});
+ const result=await reader();
+ assert.equal(result.id,doc.id);
+ assert.equal(result.date,'2026-11-16');
+ assert.equal(result.episodeCount,4);
+ assert.deepEqual(result.sources.map(s=>s.id),[doc.id,main.id]);
+ assert.deepEqual(JSON.parse(result.text),JSON.parse(raw));
+ assert.equal(requests.length,3);
+ assert.ok(requests.every(u=>!u.pathname.includes(old.id)));
+});
