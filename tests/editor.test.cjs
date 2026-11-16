@@ -841,5 +841,11 @@ test('authenticated multipart upload accepts the reported MP4 and inclusive limi
     server.closeAllConnections();
     await new Promise(resolve => server.close(resolve));
   }
+  // Closing the HTTP server does not await each handler's asynchronous finally.
+  // Keep the eventual cleanup assertion, allowing the pending rm calls to settle.
+  const cleanupDeadline = performance.now() + 5000;
+  while (files.some(file => fs.existsSync(file)) && performance.now() < cleanupDeadline) {
+    await new Promise(resolve => setTimeout(resolve, 25));
+  }
   assert.ok(files.every(file => !fs.existsSync(file)), 'uploaded files are cleaned after each request');
 });
