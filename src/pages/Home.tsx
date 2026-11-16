@@ -148,7 +148,7 @@ export default function App() {
   const openRecordEditor=(item:HistoryItem)=>{try{if(document.documentElement.dataset.oriEditorReady!=='1')throw Error('편집 화면을 준비 중입니다. 잠시 후 다시 눌러주세요.');setResumeId(undefined);window.dispatchEvent(new CustomEvent('orihani-editor-import',{detail:{version:1,key:item.editorKey||'history-'+item.id,episode:editorEpisode(item)}}));}catch(e){showToast((e as Error).message,'error');}};
   const importWork=async(file:File)=>{try{if(file.size>MAX_PACKAGE_BYTES)throw Error('작업 파일은 48MB 이하로 넣어주세요.');const pack=readPackage(await file.text());const item=importIdentity(pack.item,history);const importedRefs=Object.fromEntries(Object.entries(pack.clipReferences||{}).map(([title,ref])=>[title,ref.sourceId===pack.item.id?{...ref,sourceId:item.id}:ref]));await db.set(item.id,{images:pack.images,...(pack.sceneReference?{sceneReference:pack.sceneReference}:{}),clipReferences:importedRefs});saveHistory(item);selectHistory(item.id);showToast('기획·사진·대본을 가져왔습니다.');}catch(e){showToast((e as Error).message,'error');}};
   const updateCurrentPlan=(raw:string)=>{
-    const item=history.find(h=>h.id===targetId);if(!item||locked)return;
+    const item=history.find(h=>h.id===targetId);if(!item||locked)throw Error('작업을 저장할 수 없습니다. 준비가 끝나면 다시 시도해주세요.');
     saveHistory({...item,result:raw});if(item.id===currentWorkboardId)setResult(raw);
   };
   const copyToKling4=async()=>{
@@ -196,7 +196,7 @@ export default function App() {
     if (index < 0) { showToast('이 그림의 원래 장면을 찾지 못했습니다.', 'error'); return; }
     void handleReviewImage(title, scenes[index].prompt, index, scenes, plan, candidate, repair);
   };
-  const workboardContent = <><ImageChecks targetId={targetId} busy={locked} onCheck={checkImageCandidate} onApply={handleApplyImage}/>{getKling4Plan(result)&&view==='prompts'?<Kling4Workspace key={currentWorkboardId} result={result} episodeTitle={currentEpisode?.title} images={sceneImages} busy={locked} ready={mediaReady} onApply={handleApplyImage} onGenerate={handleGenerateImage} onUpdate={updateCurrentPlan} onEdit={()=>{const item=history.find(h=>h.id===currentWorkboardId);if(item)openRecordEditor(item);}}/>:<WorkboardContent
+  const workboardContent = <><ImageChecks targetId={targetId} busy={locked} onCheck={checkImageCandidate} onApply={handleApplyImage}/>{getKling4Plan(result)&&view==='prompts'?<Kling4Workspace key={currentWorkboardId} result={result} episodeTitle={currentEpisode?.title} episodeThumbnail={currentEpisode?.thumbnail} images={sceneImages} busy={locked} ready={mediaReady} onApply={handleApplyImage} onGenerate={handleGenerateImage} onUpdate={updateCurrentPlan} onEdit={()=>{const item=history.find(h=>h.id===currentWorkboardId);if(item)openRecordEditor(item);}}/>:<WorkboardContent
     onApplyImage={handleApplyImage} onKling4Copy={getKling4Plan(result)?undefined:()=>void copyToKling4()} busy={locked||!mediaReady}
     activeTab={view === 'prompts' ? 'prompts' : 'scenario'}
     selectedCharacter={selectedCharacter}
