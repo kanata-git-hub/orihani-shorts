@@ -69,8 +69,11 @@ No generation, review or paid provider call is made. Existing work stays untouch
 Manual **직접 만든 이미지 가져오기** remains available for local replacements.
 Use **전체 영상 프롬프트 복사**, place the keyframes at their
 indicated timestamps in Kling, and import its one completed video into the editor.
-The upload bounds are 30 MiB per file and 31 MiB per complete multipart request;
-the client reserves 64 KiB for the plan and multipart framing. Finished MP4 exports
+Video files and any additional voice file share a 33,423,360-byte upload budget
+(about 33.4 MB / 31.9 MiB); one file may use that whole budget. Both client and
+server enforce it. The existing HTTP upload path reserves 64 KiB for platform
+headroom below Cloud Run's fixed 32 MiB ceiling and another 64 KiB for the plan
+and multipart framing. Finished MP4 exports
 stream without Content-Length, retaining backpressure and cancellation cleanup.
 
 Existing records retain their original images, clips, edit drafts and render outputs.

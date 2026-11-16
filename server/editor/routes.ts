@@ -8,7 +8,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { render } from './render';
 import { downloadVideo } from './download';
-import { MAX_MEDIA_FILE_BYTES, MAX_MEDIA_REQUEST_BYTES } from '../../src/editor/mediaLimits';
+import { MAX_MEDIA_FILE_BYTES, MAX_MEDIA_REQUEST_BYTES, MEDIA_UPLOAD_LIMIT_LABEL } from '../../src/editor/mediaLimits';
+import { validateMediaPayloadSizes } from '../../src/editor/media';
 import { generateClinicOverlays } from './clinicCaptions';
 import { generateKoreanCaptions } from './koreanCaptions';
 import { validatePlan, cleanPlanText } from '../../src/editor/model';
@@ -140,7 +141,7 @@ editorRouter.post('/voice', async (req, res) => {
 
 editorRouter.post(['/render','/transcribe'], async (req, res) => {
   const size = Number(req.headers['content-length']);
-  if (!Number.isFinite(size) || size <= 0 || size > MAX_MEDIA_REQUEST_BYTES) { res.locals.release(); res.status(413).json({ error: '영상·음성과 업로드 정보 합계는 31MiB(약 32.5MB) 이하여야 합니다.' }); return; }
+  if (!Number.isFinite(size) || size <= 0 || size > MAX_MEDIA_REQUEST_BYTES) { res.locals.release(); res.status(413).json({ error: `업로드 요청이 서버 허용량을 넘었습니다. 영상과 음성 합계는 ${MEDIA_UPLOAD_LIMIT_LABEL} 이하여야 합니다.` }); return; }
   let dir: string | undefined; const abort = new AbortController();
   const timeout = setTimeout(() => abort.abort(), 270000);
   const cancel = () => { if (!res.writableFinished) abort.abort(); }; res.on('close', cancel);
@@ -155,6 +156,7 @@ editorRouter.post(['/render','/transcribe'], async (req, res) => {
       upload(req, res, err => { cleanup(); err ? reject(err) : resolve(); });
     });
     const files = req.files as Record<string, Express.Multer.File[]>;
+    validateMediaPayloadSizes(files?.videos || [], files?.voice?.[0]?.size || 0);
     if(req.path==='/transcribe'){
       if(files?.videos?.length!==1||files.voice?.length)throw Error('분석할 파일 하나를 넣어주세요.');
       const result=await transcribe(files.videos[0].path,dir,AbortSignal.any([abort.signal,AbortSignal.timeout(100000)]),req.body.expectedDuration===undefined?undefined:Number(req.body.expectedDuration));
@@ -171,7 +173,7 @@ editorRouter.post(['/render','/transcribe'], async (req, res) => {
     await downloadVideo(output, res, abort.signal);
   } catch (e) {
     console.error('Editor render failed', e instanceof Error ? e.message : 'unknown');
-    if (!res.headersSent && !res.destroyed && !res.writableEnded) res.status(400).json({ error: e instanceof Error ? e.message : '영상 처리 실패' });
+    if (!res.headersSent && !res.destroyed && !res.writableEnded) res.status(400).json({ error: e instanceof multer.MulterError && e.code === 'LIMIT_FILE_SIZE' ? `영상과 음성 합계는 ${MEDIA_UPLOAD_LIMIT_LABEL} 이하여야 합니다.` : e instanceof Error ? e.message : '영상 처리 실패' });
   } finally { clearTimeout(timeout); res.off('close', cancel); res.locals.release(); if (dir) await rm(dir, { recursive: true, force: true }); }
 });
 

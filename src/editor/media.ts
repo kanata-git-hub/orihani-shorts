@@ -1,9 +1,12 @@
-import { MAX_MEDIA_FILE_BYTES, MAX_MEDIA_PAYLOAD_BYTES } from './mediaLimits';
+import { MAX_MEDIA_FILE_BYTES, MAX_MEDIA_PAYLOAD_BYTES, MEDIA_UPLOAD_LIMIT_LABEL } from './mediaLimits';
 export const clipLengths = (duration:5|12|15|30, layout?:'single'|'legacy-clips') => layout==='single'||duration!==15?[duration]:[4,4,3,4];
 export function validateMediaSizes(videos:({size:number}|null)[], duration:5|12|15|30, voiceSize=0, layout?:'single'|'legacy-clips') {
   if(videos.length!==clipLengths(duration,layout).length||videos.some(f=>!f))throw Error('각 칸에 Kling 영상 파일을 넣어주세요.');
-  if(videos.some(f=>f!.size<=0||f!.size>MAX_MEDIA_FILE_BYTES))throw Error('영상 한 파일은 30MiB(약 31.5MB) 이하여야 합니다. 원본 파일의 용량을 확인해주세요.');
-  if(videos.reduce((n,f)=>n+f!.size,voiceSize)>MAX_MEDIA_PAYLOAD_BYTES)throw Error('영상과 음성 합계는 업로드 정보 공간을 제외해 30.9MiB(약 32.4MB) 이하여야 합니다.');
+  validateMediaPayloadSizes(videos as {size:number}[],voiceSize);
+}
+export function validateMediaPayloadSizes(videos:{size:number}[], voiceSize=0) {
+  if(videos.some(f=>f.size<=0||f.size>MAX_MEDIA_FILE_BYTES))throw Error(`영상 한 파일은 ${MEDIA_UPLOAD_LIMIT_LABEL} 이하여야 합니다. 음성이 있으면 합계 용량에 포함됩니다.`);
+  if(videos.reduce((n,f)=>n+f.size,voiceSize)>MAX_MEDIA_PAYLOAD_BYTES)throw Error(`영상과 음성 합계는 ${MEDIA_UPLOAD_LIMIT_LABEL} 이하여야 합니다.`);
 }
 export function validateMediaDuration(actual:number, expected:number, index:number) {
   if(!Number.isFinite(actual)||actual<expected-0.15||actual>expected+0.5)throw Error(`${index+1}번 영상은 ${expected}초여야 합니다. 선택한 파일은 ${Number.isFinite(actual)?actual.toFixed(1)+'초':'길이 확인 불가'}입니다. 음성 분석을 시작하지 않았습니다.`);

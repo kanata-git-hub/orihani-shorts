@@ -5,6 +5,7 @@ import { editorStore, draftWriter, persistDraft } from './storage';
 import { Draft, DraftSummary, EditorStage, voiceKey, syncKey, resultKey, voiceIsCurrent, resultIsCurrent, hasDraftContent, restoreDraft, draftStage, draftProgress, summarizeDraft } from './draft';
 import { spokenNumbers, alignCaptions, alignSourceCaptions, sourceSpeechTimeline, scheduleNarration, placedWords, SpeechAnalysis, Word } from './speech';
 import { clipLengths, validateMediaSizes, validateMediaDuration, mediaDuration } from './media';
+import { MEDIA_UPLOAD_LIMIT_LABEL } from './mediaLimits';
 import './editor.css';
 import { ClinicCaptionPreview } from './ClinicCaptionPreview';
 import { shareFile } from '../workflow/share';
@@ -221,6 +222,7 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
           <div className="ori-row">{(korean?KOREAN_VIDEO_DURATIONS:[5,12,15,30] as const).map(duration=><button key={duration} aria-pressed={d.plan.duration===duration&&d.plan.videoLayout==='single'} disabled={d.plan.duration===duration&&d.plan.videoLayout==='single'} onClick={()=>{change({duration,videoLayout:'single',captions:[],clinicBrandStart:undefined,voiceSegments:undefined,dialogueRanges:undefined});setD(v=>({...v,videos:[]}));}}>{duration}초 · 영상 한 개</button>)}</div>
           {!direct&&<button aria-pressed={d.plan.duration===15&&d.plan.videoLayout!=='single'} disabled={d.plan.duration===15&&d.plan.videoLayout!=='single'} onClick={()=>{change({duration:15,videoLayout:'legacy-clips',captions:[],voiceSegments:undefined,dialogueRanges:undefined});setD(v=>({...v,videos:[]}));}}>이전 방식 · 4초·4초·3초·4초 영상 네 개</button>}
           </details>
+          <p className="ori-note">영상 파일과 추가 음성의 합계는 {MEDIA_UPLOAD_LIMIT_LABEL}까지 넣을 수 있습니다.</p>
           <div className="ori-files">{lengths.map((length, i) => <label key={`${d.id}-${d.plan.duration}-${i}`} className="ori-file"><span className="ori-file-heading">{i + 1}번 영상 · {length}초<small>{d.videos[i]?.name || '미선택'}</small></span><span className="ori-file-button">{d.videos[i]?'바꾸기':'영상 선택'}<input aria-label={`${i + 1}번 영상 선택`} type="file" accept="video/mp4,video/quicktime,video/webm" onChange={e => { const f = e.target.files?.[0]; if (f) setD(v => ({ ...v, syncKey: undefined, resultKey: undefined, videos: Array.from({ length: lengths.length }, (_, n) => n === i ? f : v.videos[n] || null) })); }} /></span></label>)}</div>
         </article>
         <article hidden={direct||stage!=='voice'}><h3>2. 해설 음성과 자동 싱크</h3><p>등장인물 대사는 Kling 원본 소리를 사용합니다. 아래에는 해설만 적으세요. 해설이 없는 영상은 비워두면 됩니다.</p>
