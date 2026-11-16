@@ -48,12 +48,22 @@ const titleKey = (value: string) => cleanTitle(value)
   .replace(/\s*\(하찮은 오리 일상\)\s*$/, '')
   .replace(/^(?:번외\s*\d+|\[번외\])\s*/, '번외 ')
   .replace(/\s+/g, ' ').normalize('NFC');
+const sitcomSuffix = '(하찮은 오리 일상)';
+const sitcomTag = '하찮은오리일상';
+const oldSitcomTag = '오리시트콤';
+
+function isSitcomCaption(titles: string[], hashtags: string[], captionStyle: unknown) {
+  // Clinic/empathy releases keep their own copy, including older numbered records.
+  if (captionStyle === 'clinic' || titles.some(title => /^한의원\s+쇼츠\s*\d+/u.test(title) || /\(오리도 그래요\)\s*$/u.test(title))) return false;
+  return hashtags.some(tag => tag === sitcomTag || tag === oldSitcomTag)
+    || titles.some(title => title.endsWith(sitcomSuffix));
+}
 
 // Every preview and copy button uses the same title/body/tag composition.
 // Prefer the plan's prose; older records can fall back to their linked screenplay.
 export function prepareReelsCaption(
   overview: { title?: unknown; instagramCaption?: unknown; hashtags?: unknown },
-  episode?: { title?: unknown; caption?: unknown } | null,
+  episode?: { title?: unknown; caption?: unknown; captionStyle?: unknown } | null,
 ) {
   const recordTitle = cleanTitle(overview.title) || cleanTitle(episode?.title);
   const title = recordTitle.replace(/^한의원\s+쇼츠\s+\d{2,}\s+(?=\S)/u, '');
@@ -78,5 +88,20 @@ export function prepareReelsCaption(
   const heading = title || social.body.split('\n')[0];
   const taggedHeading = title !== recordTitle ? heading : prepareSocialCaption(heading, social.hashtags).text;
   const shortsTitle = Array.from(taggedHeading).length <= 100 ? taggedHeading : Array.from(heading).slice(0,100).join('');
+  // Adapt saved sitcom records at display/copy time. Keep the Shorts-title contract
+  // and stored text untouched; new production packages should author this format too.
+  // Recollect tags before dropping sitcom prose: inline tags no longer have a body
+  // to live in, and must not disappear through prepareSocialCaption's deduplication.
+  const sourceText = typeof source === 'string' ? source.replace(/\\n/g, '\n') : '';
+  const tagOnlyLines = sourceText.split(/\r?\n/).filter(line => line.trim() && !line.replace(/#[\p{L}\p{M}\p{N}_]+/gu, '').trim()).join('\n');
+  const authoredTags = prepareSocialCaption(tagOnlyLines, overview.hashtags).hashtags;
+  const sitcomTags = prepareSocialCaption('', [...authoredTags, ...(sourceText.match(/#[\p{L}\p{M}\p{N}_]+/gu) || [])]).hashtags;
+  if (recordTitle && isSitcomCaption([recordTitle, cleanTitle(episode?.title)], sitcomTags, episode?.captionStyle)) {
+    const reelsTitle = title.replace(/(?:\s*\(하찮은 오리 일상\))+\s*$/u, '').trimEnd() + sitcomSuffix;
+    const hashtags = [sitcomTag, ...sitcomTags.filter(tag => tag !== sitcomTag && tag !== oldSitcomTag)];
+    const body = reelsTitle;
+    const text = [body, hashtags.map(tag => `#${tag}`).join(' ')].filter(Boolean).join('\n\n');
+    return { body, hashtags, text, title: reelsTitle, shortsTitle };
+  }
   return { ...social, title, shortsTitle };
 }

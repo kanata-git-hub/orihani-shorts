@@ -105,6 +105,46 @@ test('the actual workboard, history and Kling copy buttons use the same correcte
 });
 
 const {prepareReelsCaption,prepareSocialCaption}=compile('src/utils/socialCaption.ts');
+test('saved and newly authored sitcom captions use the approved series title and first tag without mutating inputs',()=>{
+ const bare='눈싸움 하자더니 공사를 시작함',title='1화 '+bare,branded=title+'(하찮은 오리 일상)';
+ const expected=branded+'\n\n#하찮은오리일상 #눈싸움 #덕이 #오원장 #눈이';
+ for(const sourceTitle of [title,title+' (하찮은 오리 일상)',branded]){
+  for(const tag of ['오리시트콤','하찮은오리일상']){
+   const plan={title:sourceTitle,instagramCaption:bare,hashtags:[tag,'눈싸움','덕이','오원장','눈이']};
+   const episode={title:'[에피소드 1] '+sourceTitle,caption:bare};
+   const before=JSON.stringify({plan,episode});
+   const result=prepareReelsCaption(plan,episode);
+   assert.equal(result.text,expected);assert.equal(result.title,branded);
+   assert.equal(result.hashtags.length,5);
+   assert.equal(prepareReelsCaption({...plan,instagramCaption:result.text},episode).text,expected);
+   assert.equal(JSON.stringify({plan,episode}),before);
+  }
+ }
+ const mixed={title,instagramCaption:bare+'\n#눈싸움 #오리시트콤 #하찮은오리일상',hashtags:['하찮은오리일상','덕이','오원장','눈이']};
+ assert.equal(prepareReelsCaption(mixed).text,expected,'replace both series spellings and keep the remaining tag order');
+ assert.equal(prepareReelsCaption({title:'퇴근 후',instagramCaption:'본문',hashtags:['오리시트콤','퇴근']}).text,'퇴근 후(하찮은 오리 일상)\n\n#하찮은오리일상 #퇴근');
+ assert.equal(prepareReelsCaption({title:branded,instagramCaption:'중복 여부와 무관하게 본문은 생략합니다.',hashtags:['눈싸움']}).text,branded+'\n\n#하찮은오리일상 #눈싸움');
+ const noTitle=branded+'\n\n'+bare+'\n\n#하찮은오리일상 #눈싸움 #덕이 #오원장 #눈이';
+ assert.equal(prepareReelsCaption({instagramCaption:noTitle}).text,noTitle,'without record metadata, do not guess a heading and discard legacy prose');
+ const inline={title,instagramCaption:'오늘 #눈싸움 했어요',hashtags:['오리시트콤','눈싸움','덕이','오원장','눈이']};
+ assert.equal(prepareReelsCaption(inline).text,expected,'hashtags remain after their inline prose is omitted');
+ assert.equal(prepareReelsCaption({...inline,instagramCaption:'오늘 #덕이 이야기'}).text,expected,'inline tags do not reorder the authored metadata tags');
+ assert.equal(prepareReelsCaption({...inline,instagramCaption:'오늘 #오리시트콤 이야기',hashtags:['눈싸움','덕이','오원장','눈이']}).text,expected,'inline series tags still identify saved sitcom copy');
+});
+test('Reels branding leaves generic, clinic and empathy copy and the existing Shorts title contract alone',()=>{
+ const generic={title:'여행 기록',instagramCaption:'오늘의 풍경',hashtags:['여행']};
+ assert.equal(prepareReelsCaption(generic).text,'여행 기록\n\n오늘의 풍경\n\n#여행');
+ for(const title of ['1화 여행 기록','번외 03 여행 기록']){
+  assert.equal(prepareReelsCaption({...generic,title},{title:'[에피소드 1] '+title}).text,title+'\n\n오늘의 풍경\n\n#여행','numbering alone does not identify the sitcom');
+ }
+ const clinic={title:'1화 목이 아픈 날',instagramCaption:'공감 본문',hashtags:['한의원']};
+ assert.equal(prepareReelsCaption(clinic,{captionStyle:'clinic'}).text,'1화 목이 아픈 날\n\n공감 본문\n\n#한의원');
+ const empathy={...clinic,title:'1화 목이 아픈 날 (오리도 그래요)'};
+ assert.equal(prepareReelsCaption(empathy).text,empathy.title+'\n\n공감 본문\n\n#한의원');
+ const old={title:'1화 눈싸움 하자더니 공사를 시작함',instagramCaption:'눈싸움 하자더니 공사를 시작함',hashtags:['오리시트콤','눈싸움','덕이','오원장','눈이']};
+ assert.equal(prepareReelsCaption(old).shortsTitle,prepareSocialCaption(old.title,old.hashtags).text);
+ assert.ok(!prepareReelsCaption(old).shortsTitle.includes('(하찮은 오리 일상)'));
+});
 test('clinic Reels use the subtitle once without rewriting stored titles or later prose',()=>{
  const subtitle='조용한 산책',recordTitle='한의원 쇼츠 101 '+subtitle;
  const episode={title:'[에피소드 101] '+recordTitle,caption:recordTitle+'\n#산책'};
@@ -119,18 +159,19 @@ test('clinic Reels use the subtitle once without rewriting stored titles or late
  assert.equal(episode.title,'[에피소드 101] '+recordTitle);
  assert.equal(prepareReelsCaption({title:'한의원 쇼츠 01 산책'}).title,'산책');
 });
-test('reel captions include the title, plan prose and unique hashtags even with a title-only screenplay caption',()=>{
+test('sitcom Reels omit stored prose while retaining the normalized title and unique hashtags',()=>{
  const title='42화 구름산책 (하찮은 오리 일상)',prose='오늘도 한 걸음.',hashtags=['#구름산책','#일상'];
+ const reelsTitle='42화 구름산책(하찮은 오리 일상)';
  const overview={title,instagramCaption:prose,hashtags};
  const episode={title:'[에피소드 42] '+title,caption:title+'\n#구름산책 #일상'};
  const result=prepareReelsCaption(overview,episode);
- assert.equal(result.text,title+'\n\n'+prose+'\n\n#구름산책 #일상');
- assert.equal(result.title,title);
+ assert.equal(result.text,reelsTitle+'\n\n#하찮은오리일상 #구름산책 #일상');
+ assert.equal(result.title,reelsTitle);
  assert.equal(prepareReelsCaption({...overview,instagramCaption:result.text},episode).text,result.text);
 });
-test('existing title lines are not duplicated and prose, inline tags and legacy captions are preserved',()=>{
- const title='42화 구름산책 (하찮은 오리 일상)';
- for(const heading of [title,'42화 구름산책','[에피소드 42] '+title]){
+test('non-sitcom title lines are not duplicated and prose, inline tags and legacy captions are preserved',()=>{
+ const title='42화 구름산책';
+ for(const heading of [title,'[에피소드 42] '+title]){
   const result=prepareReelsCaption({title,instagramCaption:heading+'\\n\\n오늘은 #일상 산책.\\n#일상 #구름',hashtags:['#일상','#구름']});
   assert.equal(result.text,title+'\n\n오늘은 #일상 산책.\n\n#구름');
  }
@@ -141,29 +182,29 @@ test('existing title lines are not duplicated and prose, inline tags and legacy 
  assert.equal(prepareReelsCaption({}).text,'');
  assert.equal(prepareReelsCaption({instagramCaption:'제목 없는 본문',hashtags:['#일상']}).text,'제목 없는 본문\n\n#일상');
  const bonus=prepareReelsCaption({title:'번외 03 구름산책 (하찮은 오리 일상)'},{caption:'[번외] 구름산책 (하찮은 오리 일상)\n#구름'});
- assert.equal(bonus.text,'번외 03 구름산책 (하찮은 오리 일상)\n\n#구름');
+ assert.equal(bonus.text,'번외 03 구름산책(하찮은 오리 일상)\n\n#하찮은오리일상 #구름');
 });
-test('all workboard, history and continue reel buttons copy the same visible title/body/tags',async()=>{
+test('all workboard, history and continue reel buttons copy the same sitcom title and tags without a body',async()=>{
  const copies=[],noop=()=>{},oldNavigator=Object.getOwnPropertyDescriptor(global,'navigator'),oldTimeout=global.setTimeout;
  Object.defineProperty(global,'navigator',{configurable:true,value:{clipboard:{writeText:async text=>copies.push(text)}}});global.setTimeout=noop;
  const mocks={react:{useState:value=>[value,noop],useEffect:noop,useId:()=> 'test',useRef:value=>({current:value})},'../hooks/useToast':{useToast:()=>({showToast:noop})},'../constants':{CHARACTERS:[]},'react-markdown':{default:noop},'./share':{imageFile:noop,shareFile:noop},'../workflow/HistoryContinue':{HistoryContinue:noop}};
  const flatten=node=>Array.isArray(node)?node.flatMap(flatten):node&&typeof node==='object'?[node,...flatten(node.props?.children),...flatten(node.props?.tabs?.map(tab=>tab.content))]:[];
  const label=node=>Array.isArray(node)?node.map(label).join(''):node&&typeof node==='object'?label(node.props?.children):typeof node==='string'||typeof node==='number'?String(node):'';
- const title='42화 구름산책 (하찮은 오리 일상)',prose='오늘도 한 걸음.',hashtags=['#구름산책','#일상'];
- const episode={duration:5,title:'[에피소드 42] '+title,caption:title+'\n#구름산책 #일상'};
+ const title='1화 눈싸움 하자더니 공사를 시작함',reelsTitle=title+'(하찮은 오리 일상)',prose='눈싸움 하자더니 공사를 시작함',hashtags=['오리시트콤','눈싸움','덕이','오원장','눈이'];
+ const episode={duration:5,title:'[에피소드 1] '+title,caption:prose+'\n#오리시트콤 #눈싸움 #덕이 #오원장 #눈이'};
  const base={title,hashtags,clips:[2,3].map((duration,i)=>({title:'장면',imageTitle:'사진'+i,imagePrompt:'test',videoPrompt:'OUTPUT SPECS: '+duration+'s'}))};
  try{
   for(const legacy of [false,true]){
    const overview={...base,instagramCaption:legacy?'':prose};
    const item={id:'synthetic-caption',timestamp:1,characterId:'owonjang',duration:5,result:JSON.stringify(overview),episode};
-   const expected=title+(legacy?'':'\n\n'+prose)+'\n\n#구름산책 #일상';
+   const expected=reelsTitle+'\n\n#하찮은오리일상 #눈싸움 #덕이 #오원장 #눈이';
    for(const name of ['WorkboardContent','HistoryContent']){
     const Component=compile('src/components/'+name+'.tsx',mocks)[name];
     const tree=Component({activeTab:'scenario',result:item.result,episode,isGenerating:false,error:null,currentScenes:[],sceneImages:{},generatingImages:{},selectedCharacter:'owonjang',viewingHistoryId:item.id,history:[item],viewingScenes:[],onEdit:noop,onBusy:noop,mediaReady:true});
     const button=flatten(tree).find(n=>n.type==='button'&&label(n)==='복사하기');
     assert.ok(button,name);await button.props.onClick();assert.equal(copies.at(-1),expected,name);
     const preview=flatten(tree).find(n=>n.type==='div'&&n.props.className==='text-sm text-[#552c24] whitespace-pre-wrap mb-3');
-    assert.equal(label(preview),title+(legacy?'':'\n\n'+prose),name+' preview');
+    assert.equal(label(preview),reelsTitle,name+' preview');
     if(name==='HistoryContent'){
      const {WorkspaceTabs}=compile('src/components/WorkspaceTabs.tsx',mocks);
      const tabs=WorkspaceTabs(tree.props);
@@ -177,7 +218,7 @@ test('all workboard, history and continue reel buttons copy the same visible tit
    assert.equal(copies.at(-1),expected,'continue');
    await flatten(tree).find(n=>n.type==='button'&&label(n)==='쇼츠 제목 복사').props.onClick();
    assert.equal(copies.at(-1),prepareSocialCaption(title,hashtags).text);
-   assert.ok(!copies.at(-1).includes(prose));
+   assert.ok(!copies.at(-1).includes('\n\n'+prose));
   }
  }finally{if(oldNavigator)Object.defineProperty(global,'navigator',oldNavigator);else delete global.navigator;global.setTimeout=oldTimeout;}
 });

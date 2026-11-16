@@ -15,6 +15,18 @@ use `workflow: "kling4"`, numeric `duration` (5, 12, 15 or 30), `continuity`, on
 Keep title, location, scenario, instagramCaption and five hashtags as before.
 `plan.scenario` and `episode.scenario` must match exactly; so must duration and title.
 
+For the sitcom series, author `plan.title` as `1화 눈싸움 하자더니 공사를 시작함(하찮은 오리 일상)`
+(no space before the series suffix), with the same title after the `[에피소드 1]` prefix
+in `episode.title`. Set `plan.instagramCaption` and `episode.caption` to the complete
+Reels copy: the title once, a blank line, and the five hashtags. Do not add a prose block
+or repeat the bare episode title. The first hashtag is `하찮은오리일상`, replacing
+`오리시트콤`; retain the other four in authored order.
+The shared app formatter also applies this convention to saved records explicitly
+identified by this series suffix or either series hashtag. Numbering alone does not
+identify the series. Records without a title, clinic/empathy and bilingual releases
+retain their own formats. Stored source, thumbnail text, images and caption timing stay
+unchanged; the Shorts-title copy helper still uses its existing source-based rule.
+
 Defaults are 5 seconds / 2 images, 12 or 15 seconds / 3 images, 30 seconds / 5 images.
 These are image-production defaults, not a fixed number of story beats. Use 2–10
 keyframes only when justified by the event; do not create extra stills per camera cut.
