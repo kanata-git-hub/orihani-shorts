@@ -26,19 +26,21 @@ const { downloadVideo } = compile('server/editor/download.ts');
 const { defaultPlan, validatePlan, isKoreanDuration, KOREAN_VIDEO_DURATIONS } = compile('src/editor/model.ts');
 const MiB = 1024 * 1024;
 
-test('30-second inputs accept 30 MB and the exact file limit, but reject one excess byte', () => {
-  assert.equal(MAX_MEDIA_FILE_BYTES, 30 * MiB);
-  assert.equal(MAX_MEDIA_REQUEST_BYTES, 31 * MiB);
+test('30-second inputs accept the reported 31,751,578-byte MP4 and the inclusive payload limit', () => {
+  assert.equal(MAX_MEDIA_FILE_BYTES, MAX_MEDIA_PAYLOAD_BYTES);
+  assert.equal(MAX_MEDIA_PAYLOAD_BYTES, 33_423_360);
+  assert.equal(MAX_MEDIA_REQUEST_BYTES + 64 * 1024, 32 * MiB);
   assert.equal(MAX_MEDIA_PAYLOAD_BYTES + 64 * 1024, MAX_MEDIA_REQUEST_BYTES);
   assert.ok(MAX_MEDIA_REQUEST_BYTES < 32 * MiB, 'leave headroom below the hosting HTTP/1 request ceiling');
-  for (const size of [10_000_000, 15_000_000, 30_000_000, MAX_MEDIA_FILE_BYTES]) {
+  for (const size of [10_000_000, 15_000_000, 30_000_000, 31_751_578, MAX_MEDIA_FILE_BYTES]) {
     assert.doesNotThrow(() => validateMediaSizes([{ size }], 30, 0, 'single'));
   }
-  assert.throws(() => validateMediaSizes([{ size: MAX_MEDIA_FILE_BYTES + 1 }], 30, 0, 'single'), /30MiB/);
+  assert.throws(() => validateMediaSizes([{ size: MAX_MEDIA_FILE_BYTES + 1 }], 30, 0, 'single'), /33\.4MB/);
   assert.throws(() => validateMediaSizes([{ size: 0 }], 30, 0, 'single'));
-  const voiceSize = MAX_MEDIA_PAYLOAD_BYTES - MAX_MEDIA_FILE_BYTES;
-  assert.doesNotThrow(() => validateMediaSizes([{ size: MAX_MEDIA_FILE_BYTES }], 30, voiceSize, 'single'));
-  assert.throws(() => validateMediaSizes([{ size: MAX_MEDIA_FILE_BYTES }], 30, voiceSize + 1, 'single'), /합계/);
+  const sourceSize = 31_751_578, voiceSize = MAX_MEDIA_PAYLOAD_BYTES - sourceSize;
+  assert.doesNotThrow(() => validateMediaSizes([{ size: sourceSize }], 30, voiceSize, 'single'));
+  assert.throws(() => validateMediaSizes([{ size: sourceSize }], 30, voiceSize + 1, 'single'), /합계/);
+  assert.throws(() => validateMediaSizes([{ size: MAX_MEDIA_FILE_BYTES }], 30, 1, 'single'), /합계/);
   assert.deepEqual(clipLengths(15), [4, 4, 3, 4]);
   assert.deepEqual(clipLengths(15, 'single'), [15]);
   assert.deepEqual(clipLengths(30, 'single'), [30]);

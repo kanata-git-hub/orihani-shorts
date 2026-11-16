@@ -518,7 +518,8 @@ test('decimal counters and grouped large numbers have readable Korean pronunciat
  assert.equal(spokenNumbers('1,234,567,890원'),'십이억 삼천사백오십육만 칠천팔백구십 원');
 });
 test('all input clips must pass size and duration checks before speech analysis',()=>{
- assert.throws(()=>validateMediaSizes([{size:30*1024*1024+1}],5),/30MiB/);
+ const {MAX_MEDIA_FILE_BYTES}=require(path.join(compiled,'src/editor/mediaLimits.js'));
+ assert.throws(()=>validateMediaSizes([{size:MAX_MEDIA_FILE_BYTES+1}],5),/33\.4MB/);
  assert.throws(()=>validateMediaSizes([{size:1},null,{size:1},{size:1}],15),/각 칸/);
  assert.throws(()=>validateMediaSizes([1,2,3,4].map(()=>({size:8*1024*1024})),15),/합계/);
  assert.throws(()=>validateMediaDuration(5,4,1),/2번 영상/);assert.throws(()=>validateMediaDuration(Infinity,5,0));
@@ -765,4 +766,80 @@ test('editor API verifies eligibility and parses small requests before admitting
     if (project === undefined) delete process.env.EDITOR_FIREBASE_PROJECT_ID; else process.env.EDITOR_FIREBASE_PROJECT_ID = project;
     await new Promise(resolve => server.close(resolve));
   }
+});
+
+test('authenticated multipart upload accepts the reported MP4 and inclusive limits while enforcing combined voice and request budgets', {timeout:30000}, async t => {
+  const express = require('express');
+  const { editorRouter } = require(path.join(compiled, 'server/editor/routes.js'));
+  const { MAX_MEDIA_FILE_BYTES, MAX_MEDIA_PAYLOAD_BYTES, MAX_MEDIA_REQUEST_BYTES } = require(path.join(compiled, 'src/editor/mediaLimits.js'));
+  const renderModule = require(path.join(compiled, 'server/editor/render.js'));
+  const transcribeModule = require(path.join(compiled, 'server/editor/transcribe.js'));
+  const client = global.fetch, project = process.env.EDITOR_FIREBASE_PROJECT_ID, allowed = process.env.EDITOR_ALLOWED_EMAILS;
+  delete process.env.EDITOR_FIREBASE_PROJECT_ID;
+  process.env.EDITOR_ALLOWED_EMAILS = 'member@example.test';
+  let verified = true;
+  t.mock.method(global, 'fetch', async url => {
+    assert.equal(new URL(url).hostname, 'identitytoolkit.googleapis.com', 'never call a paid provider');
+    return Response.json({users:[{localId:'editor-user',email:'member@example.test',emailVerified:verified}]});
+  });
+  const accepted = [], files = [];
+  t.mock.method(renderModule, 'render', async (_plan, videos, voice, dir) => {
+    accepted.push([...videos, ...(voice ? [voice] : [])].map(file => fs.statSync(file).size));
+    files.push(...videos, ...(voice ? [voice] : []));
+    const output = path.join(dir, 'finished.mp4');
+    fs.writeFileSync(output, 'test-export');
+    return output;
+  });
+  t.mock.method(transcribeModule, 'transcribe', async file => {
+    accepted.push([fs.statSync(file).size]); files.push(file);
+    return {words:[],model:'no-audio'};
+  });
+  const app = express(); app.use('/api/editor', editorRouter);
+  const server = app.listen(0, '127.0.0.1');
+  try {
+    await new Promise(resolve => server.once('listening', resolve));
+    const base = 'http://127.0.0.1:' + server.address().port + '/api/editor/';
+    async function upload(videoSize, voiceSize = 0, endpoint = 'render') {
+      const form = new FormData();
+      const plan = {...defaultPlan(),duration:30,videoLayout:'single',captionStyle:'screen',originalVolume:1};
+      // A near-limit metadata field exercises the reserved framing/plan budget.
+      form.append(endpoint === 'render' ? 'plan' : 'expectedDuration', endpoint === 'render' ? ' '.repeat(31000) + JSON.stringify(plan) : '30');
+      form.append('videos', new Blob([Buffer.alloc(videoSize)]), 'source.mp4');
+      if (voiceSize) form.append('voice', new Blob([Buffer.alloc(voiceSize)]), 'narration.wav');
+      const serialized = new Request(base + endpoint, {method:'POST',body:form});
+      const body = Buffer.from(await serialized.arrayBuffer());
+      assert.ok(body.length > videoSize + voiceSize, 'include real multipart framing and metadata');
+      assert.ok(body.length <= MAX_MEDIA_REQUEST_BYTES, 'near-boundary files still fit the wire request cap below the hosting ceiling');
+      const response = await client(base + endpoint, {method:'POST',headers:{authorization:'Bearer synthetic-verified-provider-token','content-type':serialized.headers.get('content-type')},body});
+      const text = await response.text();
+      return {status:response.status,text,bytes:body.length};
+    }
+    const actualSize = 31_751_578;
+    assert.equal((await upload(actualSize)).status, 200);
+    assert.deepEqual(accepted.at(-1), [actualSize]);
+    assert.equal((await upload(MAX_MEDIA_FILE_BYTES)).status, 200);
+    assert.deepEqual(accepted.at(-1), [MAX_MEDIA_FILE_BYTES]);
+    const voiceSize = MAX_MEDIA_PAYLOAD_BYTES - actualSize;
+    assert.equal((await upload(actualSize, voiceSize)).status, 200);
+    assert.deepEqual(accepted.at(-1), [actualSize, voiceSize]);
+    const count = accepted.length;
+    for (const sizes of [[MAX_MEDIA_FILE_BYTES + 1], [actualSize, voiceSize + 1]]) {
+      const rejected = await upload(...sizes);
+      assert.equal(rejected.status, 400); assert.match(JSON.parse(rejected.text).error, /33\.4MB/);
+      assert.equal(accepted.length, count, 'reject before render or speech processing');
+    }
+    assert.equal((await upload(actualSize, 0, 'transcribe')).status, 200);
+    assert.deepEqual(accepted.at(-1), [actualSize]);
+    const tooLarge = await client(base + 'render', {method:'POST',headers:{authorization:'Bearer synthetic-verified-provider-token','content-type':'application/octet-stream'},body:Buffer.alloc(MAX_MEDIA_REQUEST_BYTES + 1)});
+    assert.equal(tooLarge.status, 413); assert.match((await tooLarge.json()).error, /33\.4MB/);
+    verified = false;
+    assert.equal((await upload(1)).status, 401, 'larger upload capacity never bypasses account verification');
+    assert.equal(accepted.length, count + 1);
+  } finally {
+    if (allowed === undefined) delete process.env.EDITOR_ALLOWED_EMAILS; else process.env.EDITOR_ALLOWED_EMAILS = allowed;
+    if (project === undefined) delete process.env.EDITOR_FIREBASE_PROJECT_ID; else process.env.EDITOR_FIREBASE_PROJECT_ID = project;
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+  }
+  assert.ok(files.every(file => !fs.existsSync(file)), 'uploaded files are cleaned after each request');
 });
