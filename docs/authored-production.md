@@ -82,6 +82,29 @@ starting timestamps; it does not silently remove the fourth image or fabricate a
 pose. Its combined video prompt is explicitly a draft requiring review before copying.
 New stories should be authored directly in the smaller keyframe format.
 
+### Separate thumbnail export
+
+In a Kling work record, choose a prepared keyframe and select **이 장면으로 썸네일 만들기**.
+The thumbnail editor derives a separate JPG with an optional short title, up to two
+lines, placed at the top or bottom. Its preview uses the exact exported JPG bytes.
+**키프레임 원본 다운로드** always returns the original source image; neither thumbnail
+editing nor exporting writes to the source images, keyframe prompts, video prompt,
+episode title, or dialogue captions. No video upload or paid generation is needed.
+
+Choose **제목 포함 JPG 다운로드** or **글자 없는 JPG 다운로드**. Both are derived
+files, named with `_썸네일_` and the variant. Portrait output is 1080×1920; landscape
+output is 1920×1080. The whole image is contained without stretching or silent cropping.
+Mismatched image ratios have neutral margins. Unreadably long titles, font-load errors,
+and stale previews block titled downloads; a clean export can still succeed independently.
+
+**썸네일 설정 저장** saves the selected scene and layout in the work record. The optional
+`plan.thumbnailDesign` object has `{ "imageTitle": "existing-keyframe-name", "title":
+"짧은 문구", "showTitle": true, "position": "top" }` (`position` also accepts `bottom`).
+`imageTitle` must refer to an existing keyframe. Old plans without this field still work.
+Work export/import preserves these settings and the original image bytes, so reopening
+**저장한 썸네일 열기·다운로드** reproduces the design from its source. The derived JPG
+is downloaded separately; it never replaces the image used in Kling.
+
 The old contract below remains supported for existing records and the optional legacy
 Gemini text planner. Never run the legacy compiler over Kling 4.0 keyframes.
 

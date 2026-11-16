@@ -42,6 +42,23 @@ test('invalid keyframe timing, references and mixed schemas are rejected before 
  }
  const pack=production();pack.episodes[0].plan.needsVideoReview=true;assert.throws(()=>readProductionPackage(JSON.stringify(pack)),/확인/);
 });
+test('thumbnail settings round-trip separately without changing keyframes, image bytes, or video instructions',()=>{
+ const raw=production(30),original=structuredClone(raw.episodes[0].plan);
+ raw.episodes[0].plan.thumbnailDesign={imageTitle:'frame-2',title:'딱 한 입만\n이라고 했잖아',showTitle:true,position:'top'};
+ const loaded=readProductionPackage(JSON.stringify(raw)),item=preparedHistory(loaded.episodes[0],loaded.revision);
+ const images=Object.fromEntries(original.keyframes.map((frame,i)=>[frame.imageTitle,'data:image/png;base64,'+Buffer.from('original-'+i).toString('base64')]));
+ const beforeImages=JSON.stringify(images),restored=readPackage(makePackage(item,images)),plan=JSON.parse(restored.item.result);
+ assert.deepEqual(plan.thumbnailDesign,raw.episodes[0].plan.thumbnailDesign);
+ assert.deepEqual(plan.keyframes,original.keyframes);
+ assert.equal(plan.videoPrompt,original.videoPrompt);
+ assert.equal(plan.scenario,original.scenario);
+ assert.equal(JSON.stringify(images),beforeImages);assert.deepEqual(restored.images,images);
+ assert.deepEqual(editorEpisode(restored.item),editorEpisode({...restored.item,result:JSON.stringify({...plan,thumbnailDesign:undefined})}));
+ for(const metadata of [null,{...plan.thumbnailDesign,imageTitle:'missing-frame'},{...plan.thumbnailDesign,position:'middle'},{...plan.thumbnailDesign,showTitle:'yes'}]){
+  const invalid={...original,thumbnailDesign:metadata};assert.throws(()=>validateKling4Plan(invalid));
+ }
+ assert.doesNotThrow(()=>validateKling4Plan(original));
+});
 test('keyframe reference numbering is independent of the four story beats',()=>{
  const pack=production(),entry=pack.episodes[0];
  entry.plan.scenario=entry.episode.scenario=[1,2,3,4].map((n)=>`[장면 ${n} (4초)]\nreferencePlan: {"background":null,"props":[]}`).join('\n');

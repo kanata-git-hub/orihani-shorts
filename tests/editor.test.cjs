@@ -7,7 +7,7 @@ const root = path.resolve(__dirname, '..');
 const compiled = path.join(root, '.editor-test');
 fs.mkdirSync(compiled, { recursive: true });
 fs.writeFileSync(path.join(compiled, 'package.json'), '{"type":"commonjs"}');
-for (const f of ['src/kling4.ts','src/videoPrompt.ts','src/productionContinuity.ts','src/utils/clipTiming.ts','src/workflow/productionPackage.ts','src/referencePlan.ts','src/shotDirection.ts','src/sceneReference.ts','src/characterReference.ts','src/nooni.ts','src/backgroundAssets.ts','server/workflow/weekly.ts','server/workflow/weeklyImages.ts','src/workflow/importImage.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/mediaLimits.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/clinicCaptions.ts', 'server/editor/screenCaptions.ts', 'server/editor/koreanCaptions.ts', 'server/editor/typography.ts', 'serverSecurity.ts', 'server/editor/mediaInput.ts', 'server/editor/mediaProcess.ts', 'server/editor/routes.ts', 'server/editor/download.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
+for (const f of ['src/kling4.ts','src/thumbnail/settings.ts','src/videoPrompt.ts','src/productionContinuity.ts','src/utils/clipTiming.ts','src/workflow/productionPackage.ts','src/referencePlan.ts','src/shotDirection.ts','src/sceneReference.ts','src/characterReference.ts','src/nooni.ts','src/backgroundAssets.ts','server/workflow/weekly.ts','server/workflow/weeklyImages.ts','src/workflow/importImage.ts','src/workflow/package.ts','src/workflow/progress.ts','src/workflow/weekly.ts','src/utils/db.ts','src/utils/extractors.ts','src/editor/text.ts','src/editor/draft.ts','src/editor/model.ts', 'src/editor/script.ts', 'src/editor/media.ts', 'src/editor/mediaLimits.ts', 'src/editor/storage.ts', 'server/editor/render.ts', 'server/editor/clinicCaptions.ts', 'server/editor/screenCaptions.ts', 'server/editor/koreanCaptions.ts', 'server/editor/typography.ts', 'serverSecurity.ts', 'server/editor/mediaInput.ts', 'server/editor/mediaProcess.ts', 'server/editor/routes.ts', 'server/editor/download.ts', 'src/editor/speech.ts', 'server/editor/transcribe.ts']) {
   const dest = path.join(compiled, f.replace(/\.ts$/, '.js'));
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.writeFileSync(dest, ts.transpileModule(fs.readFileSync(path.join(root, f), 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText);
@@ -840,6 +840,12 @@ test('authenticated multipart upload accepts the reported MP4 and inclusive limi
     if (project === undefined) delete process.env.EDITOR_FIREBASE_PROJECT_ID; else process.env.EDITOR_FIREBASE_PROJECT_ID = project;
     server.closeAllConnections();
     await new Promise(resolve => server.close(resolve));
+  }
+  // Closing the HTTP server does not await each handler's asynchronous finally.
+  // Keep the eventual cleanup assertion, allowing the pending rm calls to settle.
+  const cleanupDeadline = performance.now() + 5000;
+  while (files.some(file => fs.existsSync(file)) && performance.now() < cleanupDeadline) {
+    await new Promise(resolve => setTimeout(resolve, 25));
   }
   assert.ok(files.every(file => !fs.existsSync(file)), 'uploaded files are cleaned after each request');
 });

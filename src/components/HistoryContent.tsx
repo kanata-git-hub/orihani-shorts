@@ -72,7 +72,7 @@ export function HistoryContent({
   const result = viewingItem?.result || '';
 
   const kling4 = getKling4Plan(result);
-  const modernWorkspace = kling4 && <Kling4Workspace key={viewingItem!.id} result={result} episodeTitle={viewingItem?.episode?.title} images={sceneImages} busy={busy} ready={mediaReady} onApply={onApplyImage} onGenerate={handleGenerateImage} onUpdate={onUpdatePlan} onEdit={onEdit}/>;
+  const modernWorkspace = kling4 && <Kling4Workspace key={viewingItem!.id} result={result} episodeTitle={viewingItem?.episode?.title} episodeThumbnail={viewingItem?.episode?.thumbnail} images={sceneImages} busy={busy} ready={mediaReady} onApply={onApplyImage} onGenerate={handleGenerateImage} onUpdate={onUpdatePlan} onEdit={onEdit}/>;
   const overview = extractOverview(result);
   const socialCaption = prepareReelsCaption(overview, viewingItem?.episode);
   const clips = extractClips(result).map(clip=>({...clip,videoPrompt:videoPromptForCopy(clip.videoPrompt)}));

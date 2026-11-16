@@ -4,9 +4,11 @@ import { extractScenes } from '../utils/extractors';
 import { ImageImport } from '../components/ImageImport';
 import { ImagePreview } from '../components/ImagePreview';
 import { downloadFile, imageFile, sceneImageName } from './share';
+import { ThumbnailEditor } from '../thumbnail/ThumbnailEditor';
+import { defaultThumbnailTitle, type ThumbnailSettings } from '../thumbnail/settings';
 
-export function Kling4Workspace({ result, episodeTitle, images, busy, ready = true, onApply, onGenerate, onUpdate, onEdit }: {
-  result: string; episodeTitle?: string; images: Record<string, string>; busy?: boolean; ready?: boolean;
+export function Kling4Workspace({ result, episodeTitle, episodeThumbnail, images, busy, ready = true, onApply, onGenerate, onUpdate, onEdit }: {
+  result: string; episodeTitle?: string; episodeThumbnail?: string; images: Record<string, string>; busy?: boolean; ready?: boolean;
   onApply: (title: string, image: string) => Promise<boolean>;
   onGenerate: (title: string, prompt: string, index: number, scenes: any[], result?: string) => unknown;
   onUpdate: (result: string) => void;
@@ -15,9 +17,17 @@ export function Kling4Workspace({ result, episodeTitle, images, busy, ready = tr
   const plan = getKling4Plan(result)!;
   const [index, setIndex] = useState(0), [message, setMessage] = useState('');
   const [prompt, setPrompt] = useState(plan.videoPrompt), [editing, setEditing] = useState(false);
+  const [thumbnailDraft, setThumbnailDraft] = useState<ThumbnailSettings | null>(null);
+  const [thumbnailSession, setThumbnailSession] = useState(0);
   const frame = plan.keyframes[index] || plan.keyframes[0];
   const scenes = extractScenes(result), locked = busy || !ready;
   const count = plan.keyframes.filter(f => images[f.imageTitle]).length;
+  const savedThumbnailFrame = plan.keyframes.find(f => f.imageTitle === plan.thumbnailDesign?.imageTitle);
+  const openThumbnail = (imageTitle: string) => {
+    const title = defaultThumbnailTitle(episodeThumbnail || episodeTitle || plan.title);
+    setThumbnailSession(value => value + 1);
+    setThumbnailDraft({ ...(plan.thumbnailDesign || { title, showTitle: !!title, position: 'top' }), imageTitle });
+  };
   const action = async (fn: () => unknown) => { try { await fn(); } catch (e) { setMessage((e as Error).message); } };
   const copy = (text: string, label: string) => action(async () => { await navigator.clipboard.writeText(text); setMessage(`${label} 복사 완료`); });
   return <article className="ori-workflow ori-kling4">
@@ -32,8 +42,20 @@ export function Kling4Workspace({ result, episodeTitle, images, busy, ready = tr
     <h4 className="ori-keyframe-title">{frame.title} <span>{frame.time}초</span></h4>
     {images[frame.imageTitle] && <ImagePreview src={images[frame.imageTitle]} alt={frame.title}/>}
     <div className="ori-kling4-download">
-      <button disabled={locked || !images[frame.imageTitle]} onClick={() => action(() => downloadFile(imageFile(images[frame.imageTitle], sceneImageName(plan.title, index + 1, episodeTitle))))}>이미지 다운로드</button>
+      <button disabled={locked || !images[frame.imageTitle]} onClick={() => action(() => downloadFile(imageFile(images[frame.imageTitle], sceneImageName(plan.title, index + 1, episodeTitle))))}>키프레임 원본 다운로드</button>
+      <button disabled={locked || !images[frame.imageTitle]} onClick={() => openThumbnail(frame.imageTitle)}>이 장면으로 썸네일 만들기</button>
     </div>
+    {savedThumbnailFrame && <div className="ori-thumbnail-saved">
+      <p>저장한 썸네일: {savedThumbnailFrame.title} · {savedThumbnailFrame.time}초</p>
+      <button disabled={locked || !images[savedThumbnailFrame.imageTitle]} onClick={() => openThumbnail(savedThumbnailFrame.imageTitle)}>저장한 썸네일 열기·다운로드</button>
+    </div>}
+    {thumbnailDraft && <ThumbnailEditor key={`${thumbnailSession}:${thumbnailDraft.imageTitle}`}
+      imageSrc={images[thumbnailDraft.imageTitle]} initialSettings={thumbnailDraft}
+      aspectRatio={plan.aspectRatio || '9:16'} filenameBase={sceneImageName(plan.title, plan.keyframes.findIndex(f => f.imageTitle === thumbnailDraft.imageTitle) + 1, episodeTitle)}
+      disabled={!!locked} onClose={() => setThumbnailDraft(null)} onSave={settings => {
+        const next = { ...plan, thumbnailDesign: settings };
+        validateKling4Plan(next); onUpdate(JSON.stringify(next));
+      }}/>}
     <div className="ori-kling4-video">
       <h4 className="sr-only">전체 영상 프롬프트</h4>
       {plan.needsVideoReview && <p className="ori-note">예전 클립 지시문을 합친 초안입니다. 각 구간의 동작·카메라·시작 상태를 확인하고 저장해주세요. 기존 사진은 실제 시작 시점에 유지했으며, 마지막 사진을 끝 장면으로 바꾸지 않았습니다.</p>}

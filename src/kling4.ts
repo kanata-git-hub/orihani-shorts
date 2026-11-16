@@ -1,5 +1,6 @@
 import type { HistoryItem } from './types';
 import { readReferencePlan, type ReferencePlan } from './referencePlan';
+import { validateThumbnailSettings, type ThumbnailSettings } from './thumbnail/settings';
 
 export type VideoDuration = 5 | 12 | 15 | 30;
 export type VideoLayout = 'single' | 'legacy-clips';
@@ -9,6 +10,7 @@ export type Kling4Plan = {
   aspectRatio?: '9:16' | '16:9';
   instagramCaption: string; hashtags: string[]; continuity: string; videoPrompt: string; keyframes: Keyframe[];
   needsVideoReview?: boolean;
+  thumbnailDesign?: ThumbnailSettings;
 };
 // These are production defaults, not model limits. Extra frames are only useful
 // when a particular pose, prop state or location really needs to be pinned down.
@@ -37,6 +39,7 @@ export function validateKling4Plan(plan: any): asserts plan is Kling4Plan {
     if (frame.locationId !== undefined && (typeof frame.locationId !== 'string' || !frame.locationId.trim() || frame.locationId.length > 500)) fail('장소 식별자를 확인해주세요.');
     if (!readReferencePlan(frame.referencePlan, i + 1)) fail(`이미지 ${i + 1}의 배경·소품 참고 연결이 필요합니다.`);
   });
+  validateThumbnailSettings(plan.thumbnailDesign, [...names]);
   if (plan.needsVideoReview !== undefined && typeof plan.needsVideoReview !== 'boolean') fail('프롬프트 확인 상태가 올바르지 않습니다.');
   if (plan.clips !== undefined) fail('주요장면 이미지와 예전 클립 목록을 동시에 넣을 수 없습니다.');
   if (JSON.stringify(plan).length > 200000) fail('전체 기획은 200,000자 이하로 넣어주세요.');

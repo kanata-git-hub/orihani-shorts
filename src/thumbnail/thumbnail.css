@@ -1,0 +1,41 @@
+.ori-thumbnail-editor{margin-top:16px;border:1px solid #d9c6a9;border-radius:16px;background:#fffdf8;padding:16px;color:#552c24;min-width:0}
+.ori-thumbnail-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ori-thumbnail-heading h4{margin:0!important;font-size:20px!important;line-height:1.35}
+.ori-thumbnail-heading .ori-thumbnail-eyebrow{margin:0 0 4px;font-size:12px;color:#806554;letter-spacing:.02em}
+.ori-thumbnail-heading>button{flex-shrink:0}
+.ori-thumbnail-editor .ori-thumbnail-note{font-size:12px;line-height:1.65;color:#7e675a;margin:10px 0}
+.ori-thumbnail-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:20px;margin-top:16px}
+.ori-thumbnail-controls{min-width:0}
+.ori-thumbnail-editor fieldset{margin:0;padding:0;border:0;min-width:0}
+.ori-thumbnail-editor legend{font-weight:700;font-size:14px;margin-bottom:8px}
+.ori-thumbnail-options{display:flex;gap:8px}
+.ori-thumbnail-options button{flex:1;min-width:0}
+.ori-thumbnail-editor button{cursor:pointer;min-height:44px;line-height:1.4}
+.ori-thumbnail-editor button:disabled{cursor:default}
+.ori-thumbnail-editor label{margin-top:16px!important;font-weight:700}
+.ori-thumbnail-editor textarea{resize:vertical;min-height:88px;max-height:180px;font-size:16px;line-height:1.65;box-sizing:border-box}
+.ori-thumbnail-editor textarea[aria-invalid=true]{border-color:#a9412c}
+.ori-thumbnail-input-note{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#806554;margin-top:5px}
+.ori-thumbnail-input-note>span:last-child{white-space:nowrap}
+.ori-thumbnail-position-label{font-weight:700;font-size:14px;margin:18px 0 8px}
+.ori-thumbnail-editor .ori-thumbnail-tip{font-size:12px;line-height:1.7;color:#806554;margin-top:12px}
+.ori-thumbnail-preview{min-width:0;margin:0;display:flex;flex-direction:column;align-items:center}
+.ori-thumbnail-frame{width:100%;background:#241d1a;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px #38241b18}
+.ori-thumbnail-frame.ori-thumbnail-portrait{max-width:244px}
+.ori-thumbnail-frame img{display:block;width:100%;height:100%;object-fit:contain}
+.ori-thumbnail-placeholder{padding:20px;color:#fff6d9;font-size:13px;text-align:center;line-height:1.7}
+.ori-thumbnail-preview figcaption{margin-top:8px;font-size:11px;line-height:1.7;color:#806554;text-align:center}
+.ori-thumbnail-editor .ori-thumbnail-error{background:#fff0e9;border:1px solid #e5bca9;border-radius:8px;color:#8b3829;padding:10px 12px;font-size:13px;line-height:1.6}
+.ori-thumbnail-downloads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:18px}
+.ori-thumbnail-downloads button{font-weight:700;padding:12px 10px!important}
+.ori-thumbnail-downloads .ori-thumbnail-download-title{background:#552c24;color:#fff6d9;border-color:#552c24}
+.ori-thumbnail-save{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding-top:14px;border-top:1px solid #e9dece}
+.ori-thumbnail-save p{font-size:12px!important;color:#806554;margin:0!important;line-height:1.65}
+.ori-thumbnail-save button{flex-shrink:0;font-weight:700}
+.ori-thumbnail-retry{margin-top:6px}
+.ori-thumbnail-editor .ori-thumbnail-save-success{margin:10px 0 0;font-size:13px;font-weight:700;color:#3e6647}
+.ori-thumbnail-saved{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;margin:12px 0;border:1px solid #e2d5c2;border-radius:10px;background:#f8f2e6}
+.ori-thumbnail-saved p{margin:0;font-size:12px;line-height:1.6;color:#6d5545}
+.ori-thumbnail-saved button{flex-shrink:0;font-size:12px;padding:9px 12px}
+@media(max-width:600px){.ori-thumbnail-saved{align-items:stretch;flex-direction:column;gap:8px}}
+@media(max-width:600px){.ori-thumbnail-editor{padding:14px}.ori-thumbnail-layout{grid-template-columns:minmax(0,1fr);gap:16px}.ori-thumbnail-frame.ori-thumbnail-portrait{max-width:225px}.ori-thumbnail-frame.ori-thumbnail-landscape{max-width:100%}.ori-thumbnail-save{align-items:stretch;flex-direction:column;gap:10px}.ori-thumbnail-downloads{grid-template-columns:minmax(0,1fr)}.ori-thumbnail-input-note{font-size:11px}.ori-thumbnail-heading h4{font-size:19px!important}}
