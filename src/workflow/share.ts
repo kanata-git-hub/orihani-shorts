@@ -16,8 +16,8 @@ export function imageFile(data:string,name:string):File {
   return new File([bytes],name+'.'+({ 'image/png':'png','image/jpeg':'jpg','image/webp':'webp'}[match[1]]),{type:match[1]});
 }
 
-/** Human-readable image names shared by keyframe and legacy download controls. */
-export function sceneImageName(title: string, sceneNumber: number, sourceTitle = ''): string {
+/** Human-readable episode name shared by single-image and archive downloads. */
+export function episodeImageName(title: string, sourceTitle = ''): string {
   const raw = sourceTitle.trim() || title.trim();
   const marker = raw.match(/\[에피소드\s*(\d+)\]/);
   let clean = raw.replace(/\[에피소드\s*\d+\]\s*/g, '')
@@ -29,5 +29,10 @@ export function sceneImageName(title: string, sceneNumber: number, sourceTitle =
   else if (marker) clean = Number(marker[1]) + '화 ' + clean;
   clean = clean.normalize('NFC').replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ')
     .replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '').slice(0, 120).trim();
-  return (clean || '오리쇼츠') + ' ' + String(Math.max(1, Math.trunc(sceneNumber))).padStart(2, '0');
+  return clean || '오리쇼츠';
+}
+
+/** Human-readable image names shared by keyframe and legacy download controls. */
+export function sceneImageName(title: string, sceneNumber: number, sourceTitle = ''): string {
+  return episodeImageName(title, sourceTitle) + ' ' + String(Math.max(1, Math.trunc(sceneNumber))).padStart(2, '0');
 }

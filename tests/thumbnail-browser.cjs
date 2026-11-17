@@ -111,6 +111,15 @@ async function main() {
     await page.goto(url);
     await page.waitForFunction(() => Boolean(window.qaState));
     const initial = await page.evaluate(() => window.qaState);
+    const zipDownload = page.waitForEvent('download');
+    await page.getByRole('button', { name: '키프레임 전체 다운로드 (ZIP)', exact: true }).click();
+    const zip = await zipDownload;
+    assert.equal(zip.suggestedFilename(), '1화 딱 한 입만 키프레임 전체.zip');
+    const zipPath = path.join(output, 'keyframes.zip');
+    await zip.saveAs(zipPath);
+    assert.equal(fs.readFileSync(zipPath).readUInt32LE(0), 0x04034b50);
+    assert.deepEqual(await page.evaluate(() => window.qaState), initial);
+    checks.push('All keyframes download as one ZIP without altering the plan or originals.');
     await page.getByRole('button', { name: /^2\. 끝/ }).click();
     await page.getByRole('button', { name: '이 장면으로 썸네일 만들기', exact: true }).click();
 

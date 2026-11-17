@@ -4,6 +4,7 @@ import { extractScenes } from '../utils/extractors';
 import { ImageImport } from '../components/ImageImport';
 import { ImagePreview } from '../components/ImagePreview';
 import { downloadFile, imageFile, sceneImageName } from './share';
+import { keyframeArchive } from './keyframeArchive';
 import { ThumbnailEditor } from '../thumbnail/ThumbnailEditor';
 import { defaultThumbnailTitle, type ThumbnailSettings } from '../thumbnail/settings';
 
@@ -19,6 +20,7 @@ export function Kling4Workspace({ result, episodeTitle, episodeThumbnail, images
   const [prompt, setPrompt] = useState(plan.videoPrompt), [editing, setEditing] = useState(false);
   const [thumbnailDraft, setThumbnailDraft] = useState<ThumbnailSettings | null>(null);
   const [thumbnailSession, setThumbnailSession] = useState(0);
+  const [exporting, setExporting] = useState(false);
   const frame = plan.keyframes[index] || plan.keyframes[0];
   const scenes = extractScenes(result), locked = busy || !ready;
   const count = plan.keyframes.filter(f => images[f.imageTitle]).length;
@@ -30,12 +32,32 @@ export function Kling4Workspace({ result, episodeTitle, episodeThumbnail, images
   };
   const action = async (fn: () => unknown) => { try { await fn(); } catch (e) { setMessage((e as Error).message); } };
   const copy = (text: string, label: string) => action(async () => { await navigator.clipboard.writeText(text); setMessage(`${label} 복사 완료`); });
+  const downloadAll = () => action(async () => {
+    if (locked || exporting || count !== plan.keyframes.length) return;
+    setExporting(true);
+    setMessage('키프레임 원본을 ZIP 파일로 묶고 있습니다.');
+    try {
+      const archive = await keyframeArchive(plan.title, plan.keyframes, images, episodeTitle);
+      downloadFile(archive);
+      setMessage(`키프레임 ${plan.keyframes.length}장의 ZIP 다운로드를 시작했습니다.`);
+    } finally {
+      setExporting(false);
+    }
+  });
   return <article className="ori-workflow ori-kling4">
     <div className="ori-kling4-heading">
       <h3>Kling · {plan.duration}초{plan.aspectRatio === '16:9' ? ' · 가로 16:9' : ''}</h3>
       <span>이미지 {count}/{plan.keyframes.length}장 준비</span>
     </div>
     <div className="ori-kling4-status" role="status" aria-live="polite">{message}</div>
+    <div className="ori-kling4-download">
+      <button className="ori-workflow-primary" disabled={locked || exporting || count !== plan.keyframes.length} onClick={downloadAll}>
+        {exporting ? 'ZIP 파일 준비 중…' : '키프레임 전체 다운로드 (ZIP)'}
+      </button>
+      <p className="ori-note">{count === plan.keyframes.length
+        ? `원본 ${count}장을 장면 순서대로 저장합니다.`
+        : `이미지 ${plan.keyframes.length - count}장이 더 준비되면 전체 다운로드할 수 있습니다.`}</p>
+    </div>
     <div className="ori-keyframe-picker" role="group" aria-label="주요장면 이미지">
       {plan.keyframes.map((f, i) => <button key={f.imageTitle} disabled={busy} aria-pressed={index === i} onClick={() => setIndex(i)}>{i + 1}. {f.time === 0 ? '시작' : f.time === plan.duration ? '끝' : `${f.time}초`} {images[f.imageTitle] ? '✓' : ''}</button>)}
     </div>
