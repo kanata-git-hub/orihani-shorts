@@ -103,6 +103,31 @@ test('image imports detect actual file type and reject disguised non-images',()=
  assert.throws(()=>imageMime(new TextEncoder().encode('<svg><script')),/이미지/);
 });
 
+test('download-all requires every keyframe and exports the originals once without changing the production',async()=>{
+ const calls=[],downloads=[],messages=[],noop=()=>{};
+ const plan=production().episodes[0].plan;
+ const images=Object.fromEntries(plan.keyframes.map((f,i)=>[f.imageTitle,'data:image/png;base64,'+Buffer.from('original-'+i).toString('base64')]));
+ const snapshot=JSON.stringify({plan,images});
+ const archive=new File(['ZIP fixture'],'1화 연결 시험 키프레임.zip',{type:'application/zip'});
+ const {Kling4Workspace}=compile('src/workflow/Kling4Workspace.tsx',{
+  react:{useState:v=>[v,value=>messages.push(value)]},
+  './keyframeArchive':{keyframeArchive:async(...args)=>{calls.push(args);return archive;}},
+  './share':{...compile('src/workflow/share.ts'),downloadFile:file=>downloads.push(file)},
+ });
+ const flatten=n=>Array.isArray(n)?n.flatMap(flatten):n&&typeof n==='object'?[n,...flatten(n.props?.children)]:[];
+ const label=n=>Array.isArray(n)?n.map(label).join(''):n&&typeof n==='object'?label(n.props?.children):typeof n==='string'?n:'';
+ const props={result:JSON.stringify(plan),episodeTitle:'1화 연결 시험',images,onApply:noop,onGenerate:()=>assert.fail('must not generate'),onUpdate:()=>assert.fail('must not modify')};
+ const button=extra=>flatten(Kling4Workspace({...props,...extra})).find(n=>n.type==='button'&&label(n)==='키프레임 전체 다운로드 (ZIP)');
+ for(const extra of [{images:{}},{images:{'frame-0':images['frame-0']}},{busy:true},{ready:false}]){
+  const blocked=button(extra);assert.equal(blocked.props.disabled,true);await blocked.props.onClick();
+ }
+ assert.equal(calls.length,0);assert.equal(downloads.length,0);
+ const enabled=button({});assert.equal(enabled.props.disabled,false);await enabled.props.onClick();
+ assert.deepEqual(calls,[[plan.title,plan.keyframes,images,props.episodeTitle]]);
+ assert.deepEqual(downloads,[archive]);assert.ok(messages.includes('키프레임 3장의 ZIP 다운로드를 시작했습니다.'));
+ assert.equal(JSON.stringify({plan,images}),snapshot);
+});
+
 test('optional Gemini keyframe generation reuses the first approved set and renders the real ending state',async()=>{
  const png='data:image/png;base64,AAAA',calls=[],plan=production().episodes[0].plan;
  plan.keyframes[2].imagePrompt='O-wonjang is finally seated on the SAME bench. ENDING_PAYOFF.';

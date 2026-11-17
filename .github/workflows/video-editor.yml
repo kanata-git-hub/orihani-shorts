@@ -52,6 +52,7 @@ jobs:
       - run: node --test tests/experiment-weekly.test.cjs
       - run: node --test tests/screen-editor.test.cjs
       - run: node --test tests/kling4.test.cjs
+      - run: node --test tests/keyframe-archive.test.cjs
       - run: node --test tests/thumbnail.test.cjs
       - run: node --test tests/image-quality.test.cjs
       - run: npm run build
