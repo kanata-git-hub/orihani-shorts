@@ -125,3 +125,30 @@ test('native 30-second sitcom JSON is exported and parsed without reading the wi
  assert.equal(requests.length,3);
  assert.ok(requests.every(u=>!u.pathname.includes(old.id)));
 });
+
+test('new sitcom episodes are first while earlier active releases and other series keep their identities', () => {
+ const next=file('[2026-11-29] 오리시트콤 4-6화 제작안.json','next');
+ const oldSingle=file('[2026-11-12] 오리시트콤 2화 제작안.json','oldSingle');
+ const oldRange=file('[2026-11-11] 오리시트콤 1-2화 제작안.json','oldRange');
+ assert.deepEqual(weeklySources([...existing,sitcom,next,oldSingle,oldRange]).map(f=>f.id),
+  [next,sitcom,...existing].map(f=>f.id));
+ // A later partial release had intentionally withdrawn an overlapping bundle.
+ const revisedSingle=file('[2026-11-18] 오리시트콤 1화 제작안.json','revisedSingle');
+ assert.deepEqual(weeklySources([main,next,revisedSingle,sitcom,oldSingle]).map(f=>f.id),
+  [next,revisedSingle,main].map(f=>f.id));
+});
+
+test('an open picker resolves the new revision of its own series when an episode is renamed', async () => {
+ const {readWeeklySources,findWeeklyChoice}=await import('../src/workflow/productionPackage.ts');
+ const urls=['https://drive.google.com/file/d/cafe/view','https://drive.google.com/file/d/clinic/view'];
+ const clinic=pack('clinic',[4],'한의원 쇼츠');
+ const old=readWeeklySources([pack('r2',[4,5,6]),clinic],urls);
+ const current=readWeeklySources([pack('r4',[4,5,6]),clinic],urls);
+ for(let index=0;index<3;index++){
+  const fresh=current[findWeeklyChoice(current,old[index])];
+  assert.equal(fresh.prepared.number,index+4);
+  assert.equal(fresh.preparedRevision,'r4');
+ }
+ assert.equal(findWeeklyChoice(current,old[3]),3);
+ assert.equal(findWeeklyChoice(current,{...old[0],weeklySourceUrl:'withdrawn',title:'withdrawn'}),-1);
+});

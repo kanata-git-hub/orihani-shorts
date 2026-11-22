@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { SourceEpisode } from '../types';
 import { auth } from '../lib/firebase';
-import { MAX_WEEKLY_SOURCES, readWeeklyInput, readWeeklySources, type PreparedEpisode, type WeeklyChoice } from './productionPackage';
+import { findWeeklyChoice, MAX_WEEKLY_SOURCES, readWeeklyInput, readWeeklySources, type PreparedEpisode, type WeeklyChoice } from './productionPackage';
 import { PromptComparison } from './PromptComparison';
 import { isClinicEpisode } from './package';
 import './workflow.css';
@@ -15,26 +15,35 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
   const [raw,setRaw]=useState(''),[episodes,setEpisodes]=useState<WeeklyChoice[]>([]),[index,setIndex]=useState(0),[message,setMessage]=useState('');
   const [loading,setLoading]=useState(true),[source,setSource]=useState<{name:string;url:string}[]|null>(null);
   const [opening,setOpening]=useState(false),[openError,setOpenError]=useState(false);
-  const revision=useRef(0),selectedTitle=useRef('');
+  const revision=useRef(0),selection=useRef<WeeklyChoice|undefined>(undefined);
   const interrupt=()=>{revision.current++;setLoading(false);};
   const load=(text:string)=>{
     interrupt();setSource(null);setRaw(text);setOpenError(false);
-    try{setEpisodes(readWeeklyInput(text));setIndex(0);selectedTitle.current='';setMessage('만들 에피소드를 골라주세요.');}
+    try{setEpisodes(readWeeklyInput(text));setIndex(0);selection.current=undefined;setMessage('만들 에피소드를 골라주세요.');}
     catch(e){setMessage((e as Error).message);setEpisodes([]);}
   };
-  const latest=async(refresh=false)=>{
-    const request=++revision.current;setLoading(true);setOpenError(false);setMessage('Drive에서 최신 제작안을 확인하고 있습니다…');
-    try{
+  const fetchCatalog=async(refresh:boolean)=>{
       const user=auth.currentUser;if(!user)throw Error('로그인 후 최신 제작안을 확인할 수 있습니다.');
       const response=await fetch('/api/editor/weekly'+(refresh?'?refresh=1':''),{headers:{Authorization:`Bearer ${await user.getIdToken()}`},signal:AbortSignal.timeout(35000)});
       const data=await response.json();if(!response.ok)throw Error(data.error||'최신 제작안을 읽지 못했습니다.');
       if(typeof data.text!=='string'||data.text.length>300000||typeof data.name!=='string'||!/^https:\/\/(docs|drive)\.google\.com\//.test(data.url))throw Error('제작안 응답을 확인하지 못했습니다.');
       const sources=data.sources===undefined?[data]:data.sources;
       if(!Array.isArray(sources)||!sources.length||sources.length>MAX_WEEKLY_SOURCES||sources.some(s=>typeof s?.text!=='string'||s.text.length>300000||typeof s.name!=='string'||!/^https:\/\/(docs|drive)\.google\.com\//.test(s.url)))throw Error('제작안 목록을 확인하지 못했습니다.');
-      const parsed=readWeeklySources(sources.map(s=>s.text));
+      const parsed=readWeeklySources(sources.map(s=>s.text),sources.map(s=>s.url));
+      return {raw:data.text as string,episodes:parsed,sources:sources.map(s=>({name:s.name as string,url:s.url as string}))};
+  };
+  const applyCatalog=(catalog:Awaited<ReturnType<typeof fetchCatalog>>,previous?:WeeklyChoice)=>{
+    const selected=findWeeklyChoice(catalog.episodes,previous);
+    setRaw(catalog.raw);setEpisodes(catalog.episodes);setIndex(Math.max(0,selected));setSource(catalog.sources);
+    selection.current=catalog.episodes[Math.max(0,selected)];
+    return selected;
+  };
+  const latest=async(refresh=false)=>{
+    const request=++revision.current;setLoading(true);setOpenError(false);setMessage('Drive에서 최신 제작안을 확인하고 있습니다…');
+    try{
+      const catalog=await fetchCatalog(refresh);
       if(request!==revision.current)return;
-      setRaw(data.text);setEpisodes(parsed);setIndex(Math.max(0,parsed.findIndex(e=>e.title===selectedTitle.current)));
-      setSource(sources.map(s=>({name:s.name,url:s.url})));setMessage(`에피소드 ${parsed.length}개를 가져왔습니다. 만들 에피소드를 골라주세요.`);
+      applyCatalog(catalog,selection.current);setMessage(`에피소드 ${catalog.episodes.length}개를 가져왔습니다. 만들 에피소드를 골라주세요.`);
     }catch(e){if(request===revision.current){setEpisodes([]);setSource(null);setMessage((e instanceof Error&&e.name!=='TimeoutError'?e.message:'최신 제작안 확인이 지연되고 있습니다.')+' 아래에서 파일이나 내용으로 직접 가져올 수도 있습니다.');}}
     finally{if(request===revision.current)setLoading(false);}
   };
@@ -45,10 +54,19 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
   const choose=async()=>{
     if(!chosen||disabled||opening)return;
     interrupt();
+    const request=revision.current;
     setOpening(true);setOpenError(false);setMessage(chosen.prepared?.assets?'Drive에서 이 회차의 그림을 불러오고 있습니다…':'제작안을 열고 있습니다…');
     try{
-      if(chosen.prepared){await onPrepared(chosen.prepared,chosen.preparedRevision!);setMessage('완성 제작안을 열었습니다.');}
-      else{onChoose(chosen,chosen.characters[0]||'owonjang');setMessage('아래 기획에 넣었습니다. 주인공을 확인하고 영상 기획 생성을 누르세요.');}
+      let current=chosen;
+      if(source){
+        const catalog=await fetchCatalog(true);
+        if(request!==revision.current)return;
+        const selected=applyCatalog(catalog,chosen);
+        if(selected<0)throw Error('제작안 목록이 변경되었습니다. 최신 목록에서 회차를 다시 골라주세요.');
+        current=catalog.episodes[selected];
+      }
+      if(current.prepared){await onPrepared(current.prepared,current.preparedRevision!);setMessage('완성 제작안을 열었습니다.');}
+      else{onChoose(current,current.characters[0]||'owonjang');setMessage('아래 기획에 넣었습니다. 주인공을 확인하고 영상 기획 생성을 누르세요.');}
     }catch(e){setOpenError(true);setMessage(e instanceof Error&&e.name==='TimeoutError'?'Drive 이미지 불러오기가 지연되고 있습니다. 다시 눌러주세요.':(e as Error).message);}
     finally{setOpening(false);}
   };
@@ -57,7 +75,7 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
     <p role="status" aria-live="polite" className={chosen&&!loading&&!opening&&!openError?'sr-only':''}>{message}</p>
     {chosen&&<>
       <p className="ori-episode-meta">선택 가능한 제작안 {episodes.length}편{(bonusCount>0||clinicCount>0)&&` · 본편 ${episodes.length-bonusCount-clinicCount}편`}{clinicCount>0&&` · 한의원 쇼츠 ${clinicCount}편`}{bonusCount>0&&` · 번외 ${bonusCount}편`}</p>
-      <label className="ori-episode-select"><span className="sr-only">만들 에피소드</span><select disabled={disabled} value={index} onChange={e=>{interrupt();const n=Number(e.target.value);setIndex(n);selectedTitle.current=episodes[n].title;}}>{episodes.map((e,i)=><option key={i} value={i}>{e.title}</option>)}</select></label>
+      <label className="ori-episode-select"><span className="sr-only">만들 에피소드</span><select disabled={disabled||loading||opening} value={index} onChange={e=>{interrupt();const n=Number(e.target.value);setIndex(n);selection.current=episodes[n];}}>{episodes.map((e,i)=><option key={i} value={i}>{e.title}</option>)}</select></label>
       <p className="ori-episode-meta">{chosen.duration}초{chosen.prepared&&` · 이미지 ${(chosen.prepared.plan.keyframes||chosen.prepared.plan.clips).length}장${chosen.prepared.assets?' 준비됨':''} · 영상 ${chosen.prepared.plan.workflow==='kling4'||chosen.duration===5?1:4}개`}</p>
       <button disabled={disabled||loading||opening} className="ori-workflow-primary" onClick={choose}>{opening?'그림까지 불러오는 중…':chosen.prepared?'이 제작안으로 시작':'이 에피소드로 기획 준비'}</button>
       <details className="ori-weekly-outline"><summary>줄거리·장면별 기획</summary><p>{chosen.scenario}</p></details>
@@ -66,8 +84,8 @@ export function WeeklyScript({onChoose,onPrepared,disabled=false}:{
     <details className="ori-weekly-source"><summary>제작안 정보·파일 가져오기</summary>
       {source?.map(s=><a key={s.url} className="ori-workflow-link" href={s.url} target="_blank" rel="noopener noreferrer">{s.name}</a>)}
       <a className="ori-workflow-link" href="https://drive.google.com/drive/folders/1O2wOWOLyAXmq96aXOExX0fecwK7jZbq-" target="_blank" rel="noopener noreferrer">제작안 폴더 열기</a>
-      <label>제작안 또는 대본 파일<input disabled={disabled} type="file" accept=".json,.md,.txt,application/json,text/plain,text/markdown" onChange={async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;interrupt();const request=revision.current;if(file.size>1000000){setMessage('파일은 1MB 이하로 넣어주세요.');return;}try{const text=await file.text();if(request===revision.current)load(text);}catch{if(request===revision.current)setMessage('파일을 읽지 못했습니다.');}}}/></label>
-      <textarea disabled={disabled} aria-label="주간 대본 내용" rows={5} value={raw} maxLength={300000} onChange={e=>{interrupt();setRaw(e.target.value);setEpisodes([]);setSource(null);}}/><button disabled={disabled} onClick={()=>load(raw)}>내용 읽기</button>
+      <label>제작안 또는 대본 파일<input disabled={disabled||opening} type="file" accept=".json,.md,.txt,application/json,text/plain,text/markdown" onChange={async e=>{const file=e.target.files?.[0];e.target.value='';if(!file)return;interrupt();const request=revision.current;if(file.size>1000000){setMessage('파일은 1MB 이하로 넣어주세요.');return;}try{const text=await file.text();if(request===revision.current)load(text);}catch{if(request===revision.current)setMessage('파일을 읽지 못했습니다.');}}}/></label>
+      <textarea disabled={disabled||opening} aria-label="주간 대본 내용" rows={5} value={raw} maxLength={300000} onChange={e=>{interrupt();setRaw(e.target.value);setEpisodes([]);setSource(null);}}/><button disabled={disabled||opening} onClick={()=>load(raw)}>내용 읽기</button>
     </details>
   </section>;
 }

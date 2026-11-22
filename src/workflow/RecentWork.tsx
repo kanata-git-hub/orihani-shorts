@@ -24,7 +24,7 @@ export function RecentWork({history,drafts,media,recent,onHistory,onEditor}:{his
   const progress = item ? recordProgress(item,media[item.id],linked) : draftProgress(draft);
   return <section className="ori-workflow ori-recent" aria-label="최근 작업 이어하기">
     <div className="ori-recent-info">
-      <p className="ori-workflow-label">최근 작업 · 이 기기에 저장</p>
+      <p className="ori-workflow-label">최근 작업 · 이 기기에 저장한 버전</p>
       <h2>{item ? extractOverview(item.result).title || '저장된 기획' : draft!.title}</h2>
       <p className="ori-recent-progress">{progress.label}</p>
     </div>
