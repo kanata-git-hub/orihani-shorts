@@ -2,7 +2,7 @@ type ReviewLink = { reviewUrl?: string; reviewLabel?: string };
 export type ReviewCut = { start: number; end: number; action: string; subtitle?: string; frame?: string };
 export type ReviewEpisode = ReviewLink & {
   number: number; title: string; duration: 15; scenarioRevision: string; summary: string;
-  cuts: ReviewCut[]; keyShot?: string; klingPrompt?: string;
+  cuts: ReviewCut[]; scenario?: string; keyShot?: string; klingPrompt?: string;
   props?: string | string[]; editNotes?: string | string[];
 };
 export type ScenarioReviewData = ReviewLink & {
@@ -32,7 +32,7 @@ export function parseScenarioReview(raw: string): ScenarioReviewData {
   for (const ep of data.episodes) {
     if (!ep || !Number.isSafeInteger(ep.number) || ep.number < 1 || numbers.has(ep.number) ||
         ep.duration !== 15 || !hasText(ep.title) || !hasText(ep.scenarioRevision) || !hasText(ep.summary) ||
-        !optionalText(ep.keyShot) || !optionalText(ep.klingPrompt) || !notes(ep.props) || !notes(ep.editNotes) ||
+        !optionalText(ep.scenario) || !optionalText(ep.keyShot) || !optionalText(ep.klingPrompt) || !notes(ep.props) || !notes(ep.editNotes) ||
         !validLink(ep) || !Array.isArray(ep.cuts) || !ep.cuts.length) return bad();
     numbers.add(ep.number);
     let time = 0;

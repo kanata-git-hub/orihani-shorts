@@ -52,3 +52,5 @@
 .ori-scenario-review article ol { list-style: none; padding: 0; }
 .ori-scenario-review article li { margin: .5rem 0; }
 .ori-scenario-review article ol > li { border-left: 2px solid #ddd1c7; padding: .25rem .7rem; }
+
+.ori-scenario-review .ori-weekly-heading button { width: auto; padding: .5rem .75rem; }

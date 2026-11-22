@@ -57,6 +57,7 @@ export function ScenarioReview() {
             {review.episodes.map(item => <option key={item.number} value={item.number}>{item.number}화 · {item.title}</option>)}
           </select></label>
         <p>{ep.summary}</p>
+        {ep.scenario && <details><summary>시나리오 전문</summary><p>{ep.scenario}</p></details>}
         <span className="ori-episode-meta">{ep.duration}초 · {ep.scenarioRevision}</span>
         {ep.keyShot && <div><h4>핵심 장면</h4><p>{ep.keyShot}</p></div>}
         <h4>컷별 시나리오</h4>
