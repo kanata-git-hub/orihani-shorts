@@ -35,6 +35,17 @@ test('30 seconds and four authored keyframes preserve landscape settings, images
  assert.equal(resultIsCurrent(done),true);assert.equal(draftStage(done),'result');
  assert.equal(resultIsCurrent({...done,plan:{...edit,aspectRatio:'9:16'}}),false);
 });
+test('screen caption placement survives weekly selection, portable import, and ASS rendering',()=>{
+ const raw=production(),entry=raw.episodes[0];entry.episode.aspectRatio=entry.plan.aspectRatio='9:16';
+ entry.episode.captions=[{start:0,end:4,text:'위에서',source:'screen',position:'upper'},{start:5,end:9,text:'기본 위치',source:'screen'}];
+ const pack=readProductionPackage(JSON.stringify(raw)),item=preparedHistory(pack.episodes[0],pack.revision);
+ const restored=readPackage(makePackage(item,{}));const plan=importEpisode(editorEpisode(restored.item));validatePlan(plan);
+ assert.deepEqual(plan.captions,entry.episode.captions);
+ const output=subtitles(plan).split('\n').filter(line=>line.startsWith('Dialogue:'));
+ assert.match(output[0],/pos\(540,445\)/);assert.match(output[1],/pos\(540,1440\)/);
+ entry.episode.captions[0].position='bad';assert.throws(()=>readProductionPackage(JSON.stringify(raw)),/위치/);
+ assert.throws(()=>validatePlan({...plan,captions:[{...plan.captions[0],position:'bad'}]}),/위치/);
+});
 test('manual screen mode rejects narration, extra media layouts, changed volume and invalid aspect ratios',()=>{
  for(const patch of [{narration:'read me'},{videoLayout:'legacy-clips'},{originalVolume:0.2},{aspectRatio:'4:3'},{voiceSegments:[{sourceStart:0,sourceEnd:1,start:0}]}])assert.throws(()=>validatePlan(screen(patch)));
  const p=production();p.episodes[0].plan.aspectRatio='9:16';assert.throws(()=>readProductionPackage(JSON.stringify(p)),/비율/);

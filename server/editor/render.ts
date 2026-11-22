@@ -28,9 +28,11 @@ export function subtitles(p: EditPlan) {
   const landscape = p.aspectRatio === '16:9';
   const width = landscape ? 1920 : 1080, height = landscape ? 1080 : 1920;
   const captions = p.captions.map(c => ({ ...c, layout: fitVideoText(escapeASS(c.text), landscape ? 240 : 400, landscape ? 1440 : 810, landscape ? 90 : 150) }));
+  const upperY = landscape ? 250 : 445;
+  const lowerY = landscape ? 864 : 1440;
   // Upload titles and thumbnail suggestions are metadata, never video overlays.
   return `[Script Info]\nScriptType: v4.00+\nPlayResX: ${width}\nPlayResY: ${height}\nWrapStyle: 2\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Caption,Kyobo Handwriting 2024,150,&H00FFFFFF,&H00FFFFFF,&H00111111,&H80000000,-1,0,0,0,100,100,0,0,1,3,0,5,135,135,0,1\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n` +
-    captions.map(c => `Dialogue: 0,${clock(c.start)},${clock(c.end)},Caption,,0,0,0,,{\\pos(${width / 2},${landscape ? 864 : 1440})\\fs${c.layout.size}}${c.layout.text}`).join('\n');
+    captions.map(c => `Dialogue: 0,${clock(c.start)},${clock(c.end)},Caption,,0,0,0,,{\\pos(${width / 2},${p.captionStyle === 'screen' && c.position === 'upper' ? upperY : lowerY})\\fs${c.layout.size}}${c.layout.text}`).join('\n');
 }
 export async function render(p: EditPlan, videos: string[], voice: string | undefined, dir: string, signal?: AbortSignal) {
   p = cleanPlanText(p);

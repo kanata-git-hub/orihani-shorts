@@ -25,7 +25,7 @@ export interface SourceEpisode {
   captionStyle?: 'clinic' | 'legacy' | 'screen' | 'korean';
   koreanTitlePreset?: 'balanced' | 'wide';
   headline?: [string, string];
-  captions?: { start: number; end: number; text: string; source?: 'screen' }[];
+  captions?: { start: number; end: number; text: string; source?: 'screen'; position?: 'upper' }[];
   aspectRatio?: '9:16' | '16:9';
   originalVolume?: number;
   clinicBrandStart?: number;
