@@ -126,3 +126,41 @@ test('wide headlines use the measured 90–95% width, shared size, separated lin
   assert.equal(fs.readFileSync(explicitOld.ass,'utf8'),oldText,'missing and balanced preserve the exact prior ASS');
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+test('cafe editor preserves one headline, timed multiline copy and the complete 1916px Kling frame',async()=>{
+ const raw=production();
+ Object.assign(raw.episodes[0].episode,{
+  koreanOverlayProfile:'cafe', headline:['다','팔렸는데요'],
+  captions:[{start:0,end:4.8,text:'목요일 · 선결제 예약\n금요일에 찾을 케이크',source:'screen'}],
+ });
+ const pack=readProductionPackage(JSON.stringify(raw));
+ const plan=importEpisode(editorEpisode(preparedHistory(pack.episodes[0],pack.revision)));
+ assert.equal(plan.koreanOverlayProfile,'cafe');
+ validatePlan({...plan,headline:['편집한 제목','']});
+ assert.throws(()=>validatePlan({...plan,headline:['','']}));
+ assert.throws(()=>validatePlan({...plan,koreanOverlayProfile:'other'}));
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ori-cafe-korean-'));
+ const ffmpeg=process.env.FFMPEG_PATH||'ffmpeg';
+ try{
+  const {ass,layout,overlays}=await generateKoreanCaptions(plan,dir,true);
+  assert.equal(overlays.length,2);
+  assert.equal(layout.titleY.length,1);
+  const events=fs.readFileSync(ass,'utf8').split('\n').filter(s=>s.startsWith('Dialogue:'));
+  assert.equal(events.length,2);
+  assert.ok(events[0].endsWith('다 팔렸는데요'));
+  assert.ok(events[1].includes('\\an5\\pos(540,1440)') && events[1].endsWith('목요일 · 선결제 예약\\N금요일에 찾을 케이크'));
+  const input=path.join(dir,'kling.mp4');
+  function frame(height) {
+   execFileSync(ffmpeg,['-v','error','-y','-f','lavfi','-i',`color=white:s=1080x${height}:r=2:d=15`,'-c:v','libx264','-preset','ultrafast','-threads','1',input]);
+  }
+  frame(1916);
+  const output=await render(plan,[input],undefined,dir);
+  const meta=JSON.parse(execFileSync(process.env.FFPROBE_PATH||'ffprobe',['-v','error','-show_streams','-of','json',output]));
+  assert.deepEqual([meta.streams[0].width,meta.streams[0].height],[1080,1920]);
+  const strip=execFileSync(ffmpeg,['-v','error','-i',output,'-vf','crop=2:1920:20:0,format=gray','-frames:v','1','-f','rawvideo','-threads','1','-']);
+  assert.ok(strip[0]<20 && strip[2]<20 && strip[4]>235);
+  assert.ok(strip.at(-6)>235 && strip.at(-4)<20 && strip.at(-2)<20);
+  frame(1900);
+  await assert.rejects(()=>render(plan,[input],undefined,dir),/1080×1920/);
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});

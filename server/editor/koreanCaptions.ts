@@ -5,7 +5,7 @@ import { cleanPlanText, validatePlan } from '../../src/editor/model';
 import { uploadedMediaInput } from './mediaInput';
 import { runMediaProcess } from './mediaProcess';
 
-type Layout = { koreanTitlePreset?: 'balanced' | 'wide'; headlineInkWidths?: number[] | null; titleY: [number, number]; headlineFontSizes: number[]; captionFontSizes: number[]; titleTopInkY: number; maximumCaptionBottomInkY: number; balancedOuterMarginPx: number; horizontalCenter: number };
+type Layout = { koreanTitlePreset?: 'balanced' | 'wide'; headlineInkWidths?: number[] | null; koreanOverlayProfile?: 'cafe'; titleY: number[]; headlineFontSizes: number[]; captionFontSizes: number[]; titleTopInkY: number; maximumCaptionBottomInkY?: number; balancedOuterMarginPx?: number; horizontalCenter: number };
 type Overlay = { path: string; start: number; end?: number; kind: 'headline' | 'caption' };
 const ffmpeg = () => process.env.FFMPEG_PATH || 'ffmpeg';
 function run(binary: string, args: string[], cwd: string, signal?: AbortSignal) {
@@ -25,7 +25,7 @@ export async function generateKoreanCaptions(plan: EditPlan, dir: string, previe
   await mkdir(path.join(dir, 'fonts'), { recursive: true });
   await copyFile(path.resolve('public/fonts/Cafe24Ssurround.ttf'), path.join(dir, 'fonts/Cafe24Ssurround.ttf'));
   await writeFile(path.join(dir, 'korean-request.json'), JSON.stringify({
-    headline: p.headline, duration, koreanTitlePreset: p.koreanTitlePreset,
+    headline: p.headline, duration, koreanTitlePreset: p.koreanTitlePreset, koreanOverlayProfile: p.koreanOverlayProfile,
     captions: p.captions.map(c => ({...c, end: Math.abs(c.end - p.duration) < 0.000001 ? duration : c.end})),
   }));
   const script = path.resolve('scripts/render-korean-captions.py');
@@ -39,7 +39,7 @@ export async function generateKoreanCaptions(plan: EditPlan, dir: string, previe
     if (!measured.needsCalibration) { layout = measured; break; }
   }
   if (!layout) throw Error('제목 크기를 맞추지 못했습니다. 문구를 짧게 다듬어주세요.');
-  if (!Array.isArray(layout.titleY) || layout.titleY.length !== 2 || layout.titleY.some(y => !Number.isFinite(y)) || layout.horizontalCenter !== 540) throw Error('한국판 자막 배치를 확인하지 못했습니다.');
+  if (!Array.isArray(layout.titleY) || layout.titleY.length !== (p.koreanOverlayProfile === 'cafe' ? 1 : 2) || layout.titleY.some(y => !Number.isFinite(y)) || layout.horizontalCenter !== 540) throw Error('한국판 자막 배치를 확인하지 못했습니다.');
   const overlays: Overlay[] = [];
   if (preview) {
     // One transparent static layer plus one transparent frame per timed caption.
@@ -69,16 +69,18 @@ export async function renderKorean(plan: EditPlan, videos: string[], voice: stri
   if (videos.length !== 1 || voice) throw Error('한국판 자막에는 별도 음성 없이 완성 영상 한 개를 넣어주세요.');
   const media = await inspect(videos[0], dir, signal);
   if (media.duration < p.duration - 0.15 || media.duration > p.duration + 0.5) throw Error(`한국판에는 ${p.duration}초 원본 영상을 넣어주세요.`);
-  if (media.width !== 1080 || media.height !== 1920) throw Error('한국판에는 1080×1920 세로 9:16 원본을 넣어주세요. 화면을 임의로 자르거나 줄이지 않습니다.');
+  const padKlingFrame = media.width === 1080 && media.height === 1916;
+  if (media.width !== 1080 || (media.height !== 1920 && !padKlingFrame)) throw Error('한국판에는 1080×1920 또는 1080×1916 세로 원본을 넣어주세요.');
   if (media.audioCodec && media.audioCodec !== 'aac') throw Error('원본 소리를 그대로 유지하려면 AAC 소리가 포함된 MP4 영상을 넣어주세요.');
   if (p.captions.some(c => c.start >= media.duration || (c.end !== p.duration && c.end > media.duration + 0.02))) throw Error('자막 시간이 원본 영상 길이를 벗어납니다.');
   await generateKoreanCaptions(p, dir, false, signal, media.duration);
+  const filters = [...(padKlingFrame ? ['pad=1080:1920:0:2:black'] : []), 'ass=korean-captions.ass:fontsdir=fonts'];
   const output = path.join(dir, 'finished.mp4');
   await run(ffmpeg(), ['-hide_banner', '-y', '-nostdin', ...uploadedMediaInput(videos[0], false),
-    '-map', '0:v:0', '-map', '0:a?', '-map_metadata', '0', '-vf', 'ass=korean-captions.ass:fontsdir=fonts',
+    '-map', '0:v:0', '-map', '0:a?', '-map_metadata', '0', '-vf', filters.join(','),
     '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-pix_fmt', 'yuv420p', '-fps_mode', 'passthrough', '-c:a', 'copy', '-threads', '2',
     '-movflags', '+faststart+use_metadata_tags', output], dir, signal);
   const finished = await inspect(output, dir, signal);
-  if (Math.abs(finished.duration - media.duration) > 0.03 || finished.width !== media.width || finished.height !== media.height || finished.audioCodec !== media.audioCodec) throw Error('원본 길이·크기·소리 보존 검증에 실패했습니다.');
+  if (Math.abs(finished.duration - media.duration) > 0.03 || finished.width !== media.width || finished.height !== 1920 || finished.audioCodec !== media.audioCodec) throw Error('원본 길이·크기·소리 보존 검증에 실패했습니다.');
   return output;
 }
