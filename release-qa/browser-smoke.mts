@@ -83,6 +83,7 @@ try{
   }
   await k.getByText('콘티·장면별 시간',{exact:true}).click();assert.ok((await k.locator('.ori-weekly-outline p').innerText()).includes(ep.plan.scenario.slice(0,25)));
   await k.getByRole('button',{name:'전체 영상 프롬프트 복사',exact:true}).click();
+  await k.getByText('전체 영상 프롬프트 복사 완료',{exact:true}).waitFor();
   const copied=await page.evaluate(()=>navigator.clipboard.readText());assert.equal(copied,ep.plan.videoPrompt);
   await k.getByRole('button',{name:'완성 영상 편집하기',exact:true}).click();await page.getByRole('button',{name:'2. 자막',exact:true}).click();
   const txt=page.locator('.ori-editor textarea[maxlength="160"]');const values=await txt.evaluateAll(els=>els.map(x=>(x as HTMLTextAreaElement).value));
