@@ -16,6 +16,7 @@ import { validatePlan, cleanPlanText } from '../../src/editor/model';
 import { transcribe } from './transcribe';
 import { spokenNumbers } from '../../src/editor/speech';
 import { latestWeekly } from '../workflow/weekly';
+import { loadScenarioReview } from '../workflow/scenarioReview';
 import { latestWeeklyImages } from '../workflow/weeklyImages';
 
 export function wav(pcm: Buffer) {
@@ -66,6 +67,14 @@ editorRouter.get('/weekly', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   try { res.json(await latestWeekly(req.query.refresh === '1')); }
   catch (e) { res.status(502).json({error:e instanceof Error && e.name !== 'TimeoutError' ? e.message : '최신 대본 확인이 지연되고 있습니다. 잠시 후 다시 확인해주세요.'}); }
+});
+editorRouter.get('/scenario-review', async (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try {
+    res.json({ review: await loadScenarioReview() });
+  } catch (error) {
+    res.status(502).json({ error: error instanceof Error && error.name !== 'TimeoutError' ? error.message : '검토본 확인이 지연되고 있습니다.' });
+  }
 });
 let imagesLoading = false;
 editorRouter.get('/weekly/:number/images', async (req, res) => {

@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { SourceEpisode } from '../types';
 import { HistoryItem } from '../types';
 import { WeeklyScript } from '../workflow/WeeklyScript';
+import { ScenarioReview } from '../workflow/ScenarioReview';
 import { episodePrompt } from '../workflow/weekly';
 import { isAuthoredPlan, type ProductionPackage } from '../workflow/productionPackage';
 import { usePromptRefresh } from '../workflow/usePromptRefresh';
@@ -245,6 +246,7 @@ export default function App() {
                 showToast(entry.assets?'제작안과 주요장면 이미지를 모두 불러왔습니다.':'완성 제작안을 불러왔습니다. 주요장면 이미지를 가져오세요.');
               } finally { setWorkflowBusy(false); }
             }} onChoose={(episode,character)=>{if(source&&source.title!==episode.title)setPendingReference(null);setSource(episode);setManualPlanOpen(true);setCustomPrompt(episodePrompt(episode));setSelectedCharacter(character);setView(episode.duration===5?'5s-plan':'15s-plan');}}/>
+            <ScenarioReview/>
             <Kling4Start/>
             <details className="ori-manual-plan" open={manualPlanOpen} onToggle={e=>setManualPlanOpen(e.currentTarget.open)}>
               <summary><span>Gemini로 기획하기 · 선택</span><small>이전 클립 방식 · API 비용 발생</small></summary>
