@@ -14,7 +14,7 @@ export const MAX_WEEKLY_TOTAL_CHARS = 2400000;
 export type ProductionImage = { fileId: string; sha256: string };
 export type PreparedEpisode = { number: number; characterId: string; episode: SourceEpisode; plan: Record<string, any>; assets?: Record<string, ProductionImage> };
 export type ProductionPackage = { format: 'orihani-production'; version: 1; revision: string; episodes: PreparedEpisode[] };
-export type WeeklyChoice = SourceEpisode & { characters: string[]; prepared?: PreparedEpisode; preparedRevision?: string };
+export type WeeklyChoice = SourceEpisode & { characters: string[]; weeklySourceUrl?: string; prepared?: PreparedEpisode; preparedRevision?: string };
 const fail = (detail: string): never => { throw Error(`완성 제작안: ${detail}`); };
 function text(value: unknown, label: string, max = 30000): asserts value is string {
   if (typeof value !== 'string' || !value.trim() || value.length > max) fail(`${label}을 확인해주세요.`);
@@ -112,11 +112,14 @@ export function readWeeklyInput(raw: string): WeeklyChoice[] {
 
 // Keep each source's own revision and asset manifest, including separately added bonuses.
 // A production file still contains at most three episodes.
-export function readWeeklySources(sources: string[]): WeeklyChoice[] {
+export function readWeeklySources(sources: string[], sourceUrls?: string[]): WeeklyChoice[] {
   if (!Array.isArray(sources) || !sources.length || sources.some(s => typeof s !== 'string')) fail('주간 제작안 목록을 확인해주세요.');
   if (sources.length > MAX_WEEKLY_SOURCES) fail(`제작안 ${sources.length}개가 최대 ${MAX_WEEKLY_SOURCES}개를 넘었습니다. 누적 제작안을 정리해주세요.`);
   if (sources.reduce((sum, s) => sum + s.length, 0) > MAX_WEEKLY_TOTAL_CHARS) fail('누적 제작안 전체 용량이 2,400,000자를 넘었습니다. 이미지가 포함되지 않은 제작안인지 확인해주세요.');
-  const choices = sources.flatMap(readWeeklyInput);
+  const choices = sources.flatMap((text, index) => {
+    const episodes = readWeeklyInput(text);
+    return sourceUrls ? episodes.map(episode => ({...episode, weeklySourceUrl: sourceUrls[index]})) : episodes;
+  });
   const seen = new Set<string>(), clinicNumbers = new Set<number>();
   for (const choice of choices) {
     const key = choice.prepared ? `${choice.preparedRevision}:${choice.prepared.number}` : choice.title;
@@ -128,6 +131,17 @@ export function readWeeklySources(sources: string[]): WeeklyChoice[] {
     }
   }
   return choices;
+}
+
+// Source file and episode number remain stable when its title or revision changes.
+export function findWeeklyChoice(choices: WeeklyChoice[], previous?: WeeklyChoice) {
+  if (!previous) return -1;
+  if (previous.weeklySourceUrl && previous.prepared) {
+    const index = choices.findIndex(choice => choice.weeklySourceUrl === previous.weeklySourceUrl && choice.prepared?.number === previous.prepared!.number);
+    if (index >= 0) return index;
+  }
+  const matching = choices.filter(choice => choice.title === previous.title);
+  return matching.length === 1 ? choices.indexOf(matching[0]) : -1;
 }
 
 export function preparedHistory(entry: PreparedEpisode, revision: string): HistoryItem {

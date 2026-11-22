@@ -17,7 +17,7 @@ const extraClinicStem=/^\[(\d{4}-\d{2}-\d{2})\]\s*한의원\s+쇼츠\s+추가\s+
 const experimentStem=/^\[(\d{4}-\d{2}-\d{2})\] 오리 상상여행 실험작 제작안\.json$/;
 // The new sitcom has its own numbering and release date; it does not replace
 // the legacy main week or hide that week's companion bonus productions.
-const sitcomStem=/^\[(\d{4}-\d{2}-\d{2})\]\s*오리시트콤\s+[1-9]\d*(?:\s*[-·]\s*[1-9]\d*)?화\s+제작안\.json$/;
+const sitcomStem=/^\[(\d{4}-\d{2}-\d{2})\]\s*오리시트콤\s+([1-9]\d*)(?:\s*[-·]\s*([1-9]\d*))?화\s+제작안\.json$/;
 function packageDate(name:string,pattern=stem){
  const value=pattern.exec(name)?.[1];if(!value)return null;
  const date=new Date(value+'T00:00:00Z');return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value?value:null;
@@ -85,7 +85,21 @@ export function weeklySources(files:DriveFile[]){
  experiments.sort((a,b)=>packageDate(b.name,experimentStem)!.localeCompare(packageDate(a.name,experimentStem)!)||(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
  const sitcoms=files.filter(f=>typeof f?.name==='string'&&typeof f.id==='string'&&/^[\w-]{20,}$/.test(f.id)&&packageDate(f.name,sitcomStem)&&[docsType,'application/json','text/plain','application/octet-stream'].includes(f.mimeType));
  sitcoms.sort((a,b)=>packageDate(b.name,sitcomStem)!.localeCompare(packageDate(a.name,sitcomStem)!)||(b.modifiedTime||'').localeCompare(a.modifiedTime||'')||a.id.localeCompare(b.id));
- const selected=[...sitcoms.slice(0,1),main,...(currentClinic?[currentClinic]:[]),...clinicAdditions,...(bonuses.length?[bonuses[0]]:[]),...Array.from(additions.entries()).sort(([a],[b])=>a.localeCompare(b,'en',{numeric:true})).map(([,file])=>file),...experiments.slice(0,1)];
+ // Once a newer edition overlaps a bundle, the entire older bundle is withdrawn.
+ // Remember its numbers too, so still older partial editions cannot reappear.
+ const occupiedSitcomNumbers = new Set<number>();
+ const activeSitcoms = sitcoms.filter(file => {
+  const [, , first, last] = sitcomStem.exec(file.name)!;
+  const start = Number(first), end = Number(last || first);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || end < start || end - start > 2) {
+   throw Error('시트콤 제작안 파일명에는 연속된 1~3편을 적어주세요.');
+  }
+  const numbers = Array.from({length: end - start + 1}, (_, index) => start + index);
+  const overlaps = numbers.some(number => occupiedSitcomNumbers.has(number));
+  numbers.forEach(number => occupiedSitcomNumbers.add(number));
+  return !overlaps;
+ });
+ const selected=[...activeSitcoms,main,...(currentClinic?[currentClinic]:[]),...clinicAdditions,...(bonuses.length?[bonuses[0]]:[]),...Array.from(additions.entries()).sort(([a],[b])=>a.localeCompare(b,'en',{numeric:true})).map(([,file])=>file),...experiments.slice(0,1)];
  if(selected.length>MAX_WEEKLY_SOURCES)throw Error(`주간 제작안 파일이 너무 많습니다(${selected.length}개). 현재 한 번에 ${MAX_WEEKLY_SOURCES}개까지 불러올 수 있습니다. 파일을 자동으로 제외하거나 옮기지 않았습니다.`);
  return selected;
 }

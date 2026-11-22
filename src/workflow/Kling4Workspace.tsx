@@ -49,6 +49,7 @@ export function Kling4Workspace({ result, episodeTitle, episodeThumbnail, images
       <h3>Kling · {plan.duration}초{plan.aspectRatio === '16:9' ? ' · 가로 16:9' : ''}</h3>
       <span>이미지 {count}/{plan.keyframes.length}장 준비</span>
     </div>
+    <details className="ori-weekly-outline"><summary>콘티·장면별 시간</summary><p className="whitespace-pre-wrap">{plan.scenario}</p></details>
     <div className="ori-kling4-status" role="status" aria-live="polite">{message}</div>
     <div className="ori-kling4-download">
       <button className="ori-workflow-primary" disabled={locked || exporting || count !== plan.keyframes.length} onClick={downloadAll}>
