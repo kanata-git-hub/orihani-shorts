@@ -255,6 +255,9 @@ export function VideoEditor({ visible, open, onIndex, onBusy, resumeId, onResume
             {c.review&&<p className="ori-note">{c.review}<button onClick={()=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,review:undefined}:r)})}>이 자막 확인했음</button></p>}
             <details open={direct||undefined}><summary>{direct?'시간 조절 / 삭제':'종류·시간 조절 / 삭제'}</summary><div className="ori-row">
               <label hidden={direct}>자막 종류<select value={c.source||'narration'} onChange={e=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,source:e.target.value as any}:r)})}><option value="narration">해설</option><option value="dialogue">등장인물 대사</option><option value="screen">화면 문구 · 시간 유지</option></select></label>
+              {d.plan.captionStyle==='screen'&&<label>자막 위치<select value={c.position || 'lower'} onChange={e=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,position:e.target.value==='upper'?'upper':undefined}:r)})}>
+                <option value="lower">아래</option><option value="upper">위</option>
+              </select></label>}
               <label>시작(초)<input type="number" min="0" max={d.plan.duration+(direct&&!korean?0.5:0)} step="0.01" value={Number(c.start.toFixed(2))} onChange={e=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,start:+e.target.value}:r)})}/></label>
               <label>끝(초)<input type="number" min="0" max={d.plan.duration+(direct&&!korean?0.5:0)} step="0.01" value={Number(c.end.toFixed(2))} onChange={e=>change({captions:d.plan.captions.map((r,n)=>n===i?{...r,end:+e.target.value}:r)})}/></label>
               <button onClick={()=>change({captions:d.plan.captions.filter((_,n)=>n!==i)})}>자막 {i+1} 삭제</button>

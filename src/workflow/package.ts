@@ -1,5 +1,5 @@
 import { getKling4Plan, validateKling4Plan } from '../kling4';
-import { defaultPlan, validatePlan } from '../editor/model';
+import { defaultPlan, screenCaptionPosition, validatePlan } from '../editor/model';
 import { HistoryItem, SourceEpisode } from '../types';
 import { extractClips, extractOverview } from '../utils/extractors';
 import { isBackgroundChoice } from '../backgroundAssets';
@@ -32,7 +32,7 @@ export function sourceEpisode(v: any): SourceEpisode {
     ...(v.aspectRatio !== undefined ? {aspectRatio:v.aspectRatio} : {}),
     ...(v.originalVolume !== undefined ? {originalVolume:v.originalVolume} : {}),
     ...(v.headline !== undefined ? {headline:[...v.headline] as [string,string]} : {}),
-    ...(v.captions !== undefined ? {captions:v.captions.map((c:any)=>({start:c.start,end:c.end,text:c.text,source:'screen' as const}))} : {}),
+    ...(v.captions !== undefined ? {captions:v.captions.map((c:any)=>({start:c.start,end:c.end,text:c.text,source:'screen' as const,...screenCaptionPosition(c.position)}))} : {}),
     ...(v.clinicBrandStart !== undefined ? {clinicBrandStart:v.clinicBrandStart} : {})};
 }
 export function recordDuration(item: HistoryItem): 5|12|15|30 {

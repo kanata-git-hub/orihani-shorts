@@ -1,7 +1,7 @@
 import type { VoiceSegment } from './speech';
 import { cleanVideoText } from './text';
 import { normalizeScriptTable, isCaptionPlaceholder } from './script';
-export type Caption = { start: number; end: number; text: string; source?: 'narration' | 'dialogue' | 'screen'; review?: string };
+export type Caption = { start: number; end: number; text: string; source?: 'narration' | 'dialogue' | 'screen'; position?: 'upper'; review?: string };
 export type EditPlan = { duration: 5 | 12 | 15 | 30; videoLayout?: 'single' | 'legacy-clips'; captionStyle?: 'clinic' | 'legacy' | 'screen' | 'korean'; koreanTitlePreset?: 'balanced' | 'wide'; headline?: [string, string]; aspectRatio?: '9:16' | '16:9'; clinicBrandStart?: number; title: string; narration: string; thumbnail: string; captions: Caption[]; originalVolume: number; voiceVolume: number; voiceSpeed: number; voiceSegments?: VoiceSegment[]; dialogueRanges?: {start:number;end:number}[]; importWarning?: string };
 // A missing style is legacy so saved drafts keep their original behavior.
 export const KOREAN_VIDEO_DURATIONS = [12, 15, 30] as const;
@@ -13,6 +13,12 @@ export const isDirectPlan = (p: EditPlan) => isClinicPlan(p) || isKoreanPlan(p) 
 export const defaultPlan = (): EditPlan => ({ duration: 5, title: '', narration: '', thumbnail: '', captions: [], originalVolume: 0.2, voiceVolume: 1, voiceSpeed: 1 });
 export function cleanPlanText(p: EditPlan): EditPlan {
   return { ...p, ...(p.headline ? { headline: p.headline.map(t => cleanVideoText(t).replace(/\s+/g, ' ').trim()) as [string, string] } : {}), title: cleanVideoText(p.title), narration: cleanVideoText(p.narration), thumbnail: cleanVideoText(p.thumbnail), captions: p.captions.map(c => ({ ...c, text: cleanVideoText(c.text) })).filter((c, i) => !isCaptionPlaceholder(c.text) && (c.text || !p.captions[i].text.trim())) };
+}
+// Only a fixed safe preset can enter imported captions or the ASS renderer.
+export function screenCaptionPosition(value: unknown): { position?: 'upper' } {
+  if (value === undefined) return {};
+  if (value !== 'upper') throw Error('화면 자막 위치를 확인해주세요.');
+  return { position: 'upper' };
 }
 export function validatePlan(p: EditPlan) {
   if (!p || ![5, 12, 15, 30].includes(p.duration)) throw Error('영상 길이를 확인해주세요.');
@@ -36,6 +42,7 @@ export function validatePlan(p: EditPlan) {
   let last = 0;
   for (const c of p.captions) {
     if (!Number.isFinite(c.start) || !Number.isFinite(c.end) || c.start < last || c.end <= c.start || c.end > p.duration + (isDirectPlan(p) && !isKoreanPlan(p) ? 0.5 : 0) || typeof c.text !== 'string' || !c.text.trim() || c.text.length > 160) throw Error('자막의 시작·끝 시간과 문구를 확인해주세요. 자막 시간은 겹칠 수 없습니다.');
+    screenCaptionPosition(c.position);
     last = c.end;
   }
   for (const k of ['originalVolume', 'voiceVolume'] as const) if (!Number.isFinite(p[k]) || p[k] < 0 || p[k] > 1) throw Error('음량은 0~100%로 설정해주세요.');
@@ -94,7 +101,7 @@ export function importEpisode(e: any): EditPlan {
   p.captions=pending.map((c,i)=>({text:c.text,source:isDirectPlan(p)?'screen':c.source||(p.narration?'narration':'dialogue'),start:c.start??(pending.length===bounds.length-1?bounds[i]:0),end:c.end??(pending.length===bounds.length-1?bounds[i+1]:p.duration),...(!c.start&&!c.end&&pending.length!==bounds.length-1?{review:isDirectPlan(p)?'영상을 보며 자막 시작·끝 시간을 확인해주세요.':'발화 시간을 자동으로 찾습니다.'}:{})}));
   if (e.captions !== undefined) {
     if (!Array.isArray(e.captions) || e.captions.length > 30 || e.captions.some((c:any) => !c || !Number.isFinite(c.start) || !Number.isFinite(c.end) || typeof c.text !== 'string' || c.text.length > 160)) throw Error('화면 자막 타임라인을 확인해주세요.');
-    p.captions=e.captions.map((c:any)=>({start:c.start,end:c.end,text:c.text,source:'screen'}));
+    p.captions=e.captions.map((c:any)=>({start:c.start,end:c.end,text:c.text,source:'screen',...screenCaptionPosition(c.position)}));
   }
   const scenario=String(e.scenario||'');
   for(const m of scenario.matchAll(/(?:Dialog(?:ue)?\s*[:：]\s*[^:"“'\n]{1,30}|오원장|소미|덕이|눈이|Nooni)\s*[:：]\s*["“']([^"”'\n]+)["”']/gi))dialogue.push(m[1]);
