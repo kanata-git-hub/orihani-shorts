@@ -89,7 +89,7 @@ export function weeklySources(files:DriveFile[]){
  if(selected.length>MAX_WEEKLY_SOURCES)throw Error(`주간 제작안 파일이 너무 많습니다(${selected.length}개). 현재 한 번에 ${MAX_WEEKLY_SOURCES}개까지 불러올 수 있습니다. 파일을 자동으로 제외하거나 옮기지 않았습니다.`);
  return selected;
 }
-async function readText(response:Response,limit:number){
+export async function readText(response:Response,limit:number){
  if(Number(response.headers.get('content-length'))>limit)throw Error('주간 대본 파일이 너무 큽니다.');
  const reader=response.body?.getReader();if(!reader)throw Error('Drive에서 빈 응답을 받았습니다.');
  const chunks:Uint8Array[]=[];let size=0;
@@ -97,7 +97,7 @@ async function readText(response:Response,limit:number){
  finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
  return Buffer.concat(chunks).toString('utf8').replace(/^\uFEFF/,'');
 }
-function driveError(status:number){
+export function driveError(status:number){
  if(status===401||status===403)return Error('Drive 연결 권한을 확인하지 못했습니다. 서버의 Drive API 설정과 주간 폴더 공유 권한을 확인해주세요.');
  if(status===404)return Error('주간 대본 폴더 또는 문서를 찾지 못했습니다.');
  if(status===429)return Error('Drive가 잠시 요청을 제한했습니다. 잠시 후 다시 확인해주세요.');

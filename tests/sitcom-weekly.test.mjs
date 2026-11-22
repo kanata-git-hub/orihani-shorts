@@ -125,3 +125,25 @@ test('native 30-second sitcom JSON is exported and parsed without reading the wi
  assert.equal(requests.length,3);
  assert.ok(requests.every(u=>!u.pathname.includes(old.id)));
 });
+
+test('scenario review stays out of production and keeps its own cut times and prompt', async () => {
+ const {loadScenarioReview}=await import('../server/workflow/scenarioReview.ts');
+ const {parseScenarioReview}=await import('../src/workflow/scenarioReviewData.ts');
+ const reviewFile=file('오리시트콤_시나리오_검토본.json','review');
+ const review={format:'orihani-scenario-review',version:1,revision:'cafe-r1',episodes:[
+   {number:4,title:'검토 초안',duration:15,scenarioRevision:'4-r1',summary:'샘플 줄거리',klingPrompt:'Keep the one take.',
+    cuts:[{start:0,end:3,action:'멈춘다.'},{start:3,end:15,action:'돌아본다.',frame:'옆에서 촬영.'}]}
+ ]};
+ assert.deepEqual(weeklySources([main,sitcom,reviewFile]),[sitcom,main]);
+ const calls=[];
+ const loaded=await loadScenarioReview('test',async url=>{
+   const u=new URL(url); calls.push(u);
+   if(u.pathname==='/drive/v3/files') return Response.json({files:[{id:reviewFile.id}]});
+   assert.ok(u.pathname.endsWith('/'+reviewFile.id));return Response.json(review);
+ });
+ assert.deepEqual(loaded,review);
+ assert.ok(calls[0].searchParams.get('q').includes(reviewFile.name));
+ assert.equal(await loadScenarioReview('test',async()=>Response.json({files:[]})),null);
+ const bad=structuredClone(review);bad.episodes[0].cuts[1].start=4;
+ assert.throws(()=>parseScenarioReview(JSON.stringify(bad)),/컷 시간/);
+});
