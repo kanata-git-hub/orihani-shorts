@@ -23,6 +23,7 @@ export interface HistoryItem {
 
 export interface SourceEpisode {
   captionStyle?: 'clinic' | 'legacy' | 'screen' | 'korean';
+  koreanOverlayProfile?: 'cafe';
   koreanTitlePreset?: 'balanced' | 'wide';
   headline?: [string, string];
   captions?: { start: number; end: number; text: string; source?: 'screen' }[];

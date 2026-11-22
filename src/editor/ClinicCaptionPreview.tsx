@@ -20,7 +20,7 @@ export function ClinicCaptionPreview({ plan, file, loadPreview, onBusy }: {
   const video = useRef<HTMLVideoElement>(null);
   const requestId = useRef(0);
   const animation = useRef<number | undefined>(undefined);
-  const key = JSON.stringify([plan.captionStyle, plan.duration, plan.captions, plan.clinicBrandStart, plan.headline, plan.koreanTitlePreset]);
+  const key = JSON.stringify([plan.captionStyle, plan.duration, plan.captions, plan.clinicBrandStart, plan.headline, plan.koreanTitlePreset, plan.koreanOverlayProfile]);
   const current = preview?.key === key;
   useEffect(() => {
     setTime(0); setDuration(0);
@@ -72,7 +72,7 @@ export function ClinicCaptionPreview({ plan, file, loadPreview, onBusy }: {
     {error && <p className="ori-note" role="alert">{error}</p>}
     {preview && !current && <p className="ori-note">문구나 시간이 바뀌었습니다. 미리보기를 새로고침해주세요.</p>}
     {url && <>
-      <div className="ori-clinic-preview-frame" style={{ aspectRatio: ratio }}>
+      <div className="ori-clinic-preview-frame" style={{ aspectRatio: plan.captionStyle === 'korean' ? '9 / 16' : ratio }}>
         <video ref={video} controls playsInline preload="metadata" src={url}
           onLoadedMetadata={e => {
             const v = e.currentTarget;

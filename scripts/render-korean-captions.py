@@ -37,9 +37,10 @@ def literal(text):
     return ' '.join(text.replace('\\', '＼').replace('{', '｛').replace('}', '｝').split())
 
 
-def event(start, end, style, text, y, size):
+def event(start, end, style, text, y, size, alignment=8, multiline=False):
+    content = r'\N'.join(literal(line) for line in text.splitlines()) if multiline else literal(text)
     return (f'Dialogue: 1,{stamp(start)},{stamp(end)},{style},,0,0,0,,'
-            f'{{\\an8\\pos(540,{y})\\fs{size}}}{literal(text)}\n')
+            f'{{\\an{alignment}\\pos(540,{y})\\fs{size}}}{content}\n')
 
 
 def fit(text, base, width, font):
@@ -53,9 +54,53 @@ def write_ass(path, text):
     path.write_text(text, encoding='utf-8-sig')
 
 
+def cafe_layout(mode, folder, p, font):
+    title = ' '.join(part.strip() for part in p['headline'] if part.strip())
+    target_width = min(966, round(ImageFont.truetype(str(font), 110).getlength(title)))
+    captions = p['captions']
+    sizes = [min(fit(line, 100, 908, font) for line in c['text'].splitlines()) for c in captions]
+    state = folder / 'korean-cafe-size.json'
+
+    def write_geometry(size):
+        state.write_text(json.dumps(size), encoding='utf-8')
+        write_ass(folder / 'korean-geometry.ass', HEADER + event(0, 1, 'Head', title, 100, size))
+
+    if mode == 'prepare':
+        write_geometry(fit(title, 140, 1080, font))
+        return
+    if mode != 'finish':
+        raise ValueError('지원하지 않는 자막 처리입니다.')
+    size = json.loads(state.read_text(encoding='utf-8'))
+    mask = Image.open(folder / 'korean-geometry.png').convert('L').point(lambda x: 255 if x > 12 else 0)
+    box = mask.getbbox()
+    if not box:
+        raise ValueError('고정 제목 글자를 확인하지 못했습니다.')
+    width = box[2] - box[0]
+    next_size = max(40, min(200, round(size * target_width / width)))
+    if size != next_size and abs(width - target_width) > 3:
+        write_geometry(next_size)
+        print(json.dumps({'needsCalibration': True}))
+        return
+    if width > 1026:
+        raise ValueError('고정 제목을 한 줄에 맞출 수 없습니다. 문구를 짧게 다듬어주세요.')
+    y = 100 + 132 - box[1]
+    final = HEADER + event(0, p['duration'], 'Head', title, y, size)
+    preview = HEADER + event(0, 1, 'Head', title, y, size)
+    for i, c in enumerate(captions):
+        cue = ('Caption', c['text'], 1440, sizes[i])
+        final += event(c['start'], c['end'], *cue, alignment=5, multiline=True)
+        preview += event(i + 1, i + 2, *cue, alignment=5, multiline=True)
+    write_ass(folder / 'korean-captions.ass', final)
+    write_ass(folder / 'korean-preview.ass', preview)
+    print(json.dumps({'titleY': [y], 'headlineFontSizes': [size], 'captionFontSizes': sizes,
+                      'titleTopInkY': 132, 'horizontalCenter': 540, 'koreanOverlayProfile': 'cafe'}))
+
+
 def run(mode, folder):
     p = json.loads((folder / 'korean-request.json').read_text(encoding='utf-8'))
     font = folder / 'fonts' / 'Cafe24Ssurround.ttf'
+    if p.get('koreanOverlayProfile') == 'cafe':
+        return cafe_layout(mode, folder, p, font)
     wide = p.get('koreanTitlePreset') == 'wide'
     state = folder / 'korean-wide-layout.json'
     if wide:
